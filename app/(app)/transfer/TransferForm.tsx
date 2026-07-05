@@ -21,6 +21,7 @@ export function TransferForm({ lots, locations }: { lots: LotOption[]; locations
   const [addId, setAddId] = useState("");
   const [popup, setPopup] = useState<{ kind: "transfer" | "draft"; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const available = lots.filter((l) => !lines.some((x) => x.id === l.id));
 
@@ -40,19 +41,25 @@ export function TransferForm({ lots, locations }: { lots: LotOption[]; locations
 
   async function handleConfirm() {
     setSaving(true);
-    const res = await confirmTransferAction({
-      operator,
-      docDate,
-      lines: lines.map((l) => ({
-        lotId: l.id,
-        toLocationCode: l.toLocationCode,
-        qty: Number(l.moveQty) || 0,
-      })),
-    });
-    setSaving(false);
-    setPopup({ kind: "transfer", message: `Transfer ${res.docNo} confirmed — locations updated.` });
-    setLines([]);
-    router.refresh();
+    setError(null);
+    try {
+      const res = await confirmTransferAction({
+        operator,
+        docDate,
+        lines: lines.map((l) => ({
+          lotId: l.id,
+          toLocationCode: l.toLocationCode,
+          qty: Number(l.moveQty) || 0,
+        })),
+      });
+      setPopup({ kind: "transfer", message: `Transfer ${res.docNo} confirmed — locations updated.` });
+      setLines([]);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to confirm transfer.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handlePrint() {
@@ -194,6 +201,12 @@ export function TransferForm({ lots, locations }: { lots: LotOption[]; locations
             ))}
           </select>
         </div>
+
+        {error && (
+          <div className="border-t border-[#f3d2d2] bg-[#fbe9e9] px-[22px] py-2.5 text-[12.5px] text-[#c53f3f]">
+            {error}
+          </div>
+        )}
 
         <div className="flex items-center gap-4 border-t border-[#eef1f5] bg-[#fafbfc] p-[16px_22px]">
           <div className="text-[12.5px] text-[#69748a]">{lines.length} lines</div>

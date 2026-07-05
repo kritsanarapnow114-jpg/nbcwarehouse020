@@ -27,6 +27,7 @@ export function CountForm({ lots }: { lots: LotOption[] }) {
   const [addId, setAddId] = useState("");
   const [popup, setPopup] = useState<{ kind: "count" | "draft"; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [pulling, setPulling] = useState(false);
 
   const available = lots.filter((l) => !lines.some((x) => x.id === l.id));
@@ -73,15 +74,21 @@ export function CountForm({ lots }: { lots: LotOption[] }) {
 
   async function handleConfirm() {
     setSaving(true);
-    const res = await confirmCountAction({
-      pullZone,
-      docDate,
-      lines: lines.map((l) => ({ lotId: l.id, countedQty: Number(l.counted) || 0 })),
-    });
-    setSaving(false);
-    setPopup({ kind: "count", message: `Count ${res.docNo} saved — feeds Inventory Accuracy KPI.` });
-    setLines([]);
-    router.refresh();
+    setError(null);
+    try {
+      const res = await confirmCountAction({
+        pullZone,
+        docDate,
+        lines: lines.map((l) => ({ lotId: l.id, countedQty: Number(l.counted) || 0 })),
+      });
+      setPopup({ kind: "count", message: `Count ${res.docNo} saved — feeds Inventory Accuracy KPI.` });
+      setLines([]);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save count.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleExport() {
@@ -211,6 +218,12 @@ export function CountForm({ lots }: { lots: LotOption[] }) {
             ))}
           </select>
         </div>
+
+        {error && (
+          <div className="border-t border-[#f3d2d2] bg-[#fbe9e9] px-[22px] py-2.5 text-[12.5px] text-[#c53f3f]">
+            {error}
+          </div>
+        )}
 
         <div className="flex items-center gap-4 border-t border-[#eef1f5] bg-[#fafbfc] p-[16px_22px]">
           <div className="text-[12.5px] text-[#69748a]">{lines.length} lines</div>

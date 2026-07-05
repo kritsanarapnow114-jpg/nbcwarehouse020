@@ -27,6 +27,7 @@ export function AdjustForm({ lots }: { lots: LotOption[] }) {
   const [addId, setAddId] = useState("");
   const [popup, setPopup] = useState<{ kind: "adjust" | "draft"; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const available = lots.filter((l) => !lines.some((x) => x.id === l.id));
 
@@ -50,15 +51,21 @@ export function AdjustForm({ lots }: { lots: LotOption[] }) {
 
   async function handleConfirm() {
     setSaving(true);
-    const res = await confirmAdjustAction({
-      reason,
-      docDate,
-      lines: lines.map((l) => ({ lotId: l.id, countedQty: Number(l.counted) || 0 })),
-    });
-    setSaving(false);
-    setPopup({ kind: "adjust", message: `Adjustment ${res.docNo} confirmed — stock updated.` });
-    setLines([]);
-    router.refresh();
+    setError(null);
+    try {
+      const res = await confirmAdjustAction({
+        reason,
+        docDate,
+        lines: lines.map((l) => ({ lotId: l.id, countedQty: Number(l.counted) || 0 })),
+      });
+      setPopup({ kind: "adjust", message: `Adjustment ${res.docNo} confirmed — stock updated.` });
+      setLines([]);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to confirm adjustment.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleExport() {
@@ -195,6 +202,12 @@ export function AdjustForm({ lots }: { lots: LotOption[] }) {
             <div className="font-num text-[16px] font-bold text-[#d24141]">
               ฿{Math.round(lossValue).toLocaleString()}
             </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="border-t border-[#f3d2d2] bg-[#fbe9e9] px-[22px] py-2.5 text-[12.5px] text-[#c53f3f]">
+            {error}
           </div>
         )}
 

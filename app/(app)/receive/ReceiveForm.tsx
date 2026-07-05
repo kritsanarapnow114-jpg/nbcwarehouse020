@@ -32,6 +32,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
   const [bomLossByLine, setBomLossByLine] = useState<Record<string, string>>({});
   const [popup, setPopup] = useState<{ kind: CuteBoxKind; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const selectedPo = data.pos.find((p) => p.id === poId) ?? null;
 
@@ -95,6 +96,20 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
     : 0;
 
   async function handleConfirm() {
+    setError(null);
+
+    if (data.locations.length === 0) {
+      setError(
+        "No storage locations exist yet — add one on the Locations page first (ยังไม่มีที่จัดเก็บ กรุณาเพิ่ม Location ก่อน)"
+      );
+      return;
+    }
+    const missingLoc = lines.some((l) => !l.loc);
+    if (missingLoc) {
+      setError("Every line needs a Location selected (ทุกรายการต้องเลือก Location)");
+      return;
+    }
+
     setSaving(true);
     const payload = {
       mode,
@@ -119,13 +134,18 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
           ? bom.lines.map((m) => ({ bomLineId: m.id, lossQty: Number(bomLossByLine[m.id] ?? 0) || 0 }))
           : undefined,
     };
-    const res = await confirmReceiptAction(payload);
-    setSaving(false);
-    setPopup({ kind: "in", message: `Receipt ${res.docNo} confirmed — inventory updated.` });
-    setLines([]);
-    setPoId("");
-    setInvoiceNo("");
-    router.refresh();
+    try {
+      const res = await confirmReceiptAction(payload);
+      setPopup({ kind: "in", message: `Receipt ${res.docNo} confirmed — inventory updated.` });
+      setLines([]);
+      setPoId("");
+      setInvoiceNo("");
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to confirm receipt.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleDraft() {
@@ -320,6 +340,12 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
             ))}
           </select>
         </div>
+
+        {error && (
+          <div className="border-t border-[#f3d2d2] bg-[#fbe9e9] px-[22px] py-2.5 text-[12.5px] text-[#c53f3f]">
+            {error}
+          </div>
+        )}
 
         <div className="flex items-center gap-4 border-t border-[#eef1f5] bg-[#fafbfc] p-[16px_22px]">
           <div className="text-[12.5px] text-[#69748a]">
