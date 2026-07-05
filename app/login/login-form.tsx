@@ -14,14 +14,13 @@ export function LoginForm({ next }: { next: string }) {
       <input type="hidden" name="next" value={next} />
       <label className="flex flex-col gap-1.5">
         <span className="text-[12px] font-medium text-[#3a4658]">
-          Email (อีเมล)
+          Username / Email (ชื่อผู้ใช้ / อีเมล)
         </span>
         <input
           name="email"
-          type="email"
+          type="text"
           required
           autoFocus
-          defaultValue="somchai@nbcwarehouse.test"
           className="rounded-[8px] border border-[#d7dce4] px-3 py-2.5 text-[13px] outline-none focus:border-[#3E9B6E]"
         />
       </label>
@@ -33,7 +32,6 @@ export function LoginForm({ next }: { next: string }) {
           name="password"
           type="password"
           required
-          defaultValue="warehouse123"
           className="rounded-[8px] border border-[#d7dce4] px-3 py-2.5 text-[13px] outline-none focus:border-[#3E9B6E]"
         />
       </label>
@@ -49,9 +47,6 @@ export function LoginForm({ next }: { next: string }) {
       >
         {pending ? "Signing in… (กำลังเข้าสู่ระบบ)" : "Sign in (เข้าสู่ระบบ)"}
       </button>
-      <div className="mt-1 text-center text-[11px] text-[#9aa4b4]">
-        Seeded user: somchai@nbcwarehouse.test / warehouse123
-      </div>
     </form>
   );
 }

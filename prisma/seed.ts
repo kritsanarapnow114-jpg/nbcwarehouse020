@@ -14,29 +14,42 @@ function daysFromNow(n: number): Date {
 }
 
 async function main() {
-  // Safe to run on every deploy: skip entirely if this database already has data
-  // (e.g. a production DB that's already been seeded once).
-  const existingLots = await db.lot.count();
-  if (existingLots > 0) {
-    console.log("Database already has data — skipping seed.");
-    return;
-  }
-
-  console.log("Seeding…");
-
-  // ---- User ----
-  const passwordHash = await bcrypt.hash("warehouse123", 10);
+  // User accounts are ensured on every deploy regardless of other data state,
+  // so logins keep working even after a "clear all data" reset.
+  const somchaiHash = await bcrypt.hash("warehouse123", 10);
   await db.user.upsert({
     where: { email: "somchai@nbcwarehouse.test" },
     update: {},
     create: {
       email: "somchai@nbcwarehouse.test",
-      passwordHash,
+      passwordHash: somchaiHash,
       name: "Somchai K.",
       role: "Warehouse Lead · WH-01",
       avatarInitials: "SC",
     },
   });
+  const kritsanaHash = await bcrypt.hash("fls1234", 10);
+  await db.user.upsert({
+    where: { email: "kritsana" },
+    update: {},
+    create: {
+      email: "kritsana",
+      passwordHash: kritsanaHash,
+      name: "Kritsana",
+      role: "Warehouse Staff",
+      avatarInitials: "K",
+    },
+  });
+
+  // Safe to run on every deploy: skip the demo business-data seed entirely if
+  // this database already has data (e.g. a production DB already in real use).
+  const existingLots = await db.lot.count();
+  if (existingLots > 0) {
+    console.log("Database already has data — skipping demo-data seed (users still ensured above).");
+    return;
+  }
+
+  console.log("Seeding…");
 
   // ---- Products ----
   const products = [

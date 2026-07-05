@@ -11,21 +11,39 @@ function revalidatePoPaths() {
   revalidatePath("/dashboard");
 }
 
-export async function createPoAction(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
-  const vendorInput = String(formData.get("vendor") ?? "").trim();
-  const vendor = vendorInput || "(New draft) set vendor";
+export type NewPoLine = { productCode: string; ordered: number };
 
-  const no = await nextDocNumber("PO");
+export type CreatePoInput = {
+  no?: string;
+  vendor: string;
+  date: string;
+  lines: NewPoLine[];
+};
+
+export async function createPoAction(input: CreatePoInput): Promise<FormState> {
+  const vendor = input.vendor.trim() || "(New draft) set vendor";
+
+  let no = input.no?.trim();
+  if (no) {
+    const existing = await db.purchaseOrder.findUnique({ where: { no } });
+    if (existing) {
+      return { error: `PO number "${no}" already exists (เลข PO นี้มีอยู่แล้ว)` };
+    }
+  } else {
+    no = await nextDocNumber("PO");
+  }
 
   await db.purchaseOrder.create({
     data: {
       no,
       vendor,
-      date: new Date(),
+      date: new Date(input.date),
       status: "OPEN",
+      lines: {
+        create: input.lines
+          .filter((l) => l.ordered > 0)
+          .map((l) => ({ productCode: l.productCode, ordered: l.ordered, received: 0 })),
+      },
     },
   });
 

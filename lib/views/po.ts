@@ -21,6 +21,19 @@ export type PoRow = {
   lines: PoLineRow[];
 };
 
+export async function getProductPickerList() {
+  const products = await db.product.findMany({
+    where: { deletedAt: null },
+    orderBy: { code: "asc" },
+  });
+  return products.map((p) => ({
+    code: p.code,
+    name: `${p.nameEn} (${p.nameTh})`,
+    unit: p.unit,
+    price: p.price,
+  }));
+}
+
 export async function getPurchaseOrders(opts?: {
   status?: string;
 }): Promise<PoRow[]> {

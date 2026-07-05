@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getPurchaseOrders } from "@/lib/views/po";
+import { getPurchaseOrders, getProductPickerList } from "@/lib/views/po";
 import { NewPoButton } from "./NewPoModal";
 import { PoTable } from "./PoTable";
 
@@ -15,7 +15,10 @@ export default async function PurchaseOrderPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status } = await searchParams;
-  const rows = await getPurchaseOrders({ status });
+  const [rows, products] = await Promise.all([
+    getPurchaseOrders({ status }),
+    getProductPickerList(),
+  ]);
 
   const qs = (extra: Record<string, string>) => {
     const p = new URLSearchParams();
@@ -48,7 +51,7 @@ export default async function PurchaseOrderPage({
           );
         })}
         <div className="flex-1" />
-        <NewPoButton />
+        <NewPoButton products={products} />
         <a
           href={`/api/export/po${qs({})}`}
           className="flex items-center gap-1.5 rounded-[8px] border border-[#1e9e5e] bg-[#eaf7f0] px-3.5 py-2 text-[12.5px] font-semibold text-[#12894f]"
