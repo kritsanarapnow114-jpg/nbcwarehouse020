@@ -1,10 +1,10 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { daysBetween } from "@/lib/calc/date";
+import { daysBetween, todayBangkok } from "@/lib/calc/date";
 import { AGE_BUCKETS, ageBucketIndex, expiryInfo, ExpKind } from "@/lib/calc/aging";
 import { getValueByExpiry } from "./dashboard";
 
-export async function getAgeBuckets(today: Date = new Date()) {
+export async function getAgeBuckets(today: Date = todayBangkok()) {
   const lots = await db.lot.findMany({ include: { product: true } });
   const buckets = AGE_BUCKETS.map((b) => ({ ...b, value: 0, count: 0 }));
   for (const l of lots) {
@@ -18,7 +18,7 @@ export async function getAgeBuckets(today: Date = new Date()) {
 }
 
 /** Mirrors the Dashboard's "Value by Time-to-Expiry" widget exactly (fixed 30/90/180d buckets). */
-export async function getExpiryBuckets(today: Date = new Date()) {
+export async function getExpiryBuckets(today: Date = todayBangkok()) {
   return getValueByExpiry(today);
 }
 
@@ -45,7 +45,7 @@ export async function getAgingRows(opts: {
   thresholdDays: number;
   today?: Date;
 }): Promise<AgingRow[]> {
-  const today = opts.today ?? new Date();
+  const today = opts.today ?? todayBangkok();
   const lots = await db.lot.findMany({
     include: { product: true },
     orderBy: { recvDate: "asc" },

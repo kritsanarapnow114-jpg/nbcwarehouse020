@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Money } from "@/components/ui/Currency";
-import { fmtDateISO, parseISO } from "@/lib/calc/date";
+import { fmtDateISO, parseISO, todayBangkok } from "@/lib/calc/date";
 import { kpiBand } from "@/lib/calc/kpi";
 import {
   getInventoryStats,
@@ -26,7 +26,7 @@ export default async function DashboardPage({
   searchParams: Promise<{ start?: string; end?: string }>;
 }) {
   const { start, end } = await searchParams;
-  const today = new Date();
+  const today = todayBangkok();
   const defaultStart = new Date(today);
   defaultStart.setDate(defaultStart.getDate() - 29);
 

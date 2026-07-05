@@ -4,6 +4,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Money } from "@/components/ui/Currency";
 import { buttonClass } from "@/components/ui/Button";
 import { getAgeBuckets, getExpiryBuckets, getAgingRows } from "@/lib/views/aging";
+import { todayBangkok } from "@/lib/calc/date";
 import { ThresholdInput } from "./ThresholdInput";
 import { AgingTable } from "./AgingTable";
 
@@ -19,7 +20,7 @@ export default async function AgingPage({
   searchParams: Promise<{ filter?: string; threshold?: string }>;
 }) {
   const { filter, threshold } = await searchParams;
-  const today = new Date();
+  const today = todayBangkok();
   const thresholdDays = threshold ? Number(threshold) || 30 : 30;
   const filterValue: "all" | "near" | "expired" =
     filter === "near" || filter === "expired" ? filter : "all";

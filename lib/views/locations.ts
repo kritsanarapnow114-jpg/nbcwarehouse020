@@ -10,6 +10,7 @@ import {
   BinTone,
 } from "@/lib/calc/storage";
 import { ZONE_LABEL } from "@/components/ui/tone";
+import { todayBangkok } from "@/lib/calc/date";
 
 export type BinContent = {
   productCode: string;
@@ -43,7 +44,7 @@ async function loadAllRows(): Promise<LocationRow[]> {
     db.lot.findMany({ include: { product: true } }),
   ]);
 
-  const today = new Date();
+  const today = todayBangkok();
   const contentsByLoc = new Map<string, BinContent[]>();
   for (const l of lots) {
     const area =

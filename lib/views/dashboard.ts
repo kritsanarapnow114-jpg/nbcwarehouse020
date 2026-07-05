@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { daysBetween, fmtDateBE } from "@/lib/calc/date";
+import { daysBetween, fmtDateBE, todayBangkok } from "@/lib/calc/date";
 import {
   areaPerUnit,
   binCapacity,
@@ -39,7 +39,7 @@ export async function getInventoryStats(range: Range) {
   const receivedUnits = recvAgg.reduce((s, r) => s + r.recvQty, 0);
   const issuedUnits = issAgg.reduce((s, r) => s + r.qty, 0);
 
-  const today = new Date();
+  const today = todayBangkok();
   const lossValue = products.reduce((s, p) => {
     const expiredQty = p.lots
       .filter((l) => l.expDate && l.expDate < today)
@@ -125,7 +125,7 @@ export async function getValueByCategory() {
   return rows.map((r) => ({ ...r, pct: (r.value / max) * 100 }));
 }
 
-export async function getValueByExpiry(today: Date = new Date()) {
+export async function getValueByExpiry(today: Date = todayBangkok()) {
   const lots = await db.lot.findMany({ include: { product: true } });
   const buckets = EXPIRY_BUCKETS.map((b) => ({ ...b, value: 0, count: 0 }));
   for (const l of lots) {
@@ -172,7 +172,7 @@ export async function getMovementDetail(range: Range, limit = 5) {
   return { received, issued };
 }
 
-export async function getSlowMoving(today: Date = new Date(), thresholdDays = 60) {
+export async function getSlowMoving(today: Date = todayBangkok(), thresholdDays = 60) {
   const products = await db.product.findMany({
     where: { deletedAt: null },
     include: { lots: true },
@@ -206,7 +206,7 @@ export async function getSlowMoving(today: Date = new Date(), thresholdDays = 60
   return rows;
 }
 
-export async function getCountProgress(today: Date = new Date()) {
+export async function getCountProgress(today: Date = todayBangkok()) {
   const totalLots = await db.lot.count();
   const counts = await db.stockCount.findMany({ include: { lines: true } });
 
@@ -291,7 +291,7 @@ export async function getMovementBuckets(range: Range): Promise<MovementBucket[]
   return buckets;
 }
 
-export async function getActionRequired(today: Date = new Date()) {
+export async function getActionRequired(today: Date = todayBangkok()) {
   const [qcCount, lots, overduePOs] = await Promise.all([
     db.lot.count({ where: { status: "QC" } }),
     db.lot.findMany({ where: { expDate: { not: null } } }),

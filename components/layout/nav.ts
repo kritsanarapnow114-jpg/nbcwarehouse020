@@ -17,6 +17,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "adjust", href: "/adjust", icon: "◆", en: "Adjust", th: "ปรับปรุงสต็อก" },
   { key: "transfer", href: "/transfer", icon: "⇄", en: "Transfer", th: "ย้ายที่เก็บ" },
   { key: "count", href: "/count", icon: "☑", en: "Stock Count", th: "นับสต็อก" },
+  { key: "reports", href: "/reports", icon: "▥", en: "Reports", th: "รายงานสรุป" },
 ];
 
 export const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
@@ -30,5 +31,6 @@ export const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
   "/adjust": { title: "Adjust", sub: "ปรับปรุงสต็อก · Stock adjustment" },
   "/transfer": { title: "Transfer", sub: "ย้ายที่เก็บ · Bin-to-bin transfer" },
   "/count": { title: "Stock Count", sub: "นับสต็อก · Cycle count" },
+  "/reports": { title: "Reports", sub: "รายงานสรุป · Receiving, Issuing, Loss, Production, PO, Transfer, Stock Card" },
   "/settings": { title: "Settings", sub: "ตั้งค่า · Data management" },
 };

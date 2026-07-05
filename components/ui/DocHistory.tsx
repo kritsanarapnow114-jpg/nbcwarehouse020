@@ -21,6 +21,35 @@ export type DocHistoryRow = {
   lines: DocHistoryLine[];
 };
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function printDoc(title: string, row: DocHistoryRow) {
+  const w = window.open("", "_blank", "width=820,height=920");
+  if (!w) return;
+  w.document.write(`
+    <html><head><title>${escapeHtml(row.docNo)}</title>
+    <style>body{font-family:sans-serif;padding:32px}table{width:100%;border-collapse:collapse;margin-top:16px}
+    th,td{border:1px solid #ccc;padding:8px;font-size:13px;text-align:left}</style></head><body>
+    <h2>${escapeHtml(title)}</h2>
+    <p>Doc No: ${escapeHtml(row.docNo)}<br/>Date: ${escapeHtml(fmtDateBE(new Date(row.docDate)))}<br/>${escapeHtml(row.summary)}</p>
+    <table><thead><tr><th>Code</th><th>Product</th><th>Qty</th><th></th></tr></thead>
+    <tbody>${row.lines
+      .map(
+        (l) =>
+          `<tr><td>${escapeHtml(l.code)}</td><td>${escapeHtml(l.name)}</td><td>${escapeHtml(l.qtyText)}</td><td>${escapeHtml(l.extra ?? "")}</td></tr>`
+      )
+      .join("")}</tbody></table></body></html>
+  `);
+  w.document.close();
+  w.print();
+}
+
 export function DocHistory({
   title,
   rows,
@@ -74,6 +103,14 @@ export function DocHistory({
                   <span className="font-num">{selected.docNo}</span> ·{" "}
                   {fmtDateBE(new Date(selected.docDate))}
                 </span>
+              }
+              action={
+                <button
+                  onClick={() => printDoc(title, selected)}
+                  className="flex items-center gap-1.5 rounded-[8px] border border-[#d7dce4] bg-white px-2.5 py-1.5 text-[12px] font-medium text-[#3a4658] hover:bg-[#f7f9fb]"
+                >
+                  ⎙ Print
+                </button>
               }
               onClose={() => setSelected(null)}
             />

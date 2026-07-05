@@ -1,4 +1,17 @@
 const BE_OFFSET = 543;
+const BANGKOK_OFFSET_MS = 7 * 3600 * 1000;
+
+/**
+ * "Today" as a UTC-midnight Date matching the Bangkok (UTC+7) calendar day.
+ * Server `new Date()` returns UTC time, but docDate values are stored as
+ * UTC-midnight of the date string entered in the (Thai) browser — so
+ * comparing against a raw `new Date()` skews the boundary during
+ * 00:00–06:59 ICT, when the UTC calendar day is still "yesterday".
+ */
+export function todayBangkok(): Date {
+  const shifted = new Date(Date.now() + BANGKOK_OFFSET_MS);
+  return new Date(Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()));
+}
 
 export function beYear(d: Date): number {
   return d.getFullYear() + BE_OFFSET;
