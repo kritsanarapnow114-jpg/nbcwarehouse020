@@ -1,0 +1,63 @@
+import Link from "next/link";
+import { getPurchaseOrders } from "@/lib/views/po";
+import { NewPoButton } from "./NewPoModal";
+import { PoTable } from "./PoTable";
+
+const STATUS_FILTERS = [
+  { value: "", label: "All" },
+  { value: "PENDING", label: "Pending" },
+  { value: "COMPLETE", label: "Complete" },
+];
+
+export default async function PurchaseOrderPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const { status } = await searchParams;
+  const rows = await getPurchaseOrders({ status });
+
+  const qs = (extra: Record<string, string>) => {
+    const p = new URLSearchParams();
+    if (status) p.set("status", status);
+    for (const [k, v] of Object.entries(extra)) {
+      if (v) p.set(k, v);
+      else p.delete(k);
+    }
+    const s = p.toString();
+    return s ? `?${s}` : "";
+  };
+
+  return (
+    <div className="max-w-[1280px] p-[22px_26px]">
+      <div className="mb-4 flex flex-wrap items-center gap-2.5">
+        {STATUS_FILTERS.map((f) => {
+          const active = (status ?? "") === f.value;
+          return (
+            <Link
+              key={f.value}
+              href={`/po${qs({ status: f.value })}`}
+              className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-medium ${
+                active
+                  ? "bg-[#3E9B6E] text-white"
+                  : "border border-[#e2e6ec] bg-white text-[#3a4658]"
+              }`}
+            >
+              {f.label}
+            </Link>
+          );
+        })}
+        <div className="flex-1" />
+        <NewPoButton />
+        <a
+          href={`/api/export/po${qs({})}`}
+          className="flex items-center gap-1.5 rounded-[8px] border border-[#1e9e5e] bg-[#eaf7f0] px-3.5 py-2 text-[12.5px] font-semibold text-[#12894f]"
+        >
+          ⤓ Export Excel
+        </a>
+      </div>
+
+      <PoTable rows={rows} />
+    </div>
+  );
+}

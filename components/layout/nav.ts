@@ -1,0 +1,33 @@
+export type NavItem = {
+  key: string;
+  href: string;
+  icon: string;
+  en: string;
+  th: string;
+};
+
+export const NAV_ITEMS: NavItem[] = [
+  { key: "dashboard", href: "/dashboard", icon: "▤", en: "Dashboard", th: "แดชบอร์ด" },
+  { key: "products", href: "/products", icon: "▦", en: "Products", th: "รายการสินค้า" },
+  { key: "aging", href: "/aging", icon: "◔", en: "Inventory Aging", th: "อายุคงเหลือ" },
+  { key: "locations", href: "/locations", icon: "▧", en: "Locations", th: "ที่จัดเก็บ" },
+  { key: "receive", href: "/receive", icon: "▼", en: "Receive", th: "รับสินค้า" },
+  { key: "po", href: "/po", icon: "◫", en: "Purchase Order", th: "ใบสั่งซื้อ" },
+  { key: "issue", href: "/issue", icon: "▲", en: "Issue", th: "จ่ายสินค้า" },
+  { key: "adjust", href: "/adjust", icon: "◆", en: "Adjust", th: "ปรับปรุงสต็อก" },
+  { key: "transfer", href: "/transfer", icon: "⇄", en: "Transfer", th: "ย้ายที่เก็บ" },
+  { key: "count", href: "/count", icon: "☑", en: "Stock Count", th: "นับสต็อก" },
+];
+
+export const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
+  "/dashboard": { title: "Dashboard", sub: "แดชบอร์ด · Warehouse overview" },
+  "/products": { title: "Products", sub: "รายการสินค้า · Master catalog & on-hand" },
+  "/aging": { title: "Inventory Aging", sub: "อายุคงเหลือ · Age & expiry risk" },
+  "/locations": { title: "Locations", sub: "ที่จัดเก็บ · Bin capacity & utilization" },
+  "/receive": { title: "Receive", sub: "รับสินค้า · Goods receipt" },
+  "/po": { title: "Purchase Order", sub: "ใบสั่งซื้อ · PO tracking" },
+  "/issue": { title: "Issue", sub: "จ่ายสินค้า · FEFO outbound" },
+  "/adjust": { title: "Adjust", sub: "ปรับปรุงสต็อก · Stock adjustment" },
+  "/transfer": { title: "Transfer", sub: "ย้ายที่เก็บ · Bin-to-bin transfer" },
+  "/count": { title: "Stock Count", sub: "นับสต็อก · Cycle count" },
+};

@@ -1,0 +1,307 @@
+import "server-only";
+import { db } from "@/lib/db";
+import { daysBetween, fmtDateBE } from "@/lib/calc/date";
+import {
+  areaPerUnit,
+  binCapacity,
+  occupancyPct,
+  occupancyBarTone,
+  BAR_TONE_COLOR,
+} from "@/lib/calc/storage";
+import { CATEGORY_COLORS, CATEGORY_COLOR_FALLBACK, CATEGORY_LABEL, ZONE_LABEL } from "@/components/ui/tone";
+import { EXPIRY_BUCKETS, expiryBucketIndex } from "@/lib/calc/aging";
+import { Category, Zone } from "@prisma/client";
+
+export type Range = { start: Date; end: Date };
+
+export async function getInventoryStats(range: Range) {
+  const products = await db.product.findMany({
+    where: { deletedAt: null },
+    include: { lots: true },
+  });
+  const inventoryValue = products.reduce(
+    (s, p) => s + p.lots.reduce((ls, l) => ls + l.qty, 0) * p.price,
+    0
+  );
+  const skuCount = products.length;
+  const lotCount = products.reduce((s, p) => s + p.lots.length, 0);
+
+  const [recvAgg, issAgg] = await Promise.all([
+    db.receiptLine.findMany({
+      where: { receipt: { docDate: { gte: range.start, lte: range.end } } },
+      select: { recvQty: true },
+    }),
+    db.issueLine.findMany({
+      where: { issue: { docDate: { gte: range.start, lte: range.end } } },
+      select: { qty: true },
+    }),
+  ]);
+  const receivedUnits = recvAgg.reduce((s, r) => s + r.recvQty, 0);
+  const issuedUnits = issAgg.reduce((s, r) => s + r.qty, 0);
+
+  const today = new Date();
+  const lossValue = products.reduce((s, p) => {
+    const expiredQty = p.lots
+      .filter((l) => l.expDate && l.expDate < today)
+      .reduce((ls, l) => ls + l.qty, 0);
+    return s + expiredQty * p.price;
+  }, 0);
+
+  return { inventoryValue, skuCount, lotCount, receivedUnits, issuedUnits, lossValue };
+}
+
+/** Dashboard's Storage Utilization widget only shows zones A-D (Spare Parts / zone E omitted here, per design). */
+export async function getStorageUtilization() {
+  const [locations, lots] = await Promise.all([
+    db.location.findMany(),
+    db.lot.findMany({ include: { product: true } }),
+  ]);
+
+  const usedByLoc = new Map<string, number>();
+  for (const l of lots) {
+    const area =
+      l.qty *
+      areaPerUnit(l.product.width, l.product.length, l.product.stackLevels, l.product.pallet);
+    usedByLoc.set(l.locationCode, (usedByLoc.get(l.locationCode) ?? 0) + area);
+  }
+
+  let totalUsed = 0;
+  let totalCap = 0;
+  const zoneAgg = new Map<string, { used: number; cap: number }>();
+  for (const loc of locations) {
+    const cap = binCapacity(loc.width, loc.length);
+    const used = usedByLoc.get(loc.code) ?? 0;
+    totalUsed += used;
+    totalCap += cap;
+    const z = zoneAgg.get(loc.zone) ?? { used: 0, cap: 0 };
+    z.used += used;
+    z.cap += cap;
+    zoneAgg.set(loc.zone, z);
+  }
+
+  const zones = (["A", "B", "C", "D"] as Zone[])
+    .filter((z) => zoneAgg.has(z))
+    .map((z) => {
+      const agg = zoneAgg.get(z)!;
+      const pct = occupancyPct(agg.used, agg.cap);
+      return {
+        name: z,
+        desc: ZONE_LABEL[z],
+        pct: Math.round(pct * 10) / 10,
+        used: agg.used,
+        cap: agg.cap,
+        color: BAR_TONE_COLOR[occupancyBarTone(pct)],
+      };
+    });
+
+  const totalPct = occupancyPct(totalUsed, totalCap);
+  return {
+    totalUsed: Math.round(totalUsed * 100) / 100,
+    totalCap: Math.round(totalCap * 100) / 100,
+    totalPct: Math.round(totalPct * 10) / 10,
+    totalColor: BAR_TONE_COLOR[occupancyBarTone(totalPct)],
+    zones,
+  };
+}
+
+export async function getValueByCategory() {
+  const products = await db.product.findMany({
+    where: { deletedAt: null },
+    include: { lots: true },
+  });
+  const byCategory = new Map<string, number>();
+  for (const p of products) {
+    const value = p.lots.reduce((s, l) => s + l.qty, 0) * p.price;
+    byCategory.set(p.category, (byCategory.get(p.category) ?? 0) + value);
+  }
+  const rows = (Object.keys(CATEGORY_LABEL) as Category[])
+    .filter((c) => byCategory.has(c))
+    .map((c) => ({
+      name: `${CATEGORY_LABEL[c].en} (${CATEGORY_LABEL[c].th})`,
+      value: byCategory.get(c) ?? 0,
+      color: CATEGORY_COLORS[c] ?? CATEGORY_COLOR_FALLBACK,
+    }));
+  const max = Math.max(1, ...rows.map((r) => r.value));
+  return rows.map((r) => ({ ...r, pct: (r.value / max) * 100 }));
+}
+
+export async function getValueByExpiry(today: Date = new Date()) {
+  const lots = await db.lot.findMany({ include: { product: true } });
+  const buckets = EXPIRY_BUCKETS.map((b) => ({ ...b, value: 0, count: 0 }));
+  for (const l of lots) {
+    const daysLeft = l.expDate ? daysBetween(l.expDate, today) : null;
+    const idx = expiryBucketIndex(daysLeft);
+    buckets[idx].value += l.qty * l.product.price;
+    buckets[idx].count += 1;
+  }
+  const max = Math.max(1, ...buckets.map((b) => b.value));
+  const atRiskValue = buckets[0].value + buckets[1].value + buckets[2].value;
+  return {
+    buckets: buckets.map((b) => ({ ...b, pct: (b.value / max) * 100 })),
+    atRiskValue,
+  };
+}
+
+export async function getMovementDetail(range: Range, limit = 5) {
+  const [recv, iss] = await Promise.all([
+    db.receiptLine.groupBy({
+      by: ["productCode"],
+      where: { receipt: { docDate: { gte: range.start, lte: range.end } } },
+      _sum: { recvQty: true },
+    }),
+    db.issueLine.groupBy({
+      by: ["productCode"],
+      where: { issue: { docDate: { gte: range.start, lte: range.end } } },
+      _sum: { qty: true },
+    }),
+  ]);
+  const products = await db.product.findMany({
+    where: { code: { in: [...recv.map((r) => r.productCode), ...iss.map((r) => r.productCode)] } },
+  });
+  const nameOf = (code: string) => products.find((p) => p.code === code);
+
+  const received = recv
+    .map((r) => ({ code: r.productCode, name: nameOf(r.productCode)?.nameEn ?? r.productCode, qty: r._sum.recvQty ?? 0 }))
+    .sort((a, b) => b.qty - a.qty)
+    .slice(0, limit);
+  const issued = iss
+    .map((r) => ({ code: r.productCode, name: nameOf(r.productCode)?.nameEn ?? r.productCode, qty: r._sum.qty ?? 0 }))
+    .sort((a, b) => b.qty - a.qty)
+    .slice(0, limit);
+
+  return { received, issued };
+}
+
+export async function getSlowMoving(today: Date = new Date(), thresholdDays = 60) {
+  const products = await db.product.findMany({
+    where: { deletedAt: null },
+    include: { lots: true },
+  });
+  const lastIssues = await db.issueLine.findMany({
+    include: { issue: true },
+  });
+  const lastIssueByProduct = new Map<string, Date>();
+  for (const l of lastIssues) {
+    const cur = lastIssueByProduct.get(l.productCode);
+    if (!cur || l.issue.docDate > cur) lastIssueByProduct.set(l.productCode, l.issue.docDate);
+  }
+
+  const rows = products
+    .map((p) => {
+      const onHand = p.lots.reduce((s, l) => s + l.qty, 0);
+      const last = lastIssueByProduct.get(p.code) ?? null;
+      const days = last ? daysBetween(today, last) : null;
+      return {
+        code: p.code,
+        name: p.nameEn,
+        onHand,
+        value: onHand * p.price,
+        lastText: last ? fmtDateBE(last) : "never",
+        days: days ?? 9999,
+      };
+    })
+    .filter((r) => r.onHand > 0 && r.days >= thresholdDays)
+    .sort((a, b) => b.days - a.days);
+
+  return rows;
+}
+
+export async function getCountProgress(today: Date = new Date()) {
+  const totalLots = await db.lot.count();
+  const counts = await db.stockCount.findMany({ include: { lines: true } });
+
+  function bucketFor(date: Date) {
+    return `${date.getFullYear()}-${date.getMonth()}`;
+  }
+
+  const monthly: { label: string; counted: number; plan: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const key = bucketFor(d);
+    const countedLots = new Set<string>();
+    for (const c of counts) {
+      if (bucketFor(c.docDate) === key) {
+        for (const l of c.lines) countedLots.add(l.lotId);
+      }
+    }
+    monthly.push({
+      label: d.toLocaleDateString("en-US", { month: "short" }),
+      counted: countedLots.size,
+      plan: totalLots,
+    });
+  }
+
+  const weekStart = new Date(today);
+  weekStart.setDate(1);
+  const weekly: { label: string; counted: number; plan: number }[] = [];
+  for (let w = 0; w < 5; w++) {
+    const from = new Date(weekStart);
+    from.setDate(from.getDate() + w * 7);
+    const to = new Date(from);
+    to.setDate(to.getDate() + 6);
+    if (from.getMonth() !== today.getMonth()) break;
+    const countedLots = new Set<string>();
+    for (const c of counts) {
+      if (c.docDate >= from && c.docDate <= to) {
+        for (const l of c.lines) countedLots.add(l.lotId);
+      }
+    }
+    weekly.push({ label: `W${w + 1}`, counted: countedLots.size, plan: totalLots });
+  }
+
+  return { monthly, weekly };
+}
+
+export type MovementBucket = { label: string; recv: number; issue: number };
+
+export async function getMovementBuckets(range: Range): Promise<MovementBucket[]> {
+  const totalDays = daysBetween(range.end, range.start) + 1;
+  const numBuckets = Math.min(9, Math.max(3, totalDays));
+  const bucketSize = Math.ceil(totalDays / numBuckets);
+
+  const [recvLines, issueLines] = await Promise.all([
+    db.receiptLine.findMany({
+      where: { receipt: { docDate: { gte: range.start, lte: range.end } } },
+      include: { receipt: true },
+    }),
+    db.issueLine.findMany({
+      where: { issue: { docDate: { gte: range.start, lte: range.end } } },
+      include: { issue: true },
+    }),
+  ]);
+
+  const buckets: MovementBucket[] = [];
+  for (let i = 0; i < numBuckets; i++) {
+    const bStart = new Date(range.start);
+    bStart.setDate(bStart.getDate() + i * bucketSize);
+    const bEnd = new Date(bStart);
+    bEnd.setDate(bEnd.getDate() + bucketSize - 1);
+    const clampedEnd = bEnd > range.end ? range.end : bEnd;
+    if (bStart > range.end) break;
+
+    const recv = recvLines
+      .filter((r) => r.receipt.docDate >= bStart && r.receipt.docDate <= clampedEnd)
+      .reduce((s, r) => s + r.recvQty, 0);
+    const issue = issueLines
+      .filter((r) => r.issue.docDate >= bStart && r.issue.docDate <= clampedEnd)
+      .reduce((s, r) => s + r.qty, 0);
+
+    buckets.push({ label: fmtDateBE(clampedEnd).slice(0, 5), recv, issue });
+  }
+  return buckets;
+}
+
+export async function getActionRequired(today: Date = new Date()) {
+  const [qcCount, lots, overduePOs] = await Promise.all([
+    db.lot.count({ where: { status: "QC" } }),
+    db.lot.findMany({ where: { expDate: { not: null } } }),
+    db.purchaseOrder.findMany({
+      where: {
+        status: { not: "COMPLETE" },
+        date: { lt: new Date(today.getTime() - 14 * 86400000) },
+      },
+    }),
+  ]);
+  const expCount = lots.filter((l) => l.expDate! <= new Date(today.getTime() + 30 * 86400000)).length;
+  return { qcCount, expCount, overduePOs: overduePOs.map((p) => p.no) };
+}

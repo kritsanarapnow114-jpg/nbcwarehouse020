@@ -1,0 +1,279 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { IssueFormData } from "@/lib/views/issue";
+import { confirmIssueAction, IssueLineInput } from "@/lib/actions/issue";
+import { buttonClass } from "@/components/ui/Button";
+import { CuteBoxPopup, CuteBoxKind } from "@/components/ui/CuteBoxPopup";
+import { fmtDateISO, fmtDateBE } from "@/lib/calc/date";
+
+type Line = IssueFormData["products"][number] & { selectedLotId: string; qty: string };
+
+const ISSUE_TO_OPTIONS = [
+  "Production — Line A",
+  "Production — Line B",
+  "Wholesale — Customer",
+  "Write-off",
+];
+
+export function IssueForm({ data }: { data: IssueFormData }) {
+  const router = useRouter();
+  const [issueTo, setIssueTo] = useState(ISSUE_TO_OPTIONS[0]);
+  const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
+  const [lines, setLines] = useState<Line[]>([]);
+  const [addCode, setAddCode] = useState("");
+  const [popup, setPopup] = useState<{ kind: CuteBoxKind; message: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [lastConfirmed, setLastConfirmed] = useState<{ docNo: string; lines: Line[] } | null>(null);
+
+  const available = data.products.filter((p) => !lines.some((l) => l.code === p.code));
+
+  function addLine(code: string) {
+    const p = data.products.find((x) => x.code === code);
+    if (!p) return;
+    const defaultLot = p.lots.find((l) => l.isFefo) ?? p.lots[0];
+    setLines((ls) => [
+      ...ls,
+      { ...p, selectedLotId: defaultLot?.id ?? "", qty: String(defaultLot?.qty ?? 0) },
+    ]);
+    setAddCode("");
+  }
+
+  function updateLine(i: number, patch: Partial<Line>) {
+    setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
+  }
+
+  function removeLine(i: number) {
+    setLines((ls) => ls.filter((_, idx) => idx !== i));
+  }
+
+  const totalQty = lines.reduce((s, l) => s + (Number(l.qty) || 0), 0);
+  const totalValue = lines.reduce((s, l) => s + (Number(l.qty) || 0) * l.price, 0);
+
+  async function handleConfirm() {
+    setSaving(true);
+    const payload = {
+      issueTo,
+      docDate,
+      lines: lines.map(
+        (l): IssueLineInput => ({
+          productCode: l.code,
+          selectedLotId: l.selectedLotId,
+          qty: Number(l.qty) || 0,
+        })
+      ),
+    };
+    try {
+      const res = await confirmIssueAction(payload);
+      setPopup({ kind: "out", message: `Issue ${res.docNo} confirmed — stock deducted.` });
+      setLastConfirmed({ docNo: res.docNo, lines });
+      setLines([]);
+      router.refresh();
+    } catch (e) {
+      setPopup({ kind: "draft", message: e instanceof Error ? e.message : "Failed to confirm issue." });
+    }
+    setSaving(false);
+  }
+
+  function handleDraft() {
+    setPopup({ kind: "draft", message: "Draft saved locally (not yet posted)." });
+  }
+
+  function handlePrint() {
+    if (!lastConfirmed) return;
+    const w = window.open("", "_blank", "width=820,height=920");
+    if (!w) return;
+    w.document.write(`
+      <html><head><title>${lastConfirmed.docNo}</title>
+      <style>body{font-family:sans-serif;padding:32px;color:#16202e}
+      table{width:100%;border-collapse:collapse;margin-top:16px}
+      th,td{border:1px solid #ccc;padding:8px;font-size:13px;text-align:left}
+      .sig{margin-top:60px;display:flex;justify-content:space-between}
+      .sig div{width:40%;border-top:1px solid #333;padding-top:6px;text-align:center}
+      </style></head><body>
+      <h2>Issue Slip — ${lastConfirmed.docNo}</h2>
+      <p>Issue To: ${issueTo}<br/>Date: ${docDate}</p>
+      <table><thead><tr><th>Code</th><th>Product</th><th>Lot</th><th>Qty</th></tr></thead>
+      <tbody>${lastConfirmed.lines
+        .map(
+          (l) =>
+            `<tr><td>${l.code}</td><td>${l.name}</td><td>${
+              l.lots.find((x) => x.id === l.selectedLotId)?.lotNo ?? ""
+            }</td><td>${l.qty} ${l.unit}</td></tr>`
+        )
+        .join("")}</tbody></table>
+      <div class="sig"><div>Issued by</div><div>Received by</div></div>
+      </body></html>
+    `);
+    w.document.close();
+    w.print();
+  }
+
+  return (
+    <>
+      <div className="overflow-hidden rounded-[14px] border border-[#e7ebf1] bg-white shadow-[0_1px_2px_rgba(20,30,48,.04),0_6px_18px_rgba(20,30,48,.035)]">
+        <div className="flex flex-wrap items-center gap-4 border-b border-[#eef1f5] p-[18px_22px]">
+          <div>
+            <div className="mb-1 text-[11.5px] text-[#69748a]">Issue No. (เลขที่จ่าย) · auto</div>
+            <div className="font-num text-[16px] font-semibold text-[#e5913a]">{data.docNo}</div>
+          </div>
+          <div className="h-[34px] w-px bg-[#e2e6ec]" />
+          <div>
+            <div className="mb-1 text-[11.5px] text-[#69748a]">Issue To (จ่ายไปที่)</div>
+            <select
+              value={issueTo}
+              onChange={(e) => setIssueTo(e.target.value)}
+              className="rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
+            >
+              {ISSUE_TO_OPTIONS.map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1" />
+          {lastConfirmed && (
+            <button onClick={handlePrint} className={buttonClass("secondary")}>
+              ⎙ Print last ({lastConfirmed.docNo})
+            </button>
+          )}
+          <div>
+            <div className="mb-1 text-[11.5px] text-[#69748a]">Doc date (วันที่เอกสาร)</div>
+            <input
+              type="date"
+              value={docDate}
+              onChange={(e) => setDocDate(e.target.value)}
+              className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
+            />
+          </div>
+        </div>
+
+        <div className="border-b border-[#eef1f5] bg-[#f0f7f3] p-[10px_22px] text-[12px] text-[#3a4658]">
+          Default lot is auto-FEFO (earliest expiry). Change the Lot dropdown to issue a specific lot instead.
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px] border-collapse text-[13px]">
+            <thead>
+              <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
+                <th className="p-[10px_16px] text-[11.5px] font-medium">Code</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">Product</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">Lot</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">Location</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">Expiry</th>
+                <th className="p-[10px_16px] text-right text-[11.5px] font-medium">On Hand</th>
+                <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Issue Qty</th>
+                <th className="w-10 p-[10px_16px]"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((l, i) => {
+                const sel = l.lots.find((x) => x.id === l.selectedLotId);
+                const isFefo = !!sel?.isFefo;
+                return (
+                  <tr
+                    key={l.code}
+                    className="border-t border-[#eef1f5]"
+                    style={{ background: isFefo ? "#f4faf5" : "#fdf7ee" }}
+                  >
+                    <td className="font-num p-[11px_16px] text-[12px] text-[#3a4658]">{l.code}</td>
+                    <td className="p-[11px_16px] font-medium">{l.name}</td>
+                    <td className="p-[11px_16px]">
+                      <select
+                        value={l.selectedLotId}
+                        onChange={(e) => updateLine(i, { selectedLotId: e.target.value })}
+                        className="font-num rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
+                      >
+                        {l.lots.map((lot) => (
+                          <option key={lot.id} value={lot.id}>
+                            {lot.lotNo} · {lot.locationCode} ·{" "}
+                            {lot.expDate ? fmtDateBE(new Date(lot.expDate)) : "no exp"}
+                            {lot.isFefo ? " ★FEFO" : ""}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="mt-0.5">
+                        {isFefo ? (
+                          <span className="rounded-full bg-[#e6f5ec] px-2 py-0.5 text-[10px] font-semibold text-[#12894f]">
+                            FEFO
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-[#fdf0e2] px-2 py-0.5 text-[10px] font-semibold text-[#bd6f12]">
+                            manual
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="font-num p-[11px_16px] text-[12px]">{sel?.locationCode}</td>
+                    <td className="font-num p-[11px_16px] text-[12px] text-[#69748a]">
+                      {sel?.expDate ? fmtDateBE(new Date(sel.expDate)) : "—"}
+                    </td>
+                    <td className="font-num p-[11px_16px] text-right">{sel?.qty.toLocaleString()}</td>
+                    <td className="p-[11px_16px] text-right">
+                      <input
+                        value={l.qty}
+                        onChange={(e) => updateLine(i, { qty: e.target.value })}
+                        className="font-num w-[84px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-right text-[13px]"
+                      />
+                    </td>
+                    <td className="p-[11px_16px] text-center">
+                      <button onClick={() => removeLine(i)} className="text-[16px] text-[#c2606f]">
+                        ×
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {lines.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="p-6 text-center text-[#9aa4b4]">
+                    No lines yet — add a product below.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex items-center gap-2 border-t border-[#eef1f5] p-[12px_16px]">
+          <select
+            value={addCode}
+            onChange={(e) => addLine(e.target.value)}
+            className="w-full rounded-[9px] border border-dashed border-[#c4ccd8] bg-[#f7f9fb] px-3 py-2 text-[13px] text-[#3a4658]"
+          >
+            <option value="">+ Add line (เพิ่มรายการ) — choose a product…</option>
+            {available.map((p) => (
+              <option key={p.code} value={p.code}>
+                {p.code} · {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-4 border-t border-[#eef1f5] bg-[#fafbfc] p-[16px_22px]">
+          <div className="text-[12.5px] text-[#69748a]">
+            {lines.length} lines · total qty <b className="font-num text-[#16202e]">{totalQty.toLocaleString()}</b> ·
+            total value <b className="font-num text-[#16202e]">฿{totalValue.toLocaleString()}</b>
+          </div>
+          <div className="flex-1" />
+          <button onClick={handleDraft} className={buttonClass("secondary")}>
+            Save draft (ร่าง)
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={saving || lines.length === 0}
+            className={buttonClass("primary", "!bg-[#e5913a]")}
+          >
+            {saving ? "Saving…" : "Confirm issue (ยืนยันจ่าย)"}
+          </button>
+        </div>
+      </div>
+
+      {popup && (
+        <CuteBoxPopup open kind={popup.kind} message={popup.message} onClose={() => setPopup(null)} />
+      )}
+    </>
+  );
+}

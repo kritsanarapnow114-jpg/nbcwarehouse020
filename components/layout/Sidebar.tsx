@@ -1,0 +1,96 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { NAV_ITEMS } from "./nav";
+import { logoutAction } from "@/lib/actions/auth";
+
+export function Sidebar({
+  poPendingCount,
+  user,
+}: {
+  poPendingCount: number;
+  user: { name: string; role: string; avatarInitials: string };
+}) {
+  const pathname = usePathname();
+
+  return (
+    <aside
+      className="sticky top-0 flex h-screen w-[240px] flex-none flex-col text-[#eaf7f0] shadow-[2px_0_16px_rgba(13,20,36,.12)]"
+      style={{ background: "linear-gradient(180deg,#34a877,#1f8a5b)" }}
+    >
+      <div className="flex items-center gap-2.5 border-b border-white/15 px-[18px] py-4">
+        <div className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-[9px] bg-white text-[15px] font-bold tracking-wide text-[#1f8a5b]">
+          NB
+        </div>
+        <div className="min-w-0 leading-tight">
+          <div className="whitespace-nowrap text-[14px] font-bold text-white">
+            NBC Warehouse
+          </div>
+          <div className="whitespace-nowrap text-[10.5px] text-[#d3efe0]">
+            Warehouse Mgmt (ระบบคลังสินค้า)
+          </div>
+        </div>
+      </div>
+
+      <nav className="flex flex-1 flex-col gap-0.5 overflow-auto p-3">
+        {NAV_ITEMS.map((item) => {
+          const active = pathname.startsWith(item.href);
+          const badge = item.key === "po" && poPendingCount > 0 ? poPendingCount : null;
+          return (
+            <Link
+              key={item.key}
+              href={item.href}
+              className={`flex items-center gap-2.5 rounded-[9px] px-3 py-2.5 text-[13px] ${
+                active ? "bg-white text-[#1f8a5b]" : "bg-white/[.06] text-[#eaf7f0] hover:bg-white/[.12]"
+              }`}
+            >
+              <span className="w-5 flex-none text-center text-[15px]">
+                {item.icon}
+              </span>
+              <span className="flex-1 text-left leading-tight">
+                <span className="block">{item.en}</span>
+                <span
+                  className={`block text-[10px] ${active ? "text-[#5fa987]" : "text-[#bfe4d1]"}`}
+                >
+                  ({item.th})
+                </span>
+              </span>
+              {badge !== null && (
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                    active ? "bg-[#1f8a5b]/15 text-[#1f8a5b]" : "bg-[#c53f3f] text-white"
+                  }`}
+                >
+                  {badge}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <form
+        action={logoutAction}
+        className="flex items-center gap-2.5 border-t border-white/15 px-4 py-3.5"
+      >
+        <div className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-white/[.22] text-[12px] font-semibold text-white">
+          {user.avatarInitials}
+        </div>
+        <div className="flex-1 leading-tight">
+          <div className="text-[12.5px] font-medium text-white">
+            {user.name}
+          </div>
+          <div className="text-[10.5px] text-[#cdeadd]">{user.role}</div>
+        </div>
+        <button
+          type="submit"
+          title="Sign out"
+          className="rounded-[7px] px-2 py-1 text-[11px] text-[#d3efe0] hover:bg-white/[.12]"
+        >
+          Exit
+        </button>
+      </form>
+    </aside>
+  );
+}
