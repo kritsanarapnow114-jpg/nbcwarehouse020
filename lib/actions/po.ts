@@ -32,3 +32,15 @@ export async function createPoAction(
   revalidatePoPaths();
   return { no };
 }
+
+export async function deletePoAction(id: string): Promise<{ error?: string }> {
+  const receiptCount = await db.receipt.count({ where: { poId: id } });
+  if (receiptCount > 0) {
+    return {
+      error: "Cannot delete — this PO already has receipts against it (มีการรับสินค้าตาม PO นี้แล้ว ลบไม่ได้)",
+    };
+  }
+  await db.purchaseOrder.delete({ where: { id } });
+  revalidatePoPaths();
+  return {};
+}

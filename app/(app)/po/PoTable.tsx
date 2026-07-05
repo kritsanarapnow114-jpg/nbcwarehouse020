@@ -8,6 +8,8 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Modal, ModalHeader } from "@/components/ui/Modal";
 import { Tone } from "@/components/ui/tone";
 import { fmtDateBE } from "@/lib/calc/date";
+import { deletePoAction } from "@/lib/actions/po";
+import { showToast } from "@/components/ui/Toast";
 
 const STATUS_TONE: Record<PoRow["status"], Tone> = {
   COMPLETE: "ok",
@@ -36,6 +38,7 @@ export function PoTable({ rows }: { rows: PoRow[] }) {
               <Th align="right">Amount</Th>
               <Th>Received</Th>
               <Th>Status</Th>
+              <Th></Th>
             </tr>
           </thead>
           <tbody>
@@ -70,11 +73,26 @@ export function PoTable({ rows }: { rows: PoRow[] }) {
                     {STATUS_LABEL[po.status]}
                   </Badge>
                 </Td>
+                <Td align="center">
+                  <button
+                    title="Delete"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (!confirm(`Delete ${po.no}? (ลบ PO นี้?)`)) return;
+                      const res = await deletePoAction(po.id);
+                      if (res.error) showToast(res.error);
+                      else showToast(`Deleted ${po.no}`);
+                    }}
+                    className="cursor-pointer border-0 bg-transparent text-[15px] text-[#c2606f]"
+                  >
+                    🗑
+                  </button>
+                </Td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-6 text-center text-[#9aa4b4]">
+                <td colSpan={7} className="p-6 text-center text-[#9aa4b4]">
                   No purchase orders found (ไม่พบใบสั่งซื้อ)
                 </td>
               </tr>

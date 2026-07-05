@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getLotsByZoneAction, confirmCountAction } from "@/lib/actions/count";
+import { LotOption } from "@/lib/views/docCommon";
 import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup } from "@/components/ui/CuteBoxPopup";
 import { downloadCsv } from "@/lib/calc/csvClient";
@@ -18,24 +19,56 @@ const ZONES = [
 
 type Row = Awaited<ReturnType<typeof getLotsByZoneAction>>[number] & { counted: string };
 
-export function CountForm() {
+export function CountForm({ lots }: { lots: LotOption[] }) {
   const router = useRouter();
   const [pullZone, setPullZone] = useState(ZONES[0]);
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Row[]>([]);
+  const [addId, setAddId] = useState("");
   const [popup, setPopup] = useState<{ kind: "count" | "draft"; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [pulling, setPulling] = useState(false);
 
+  const available = lots.filter((l) => !lines.some((x) => x.id === l.id));
+
   async function handlePull() {
     setPulling(true);
     const rows = await getLotsByZoneAction(pullZone);
-    setLines(rows.map((r) => ({ ...r, counted: String(r.sysQty) })));
+    setLines((existing) => {
+      const existingIds = new Set(existing.map((l) => l.id));
+      const merged = [...existing];
+      for (const r of rows) {
+        if (!existingIds.has(r.id)) merged.push({ ...r, counted: String(r.sysQty) });
+      }
+      return merged;
+    });
     setPulling(false);
+  }
+
+  function addLine(id: string) {
+    const lot = lots.find((l) => l.id === id);
+    if (!lot) return;
+    setLines((ls) => [
+      ...ls,
+      {
+        id: lot.id,
+        productCode: lot.productCode,
+        name: lot.name,
+        lotNo: lot.lotNo,
+        locationCode: lot.locationCode,
+        sysQty: lot.qty,
+        counted: String(lot.qty),
+      },
+    ]);
+    setAddId("");
   }
 
   function updateLine(i: number, counted: string) {
     setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, counted } : l)));
+  }
+
+  function removeLine(i: number) {
+    setLines((ls) => ls.filter((_, idx) => idx !== i));
   }
 
   async function handleConfirm() {
@@ -119,6 +152,7 @@ export function CountForm() {
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">System</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Counted</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Variance</th>
+                <th className="w-10 p-[10px_16px]"></th>
               </tr>
             </thead>
             <tbody>
@@ -144,18 +178,38 @@ export function CountForm() {
                     >
                       {variance > 0 ? `+${variance}` : variance}
                     </td>
+                    <td className="p-[11px_16px] text-center">
+                      <button onClick={() => removeLine(i)} className="text-[16px] text-[#c2606f]">
+                        ×
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
               {lines.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-6 text-center text-[#9aa4b4]">
-                    Choose a zone and click &quot;Pull lots&quot; to load lines.
+                  <td colSpan={8} className="p-6 text-center text-[#9aa4b4]">
+                    Choose a zone and click &quot;Pull lots&quot;, or add a lot below.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="flex items-center gap-2 border-t border-[#eef1f5] p-[12px_16px]">
+          <select
+            value={addId}
+            onChange={(e) => addLine(e.target.value)}
+            className="w-full rounded-[9px] border border-dashed border-[#c4ccd8] bg-[#f7f9fb] px-3 py-2 text-[13px] text-[#3a4658]"
+          >
+            <option value="">+ Add line (เพิ่มรายการ) — choose a lot…</option>
+            {available.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.productCode} · {l.name} · {l.lotNo} · {l.locationCode}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="flex items-center gap-4 border-t border-[#eef1f5] bg-[#fafbfc] p-[16px_22px]">

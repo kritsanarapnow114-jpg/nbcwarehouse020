@@ -70,6 +70,18 @@ export function Sidebar({
         })}
       </nav>
 
+      <Link
+        href="/settings"
+        className={`mx-3 mb-1 flex items-center gap-2.5 rounded-[9px] px-3 py-2 text-[12px] ${
+          pathname.startsWith("/settings")
+            ? "bg-white text-[#1f8a5b]"
+            : "bg-white/[.06] text-[#cdeadd] hover:bg-white/[.12]"
+        }`}
+      >
+        <span className="w-5 flex-none text-center text-[13px]">⚙</span>
+        Settings (ตั้งค่า)
+      </Link>
+
       <form
         action={logoutAction}
         className="flex items-center gap-2.5 border-t border-white/15 px-4 py-3.5"
