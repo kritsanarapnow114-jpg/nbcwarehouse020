@@ -1,11 +1,32 @@
-import { getLotOptions, getLocationCodes } from "@/lib/views/docCommon";
+import { getLotOptions, getLocationCodes, getRecentTransfers } from "@/lib/views/docCommon";
 import { TransferForm } from "./TransferForm";
+import { DocHistory, DocHistoryRow } from "@/components/ui/DocHistory";
 
 export default async function TransferPage() {
-  const [lots, locations] = await Promise.all([getLotOptions(), getLocationCodes()]);
+  const [lots, locations, transfers] = await Promise.all([
+    getLotOptions(),
+    getLocationCodes(),
+    getRecentTransfers(),
+  ]);
+
+  const rows: DocHistoryRow[] = transfers.map((t) => ({
+    id: t.id,
+    docNo: t.docNo,
+    docDate: t.docDate,
+    summary: `Operator: ${t.operator}`,
+    lineCount: t.lineCount,
+    lines: t.lines.map((l) => ({
+      code: l.code,
+      name: l.name,
+      qtyText: `${l.qty.toLocaleString()} ${l.unit}`,
+      extra: `Lot ${l.lotNo} · ${l.fromLocationCode} → ${l.toLocationCode}`,
+    })),
+  }));
+
   return (
     <div className="max-w-[1240px] p-[22px_26px]">
       <TransferForm lots={lots} locations={locations} />
+      <DocHistory title="Recent Transfers (ประวัติการย้ายที่เก็บ)" rows={rows} accentColor="#12a08d" />
     </div>
   );
 }

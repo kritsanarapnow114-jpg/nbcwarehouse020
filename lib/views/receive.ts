@@ -57,3 +57,35 @@ export async function getReceiveFormData() {
 }
 
 export type ReceiveFormData = Awaited<ReturnType<typeof getReceiveFormData>>;
+
+export async function getRecentReceipts(limit = 20) {
+  const receipts = await db.receipt.findMany({
+    include: {
+      po: true,
+      lines: { include: { product: true } },
+    },
+    orderBy: { docDate: "desc" },
+    take: limit,
+  });
+
+  return receipts.map((r) => ({
+    id: r.id,
+    docNo: r.docNo,
+    mode: r.mode,
+    poNo: r.po?.no ?? null,
+    invoiceNo: r.invoiceNo,
+    docDate: r.docDate.toISOString(),
+    lineCount: r.lines.length,
+    totalQty: r.lines.reduce((s, l) => s + l.recvQty, 0),
+    lines: r.lines.map((l) => ({
+      code: l.productCode,
+      name: `${l.product.nameEn} (${l.product.nameTh})`,
+      lotNo: l.lotNo,
+      locationCode: l.locationCode,
+      recvQty: l.recvQty,
+      unit: l.product.unit,
+    })),
+  }));
+}
+
+export type ReceiptHistoryRow = Awaited<ReturnType<typeof getRecentReceipts>>[number];

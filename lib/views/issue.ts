@@ -57,3 +57,30 @@ export async function getIssueFormData() {
 }
 
 export type IssueFormData = Awaited<ReturnType<typeof getIssueFormData>>;
+
+export async function getRecentIssues(limit = 20) {
+  const issues = await db.issue.findMany({
+    include: {
+      lines: { include: { product: true, selectedLot: true } },
+    },
+    orderBy: { docDate: "desc" },
+    take: limit,
+  });
+
+  return issues.map((i) => ({
+    id: i.id,
+    docNo: i.docNo,
+    issueTo: i.issueTo,
+    docDate: i.docDate.toISOString(),
+    lineCount: i.lines.length,
+    totalQty: i.lines.reduce((s, l) => s + l.qty, 0),
+    lines: i.lines.map((l) => ({
+      code: l.productCode,
+      name: `${l.product.nameEn} (${l.product.nameTh})`,
+      lotNo: l.selectedLot.lotNo,
+      locationCode: l.selectedLot.locationCode,
+      qty: l.qty,
+      unit: l.product.unit,
+    })),
+  }));
+}
