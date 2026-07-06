@@ -4,8 +4,10 @@ import { fmtDateBE, fmtDateISO } from "@/lib/calc/date";
 import { PeriodSelector } from "@/components/ui/PeriodSelector";
 import { resolvePeriod } from "@/lib/calc/period";
 import { getReportData, getReportProductOptions } from "@/lib/views/reports";
+import { getExecutiveSummary } from "@/lib/views/summary";
 import { ReportsStockCard } from "./ReportsStockCard";
 import { ExportBar } from "./ExportBar";
+import { ExportDeckButton } from "./ExportDeckButton";
 
 export default async function ReportsPage({
   searchParams,
@@ -15,14 +17,24 @@ export default async function ReportsPage({
   const params = await searchParams;
   const { mode, range, dateStr, startStr, endStr } = resolvePeriod(params);
 
-  const [data, products] = await Promise.all([
+  const [data, products, summary] = await Promise.all([
     getReportData(range),
     getReportProductOptions(),
+    getExecutiveSummary(range),
   ]);
+
+  const periodLabel =
+    mode === "all"
+      ? "ทั้งหมด (All time)"
+      : `${fmtDateBE(range.start)} – ${fmtDateBE(range.end)}`;
 
   return (
     <div className="max-w-[1280px] p-[24px_26px]">
-      <PeriodSelector basePath="/reports" mode={mode} date={dateStr} start={startStr} end={endStr} />
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <PeriodSelector basePath="/reports" mode={mode} date={dateStr} start={startStr} end={endStr} />
+        <div className="flex-1" />
+        <ExportDeckButton summary={summary} periodLabel={periodLabel} />
+      </div>
 
       <ExportBar start={fmtDateISO(range.start)} end={fmtDateISO(range.end)} />
 
