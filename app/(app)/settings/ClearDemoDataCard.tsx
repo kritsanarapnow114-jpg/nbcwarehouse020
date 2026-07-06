@@ -54,7 +54,7 @@ export function ClearDemoDataCard() {
       </p>
 
       {summary && (
-        <div className="mb-4 grid grid-cols-4 gap-3 text-center text-[12px]">
+        <div className="mb-4 grid grid-cols-2 gap-3 text-center text-[12px] sm:grid-cols-4">
           <div className="rounded-[8px] bg-[#f7f9fb] p-2.5">
             <div className="font-num text-[16px] font-bold">{summary.productCount}</div>
             <div className="text-[#9aa4b4]">demo products</div>

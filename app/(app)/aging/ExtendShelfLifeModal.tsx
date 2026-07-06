@@ -51,7 +51,7 @@ export function ExtendShelfLifeModal({
       />
       <form onSubmit={submit} className="flex flex-col gap-3 px-5 py-4">
         <div className="text-[12.5px] text-[#69748a]">{row.nameEn}</div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1">
             <span className="text-[11.5px] font-medium text-[#69748a]">
               New MFD (วันผลิต)

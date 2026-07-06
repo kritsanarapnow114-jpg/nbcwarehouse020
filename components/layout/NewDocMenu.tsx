@@ -28,9 +28,10 @@ export function NewDocMenu() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 rounded-[9px] border-0 bg-[#3E9B6E] px-3.5 py-2.5 text-[13px] font-semibold text-white"
+        className="flex flex-none items-center gap-1.5 whitespace-nowrap rounded-[9px] border-0 bg-[#3E9B6E] px-3 py-2.5 text-[13px] font-semibold text-white sm:px-3.5"
       >
-        + New Document (สร้างเอกสาร)
+        <span className="sm:hidden">+ New</span>
+        <span className="hidden sm:inline">+ New Document (สร้างเอกสาร)</span>
       </button>
       {open && (
         <div className="absolute right-0 z-30 mt-1.5 w-64 overflow-hidden rounded-[11px] border border-[#e7ebf1] bg-white py-1.5 shadow-[0_8px_28px_rgba(20,30,48,.16)]">

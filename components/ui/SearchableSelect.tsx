@@ -54,7 +54,7 @@ export function SearchableSelect({
                   setQuery("");
                   setOpen(false);
                 }}
-                className="block w-full truncate px-3 py-2 text-left text-[13px] text-[#3a4658] hover:bg-[#f7f9fb]"
+                className="block w-full whitespace-normal break-words px-3 py-2 text-left text-[13px] leading-snug text-[#3a4658] hover:bg-[#f7f9fb]"
               >
                 {o.label}
               </button>

@@ -26,7 +26,7 @@ export default async function ReportsPage({
 
       <ExportBar start={fmtDateISO(range.start)} end={fmtDateISO(range.end)} />
 
-      <div className="mb-4 grid grid-cols-4 gap-4">
+      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
           <div className="mb-2 text-[12px] text-[#69748a]">Received (รับเข้า)</div>
           <div className="font-num text-[24px] font-bold tracking-tight text-[#17935a]">
@@ -59,7 +59,7 @@ export default async function ReportsPage({
         </Card>
       </div>
 
-      <div className="mb-4 grid grid-cols-3 gap-4">
+      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <div className="mb-2 text-[12px] text-[#69748a]">Purchase Orders (PO)</div>
           <div className="font-num text-[20px] font-bold tracking-tight">{data.po.docCount}</div>

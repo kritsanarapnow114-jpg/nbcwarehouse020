@@ -79,7 +79,7 @@ export function ProductDrawer({
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 p-5">
+          <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2">
             <div className="rounded-[12px] border border-[#e7ebf1] p-3.5">
               <div className="mb-1.5 text-[11.5px] text-[#69748a]">
                 On hand

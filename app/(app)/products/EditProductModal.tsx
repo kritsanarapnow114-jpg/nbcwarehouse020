@@ -60,7 +60,7 @@ export function EditProductModal({
     <Modal open={open} onClose={onClose} width={480}>
       <ModalHeader title={`Edit product (แก้ไขสินค้า) · ${product.code}`} onClose={onClose} />
       <div className="flex flex-col gap-3 px-5 py-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Category (หมวด)">
             <select
               value={category}
@@ -83,7 +83,7 @@ export function EditProductModal({
         <Field label="Name TH (optional)">
           <input value={nameTh} onChange={(e) => setNameTh(e.target.value)} className={inputClass} />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Price/unit">
             <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" step="0.01" className={inputClass} />
           </Field>
@@ -95,7 +95,7 @@ export function EditProductModal({
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#69748a]">
             Storage size
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Field label="Width m">
               <input value={width} onChange={(e) => setWidth(e.target.value)} type="number" step="0.01" className={inputClass} />
             </Field>

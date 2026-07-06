@@ -19,7 +19,7 @@ export function KpiBand({ kpis }: { kpis: KpiResult[] }) {
   const active = kpis.find((k) => k.key === openKey) ?? null;
 
   return (
-    <div className="mb-4 grid grid-cols-5 gap-3">
+    <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
       {kpis.map((k) => (
         <button
           key={k.key}

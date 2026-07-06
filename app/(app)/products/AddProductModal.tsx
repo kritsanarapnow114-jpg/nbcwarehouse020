@@ -46,7 +46,7 @@ function AddProductModal({
     <Modal open={open} onClose={onClose} width={480}>
       <ModalHeader title="Add product (เพิ่มสินค้า)" onClose={onClose} />
       <form action={formAction} className="flex flex-col gap-3 px-5 py-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Code (รหัส)">
             <input name="code" required className={inputClass} />
           </Field>
@@ -65,7 +65,7 @@ function AddProductModal({
         <Field label="Name TH (optional)">
           <input name="nameTh" className={inputClass} />
         </Field>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Field label="Unit">
             <input name="unit" required placeholder="kg" className={inputClass} />
           </Field>
@@ -80,7 +80,7 @@ function AddProductModal({
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#69748a]">
             Storage size
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Field label="Width m">
               <input name="width" type="number" step="0.01" defaultValue={1} className={inputClass} />
             </Field>

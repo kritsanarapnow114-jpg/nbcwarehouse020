@@ -101,7 +101,7 @@ function NewPoModal({
     <Modal open={open} onClose={onClose} width={560}>
       <ModalHeader title="New Purchase Order (สร้างใบสั่งซื้อ)" onClose={onClose} />
       <div className="flex flex-col gap-3 px-5 py-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="PO No. (เลข PO) — optional, auto if blank">
             <input
               value={no}

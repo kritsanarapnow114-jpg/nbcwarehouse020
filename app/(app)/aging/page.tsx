@@ -47,7 +47,7 @@ export default async function AgingPage({
 
   return (
     <div className="max-w-[1280px] p-[22px_26px]">
-      <div className="mb-4 grid grid-cols-4 gap-4">
+      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {ageBuckets.map((b) => (
           <Card key={b.label}>
             <div className="mb-2 flex items-center gap-2 text-[12px] text-[#69748a]">

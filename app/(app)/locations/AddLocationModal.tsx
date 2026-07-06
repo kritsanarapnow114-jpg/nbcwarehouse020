@@ -46,7 +46,7 @@ function AddLocationModal({
     <Modal open={open} onClose={onClose} width={440}>
       <ModalHeader title="Add location (เพิ่มที่เก็บ)" onClose={onClose} />
       <form action={formAction} className="flex flex-col gap-3 px-5 py-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Bin code (รหัสที่เก็บ)">
             <input name="code" required className={inputClass} />
           </Field>
@@ -62,7 +62,7 @@ function AddLocationModal({
           <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#69748a]">
             Capacity = width × length
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Width (m)">
               <input
                 name="width"

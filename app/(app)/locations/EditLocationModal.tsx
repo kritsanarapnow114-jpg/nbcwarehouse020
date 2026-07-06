@@ -54,7 +54,7 @@ export function EditLocationModal({
             <option value="C">Zone C</option>
           </select>
         </Field>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Width (m)">
             <input value={width} onChange={(e) => setWidth(e.target.value)} type="number" step="0.01" className={inputClass} />
           </Field>

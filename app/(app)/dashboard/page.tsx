@@ -61,7 +61,7 @@ export default async function DashboardPage({
 
       <KpiBand kpis={kpis} />
 
-      <div className="mb-4 grid grid-cols-4 gap-4">
+      <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
           <div className="mb-2 text-[12px] text-[#69748a]">
             Inventory Value (มูลค่าคงเหลือ)
@@ -106,7 +106,7 @@ export default async function DashboardPage({
         </Link>
       </div>
 
-      <div className="mb-4 grid grid-cols-[1.55fr_1fr] gap-4">
+      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.55fr_1fr]">
         <Card>
           <div className="mb-1 flex items-baseline">
             <div className="flex-1 text-[14px] font-semibold">
@@ -197,7 +197,7 @@ export default async function DashboardPage({
         </div>
       </Card>
 
-      <div className="mb-4 grid grid-cols-2 gap-4">
+      <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
           <CardTitle>Received in period (รับเข้าอะไรบ้าง)</CardTitle>
           <div className="flex flex-col gap-2.5">
@@ -232,7 +232,7 @@ export default async function DashboardPage({
 
       <SlowMovingCard rows={slowMoving} />
 
-      <div className="mb-4 grid grid-cols-2 gap-4">
+      <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
           <div className="mb-1 text-[14px] font-semibold">
             Monthly Count Progress (แผน vs นับจริง รายเดือน)
@@ -303,7 +303,7 @@ export default async function DashboardPage({
         </Card>
       </div>
 
-      <div className="grid grid-cols-[1.4fr_1fr] gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
         <Card>
           <MovementChart
             buckets={movementBuckets}
