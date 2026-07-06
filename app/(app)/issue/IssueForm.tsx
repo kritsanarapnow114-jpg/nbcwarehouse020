@@ -68,6 +68,20 @@ export function IssueForm({ data }: { data: IssueFormData }) {
     setLines((ls) => ls.filter((_, idx) => idx !== i));
   }
 
+  // Issue the same product from a second lot: clone the line and pick a lot not
+  // already used for this product, so one issue can draw from multiple lots.
+  function splitLine(i: number) {
+    setLines((ls) => {
+      const src = ls[i];
+      const usedLotIds = new Set(ls.filter((l) => l.code === src.code).map((l) => l.selectedLotId));
+      const nextLot = src.lots.find((lot) => !usedLotIds.has(lot.id)) ?? src.lots[0];
+      const clone: Line = { ...src, selectedLotId: nextLot?.id ?? src.selectedLotId, qty: "0" };
+      const next = [...ls];
+      next.splice(i + 1, 0, clone);
+      return next;
+    });
+  }
+
   const totalQty = lines.reduce((s, l) => s + (Number(l.qty) || 0), 0);
   const totalValue = lines.reduce((s, l) => s + (Number(l.qty) || 0) * l.price, 0);
 
@@ -194,7 +208,7 @@ export function IssueForm({ data }: { data: IssueFormData }) {
                 const isFefo = !!sel?.isFefo;
                 return (
                   <tr
-                    key={l.code}
+                    key={i}
                     className="border-t border-[#eef1f5]"
                     style={{ background: isFefo ? "#f4faf5" : "#fdf7ee" }}
                   >
@@ -239,9 +253,18 @@ export function IssueForm({ data }: { data: IssueFormData }) {
                       />
                     </td>
                     <td className="p-[11px_16px] text-center">
-                      <button onClick={() => removeLine(i)} className="text-[16px] text-[#c2606f]">
-                        ×
-                      </button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => splitLine(i)}
+                          title="จ่ายอีก Lot ของสินค้าตัวนี้ (issue from another lot)"
+                          className="rounded-[6px] border border-[#f0d6b3] bg-[#fdf3e5] px-1.5 py-0.5 text-[11px] font-semibold text-[#bd6f12] hover:bg-[#fbe9d2]"
+                        >
+                          ＋Lot
+                        </button>
+                        <button onClick={() => removeLine(i)} className="text-[16px] text-[#c2606f]">
+                          ×
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
