@@ -7,10 +7,12 @@ import { Header } from "./Header";
 export function AppShell({
   poPendingCount,
   user,
+  subtitleOverrides,
   children,
 }: {
   poPendingCount: number;
   user: { name: string; role: string; avatarInitials: string };
+  subtitleOverrides?: Record<string, string>;
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -24,7 +26,7 @@ export function AppShell({
         onClose={() => setMobileOpen(false)}
       />
       <main className="flex min-w-0 flex-1 flex-col">
-        <Header onMenuClick={() => setMobileOpen(true)} />
+        <Header onMenuClick={() => setMobileOpen(true)} subtitleOverrides={subtitleOverrides} />
         <div className="flex-1 overflow-auto">{children}</div>
       </main>
     </div>

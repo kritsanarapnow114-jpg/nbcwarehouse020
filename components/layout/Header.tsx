@@ -6,11 +6,20 @@ import { PAGE_TITLES } from "./nav";
 import { CurrencyToggleButton } from "@/components/ui/Currency";
 import { NewDocMenu } from "./NewDocMenu";
 
-export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
+export function Header({
+  onMenuClick,
+  subtitleOverrides,
+}: {
+  onMenuClick?: () => void;
+  subtitleOverrides?: Record<string, string>;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [q, setQ] = useState("");
-  const info = PAGE_TITLES[pathname] ?? { title: "NBC Warehouse", sub: "" };
+  const base = PAGE_TITLES[pathname] ?? { title: "NBC Warehouse", sub: "" };
+  const page = pathname.replace(/^\//, "");
+  const override = subtitleOverrides?.[page];
+  const info = { title: base.title, sub: override ?? base.sub };
 
   return (
     <header className="sticky top-0 z-20 flex h-[62px] flex-none items-center gap-2 border-b border-[#e7ebf1] bg-white/90 px-3 shadow-[0_1px_12px_rgba(20,30,48,.04)] backdrop-blur-md sm:gap-4 sm:px-6">

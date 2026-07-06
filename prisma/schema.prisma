@@ -331,6 +331,14 @@ model SeedFlag {
   appliedAt DateTime @default(now())
 }
 
+/** Generic editable key-value settings (page subtitles, stock-count plan
+ *  targets, etc.) so non-code text/config can be changed from the UI. */
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 model KpiLog {
   id         String   @id @default(cuid())
   key        KpiKey
