@@ -12,7 +12,7 @@ import { fmtDateISO } from "@/lib/calc/date";
 type Product = { code: string; name: string; unit: string; price: number };
 type Line = { productCode: string; name: string; unit: string; ordered: string };
 
-export function NewPoButton({ products }: { products: Product[] }) {
+export function NewPoButton({ products, vendors = [] }: { products: Product[]; vendors?: string[] }) {
   const [open, setOpen] = useState(false);
   const [createdNo, setCreatedNo] = useState<string | null>(null);
 
@@ -24,6 +24,7 @@ export function NewPoButton({ products }: { products: Product[] }) {
       <NewPoModal
         open={open}
         products={products}
+        vendors={vendors}
         onClose={() => setOpen(false)}
         onCreated={(no) => setCreatedNo(no)}
       />
@@ -40,11 +41,13 @@ export function NewPoButton({ products }: { products: Product[] }) {
 function NewPoModal({
   open,
   products,
+  vendors,
   onClose,
   onCreated,
 }: {
   open: boolean;
   products: Product[];
+  vendors: string[];
   onClose: () => void;
   onCreated: (no: string) => void;
 }) {
@@ -124,8 +127,14 @@ function NewPoModal({
             value={vendor}
             onChange={(e) => setVendor(e.target.value)}
             placeholder="Leave blank to set later"
+            list="po-vendor-list"
             className={inputClass}
           />
+          <datalist id="po-vendor-list">
+            {vendors.map((v) => (
+              <option key={v} value={v} />
+            ))}
+          </datalist>
         </Field>
 
         <div className="mt-1 overflow-hidden rounded-[10px] border border-[#e7ebf1]">

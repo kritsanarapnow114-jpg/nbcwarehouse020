@@ -50,6 +50,17 @@ export async function getProductPickerList() {
   }));
 }
 
+/** Distinct vendor names used on past POs, for the New PO vendor autocomplete. */
+export async function getVendorNames(): Promise<string[]> {
+  const rows = await db.purchaseOrder.findMany({
+    where: { vendor: { not: "" } },
+    distinct: ["vendor"],
+    select: { vendor: true },
+    orderBy: { vendor: "asc" },
+  });
+  return rows.map((r) => r.vendor);
+}
+
 export async function getPurchaseOrders(opts?: {
   status?: string;
 }): Promise<PoRow[]> {

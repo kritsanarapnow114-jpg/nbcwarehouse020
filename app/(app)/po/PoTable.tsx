@@ -1,15 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { PoRow } from "@/lib/views/po";
 import { Badge } from "@/components/ui/Badge";
 import { Money } from "@/components/ui/Currency";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Modal, ModalHeader } from "@/components/ui/Modal";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { buttonClass } from "@/components/ui/Button";
 import { Tone } from "@/components/ui/tone";
 import { fmtDateBE } from "@/lib/calc/date";
-import { deletePoAction } from "@/lib/actions/po";
+import { deletePoAction, addPoLinesAction } from "@/lib/actions/po";
 import { showToast } from "@/components/ui/Toast";
+
+type PoProduct = { code: string; name: string };
 
 const STATUS_TONE: Record<PoRow["status"], Tone> = {
   COMPLETE: "ok",
@@ -23,8 +28,41 @@ const STATUS_LABEL: Record<PoRow["status"], string> = {
   OPEN: "Open (เปิด)",
 };
 
-export function PoTable({ rows }: { rows: PoRow[] }) {
+export function PoTable({ rows, products = [] }: { rows: PoRow[]; products?: PoProduct[] }) {
+  const router = useRouter();
   const [selected, setSelected] = useState<PoRow | null>(null);
+  const [newLines, setNewLines] = useState<{ productCode: string; name: string; ordered: string }[]>([]);
+  const [savingLines, setSavingLines] = useState(false);
+
+  function closeDetail() {
+    setSelected(null);
+    setNewLines([]);
+  }
+
+  function addDraftLine(code: string) {
+    const p = products.find((x) => x.code === code);
+    if (!p) return;
+    if (newLines.some((l) => l.productCode === code)) return;
+    setNewLines((ls) => [...ls, { productCode: p.code, name: p.name, ordered: "0" }]);
+  }
+
+  async function saveNewLines() {
+    if (!selected) return;
+    setSavingLines(true);
+    const res = await addPoLinesAction(
+      selected.id,
+      newLines.map((l) => ({ productCode: l.productCode, ordered: Number(l.ordered) || 0 }))
+    );
+    setSavingLines(false);
+    if (res.error) {
+      showToast(res.error);
+      return;
+    }
+    showToast(`Lines added to ${selected.no}`);
+    setNewLines([]);
+    closeDetail();
+    router.refresh();
+  }
 
   return (
     <>
@@ -101,7 +139,7 @@ export function PoTable({ rows }: { rows: PoRow[] }) {
         </table>
       </div>
 
-      <Modal open={!!selected} onClose={() => setSelected(null)} width={640}>
+      <Modal open={!!selected} onClose={closeDetail} width={640}>
         {selected && (
           <>
             <ModalHeader
@@ -113,7 +151,7 @@ export function PoTable({ rows }: { rows: PoRow[] }) {
                   </span>
                 </span>
               }
-              onClose={() => setSelected(null)}
+              onClose={closeDetail}
             />
             <div className="p-5">
               <div className="mb-4 flex items-center gap-6 text-[12.5px] text-[#69748a]">
@@ -175,6 +213,67 @@ export function PoTable({ rows }: { rows: PoRow[] }) {
                   )}
                 </tbody>
               </table>
+
+              {/* Add more product lines to this PO */}
+              <div className="mt-3 rounded-[10px] border border-[#e7ebf1] bg-[#fafbfc] p-3">
+                <div className="mb-2 text-[11.5px] font-semibold uppercase tracking-wide text-[#69748a]">
+                  Add product lines (เพิ่มรายการสินค้า)
+                </div>
+                {newLines.length > 0 && (
+                  <table className="mb-2 w-full border-collapse text-[12.5px]">
+                    <tbody>
+                      {newLines.map((l, i) => (
+                        <tr key={l.productCode} className="border-t border-[#eef1f5] first:border-t-0">
+                          <td className="py-1.5">
+                            <span className="font-num text-[11.5px] text-[#69748a]">{l.productCode}</span>{" "}
+                            {l.name}
+                          </td>
+                          <td className="py-1.5 text-right">
+                            <input
+                              value={l.ordered}
+                              onChange={(e) =>
+                                setNewLines((ls) =>
+                                  ls.map((x, idx) => (idx === i ? { ...x, ordered: e.target.value } : x))
+                                )
+                              }
+                              className="font-num w-[90px] rounded-[6px] border border-[#d7dce4] px-2 py-1 text-right text-[12.5px]"
+                            />
+                          </td>
+                          <td className="w-8 text-center">
+                            <button
+                              onClick={() => setNewLines((ls) => ls.filter((_, idx) => idx !== i))}
+                              className="text-[15px] text-[#c2606f]"
+                            >
+                              ×
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="flex-1">
+                    <SearchableSelect
+                      options={products
+                        .filter(
+                          (p) =>
+                            !newLines.some((l) => l.productCode === p.code) &&
+                            !selected.lines.some((l) => l.productCode === p.code)
+                        )
+                        .map((p) => ({ value: p.code, label: `${p.code} · ${p.name}` }))}
+                      onSelect={addDraftLine}
+                      placeholder="+ เพิ่มสินค้า (พิมพ์ค้นหา)…"
+                      className="w-full rounded-[7px] border border-dashed border-[#c4ccd8] bg-white px-2.5 py-1.5 text-[12.5px] text-[#3a4658] outline-none focus:border-[#3E9B6E]"
+                    />
+                  </div>
+                  {newLines.length > 0 && (
+                    <button onClick={saveNewLines} disabled={savingLines} className={buttonClass("primary")}>
+                      {savingLines ? "Saving…" : "Add to PO"}
+                    </button>
+                  )}
+                </div>
+              </div>
 
               <div className="mb-2 mt-5 text-[12.5px] font-semibold text-[#16202e]">
                 Receiving history (ประวัติการรับ)

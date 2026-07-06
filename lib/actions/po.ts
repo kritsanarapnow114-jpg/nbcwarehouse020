@@ -51,6 +51,47 @@ export async function createPoAction(input: CreatePoInput): Promise<FormState> {
   return { no };
 }
 
+/** Add product lines to an existing PO (from the PO detail modal). Merges into
+ *  an existing line for the same product; recomputes the PO status. */
+export async function addPoLinesAction(
+  poId: string,
+  lines: { productCode: string; ordered: number }[]
+): Promise<{ error?: string }> {
+  const po = await db.purchaseOrder.findUnique({ where: { id: poId }, include: { lines: true } });
+  if (!po) return { error: "PO not found" };
+
+  const toAdd = lines.filter((l) => l.ordered > 0);
+  if (toAdd.length === 0) return { error: "Enter a quantity (กรอกจำนวน)" };
+
+  await db.$transaction(async (tx) => {
+    for (const l of toAdd) {
+      const existing = po.lines.find((x) => x.productCode === l.productCode);
+      if (existing) {
+        await tx.purchaseOrderLine.update({
+          where: { id: existing.id },
+          data: { ordered: existing.ordered + l.ordered },
+        });
+      } else {
+        await tx.purchaseOrderLine.create({
+          data: { poId, productCode: l.productCode, ordered: l.ordered, received: 0 },
+        });
+      }
+    }
+    const fresh = await tx.purchaseOrder.findUnique({ where: { id: poId }, include: { lines: true } });
+    if (fresh) {
+      const allDone = fresh.lines.every((l) => l.received >= l.ordered);
+      const anyReceived = fresh.lines.some((l) => l.received > 0);
+      await tx.purchaseOrder.update({
+        where: { id: poId },
+        data: { status: allDone ? "COMPLETE" : anyReceived ? "PENDING" : "OPEN" },
+      });
+    }
+  });
+
+  revalidatePoPaths();
+  return {};
+}
+
 export async function deletePoAction(id: string): Promise<{ error?: string }> {
   const receiptCount = await db.receipt.count({ where: { poId: id } });
   if (receiptCount > 0) {

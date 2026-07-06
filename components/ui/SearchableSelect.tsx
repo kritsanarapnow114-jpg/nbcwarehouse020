@@ -13,11 +13,15 @@ export function SearchableSelect({
   options,
   onSelect,
   placeholder,
+  value,
   className = "w-full rounded-[9px] border border-dashed border-[#c4ccd8] bg-[#f7f9fb] px-3 py-2 text-[13px] text-[#3a4658] outline-none focus:border-[#3E9B6E]",
 }: {
   options: SearchableOption[];
   onSelect: (value: string) => void;
   placeholder: string;
+  /** When provided, the box behaves like a combobox that shows this label as
+   *  the current selection while idle (instead of clearing after each pick). */
+  value?: string;
   className?: string;
 }) {
   const [query, setQuery] = useState("");
@@ -25,22 +29,28 @@ export function SearchableSelect({
 
   const q = query.trim().toLowerCase();
   const filtered = q === "" ? options : options.filter((o) => o.label.toLowerCase().includes(q));
+  // While the box is focused, show what the user is typing; otherwise show the
+  // current selection label (combobox mode) or nothing (plain add-picker mode).
+  const shown = open ? query : value ?? query;
 
   return (
     <div className="relative">
       <input
-        value={query}
+        value={shown}
         onChange={(e) => {
           setQuery(e.target.value);
           setOpen(true);
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          setQuery("");
+          setOpen(true);
+        }}
         onBlur={() => setOpen(false)}
         placeholder={placeholder}
         className={className}
       />
       {open && (
-        <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-[9px] border border-[#d7dce4] bg-white shadow-[0_8px_24px_rgba(20,30,48,.12)]">
+        <div className="absolute z-20 mt-1 max-h-64 w-max min-w-full max-w-[min(90vw,460px)] overflow-auto rounded-[9px] border border-[#d7dce4] bg-white shadow-[0_8px_24px_rgba(20,30,48,.12)]">
           {filtered.length === 0 ? (
             <div className="px-3 py-2 text-[12.5px] text-[#9aa4b4]">No matches</div>
           ) : (

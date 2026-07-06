@@ -185,18 +185,25 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
           {mode === "PO" ? (
             <div>
               <div className="mb-1 text-[11.5px] text-[#69748a]">PO Reference (อ้างอิง PO) · optional</div>
-              <select
-                value={poId}
-                onChange={(e) => selectPo(e.target.value)}
-                className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
-              >
-                <option value="">No PO (ไม่ระบุ PO)</option>
-                {data.pos.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.no} · {p.vendor}
-                  </option>
-                ))}
-              </select>
+              <div className="w-[230px]">
+                <SearchableSelect
+                  value={
+                    poId
+                      ? (() => {
+                          const p = data.pos.find((x) => x.id === poId);
+                          return p ? `${p.no} · ${p.vendor}` : "";
+                        })()
+                      : "No PO (ไม่ระบุ PO)"
+                  }
+                  options={[
+                    { value: "", label: "No PO (ไม่ระบุ PO)" },
+                    ...data.pos.map((p) => ({ value: p.id, label: `${p.no} · ${p.vendor}` })),
+                  ]}
+                  onSelect={selectPo}
+                  placeholder="พิมพ์ค้นหา PO / ผู้ขาย…"
+                  className="font-num w-full rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px] outline-none focus:border-[#3E9B6E]"
+                />
+              </div>
             </div>
           ) : (
             <div>
