@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { nextDocNumber } from "@/lib/calc/docNumber";
+import { eligibleLots } from "@/lib/calc/fefo";
 
 export type ReceiveLineInput = {
   productCode: string;
@@ -131,6 +132,54 @@ export async function confirmReceiptAction(input: ConfirmReceiptInput) {
           await tx.receiptBomLoss.create({
             data: { receiptId: receipt.id, bomLineId: bl.bomLineId, lossQty: bl.lossQty },
           });
+        }
+      }
+    }
+
+    // Deduct BOM materials actually consumed by this production run (qtyPerUnit ×
+    // produced, plus any recorded scrap/loss) from raw-material stock, FEFO-first.
+    if (input.mode === "PRODUCTION" && input.lines.length > 0) {
+      const finishedProductCode = input.lines[0].productCode;
+      const bom = await tx.bom.findUnique({
+        where: { finishedProductCode },
+        include: { lines: true },
+      });
+      if (bom) {
+        const lossByBomLineId = new Map((input.bomLoss ?? []).map((bl) => [bl.bomLineId, bl.lossQty]));
+        for (const bomLine of bom.lines) {
+          if (bomLine.qtyPerUnit <= 0) continue; // soft-removed from the BOM
+          const consumed = bomLine.qtyPerUnit * (input.producedTotal ?? 0);
+          const loss = lossByBomLineId.get(bomLine.id) ?? 0;
+          const totalNeeded = consumed + loss;
+          if (totalNeeded <= 0) continue;
+
+          const materialLots = await tx.lot.findMany({
+            where: { productCode: bomLine.materialProductCode },
+          });
+          const eligible = eligibleLots(
+            materialLots.map((l) => ({
+              id: l.id,
+              lotNo: l.lotNo,
+              qty: l.qty,
+              status: l.status,
+              expDate: l.expDate,
+              locationCode: l.locationCode,
+            }))
+          );
+          const totalAvailable = eligible.reduce((s, l) => s + l.qty, 0);
+          if (totalAvailable < totalNeeded) {
+            throw new Error(
+              `Not enough stock of ${bomLine.materialProductCode} for this production run — need ${totalNeeded.toLocaleString()}, have ${totalAvailable.toLocaleString()} (วัตถุดิบ ${bomLine.materialProductCode} ไม่พอสำหรับการผลิตนี้)`
+            );
+          }
+
+          let remaining = totalNeeded;
+          for (const lot of eligible) {
+            if (remaining <= 0) break;
+            const take = Math.min(lot.qty, remaining);
+            await tx.lot.update({ where: { id: lot.id }, data: { qty: lot.qty - take } });
+            remaining -= take;
+          }
         }
       }
     }
