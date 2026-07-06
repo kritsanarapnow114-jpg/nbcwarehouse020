@@ -77,6 +77,18 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
     setLines((ls) => ls.filter((_, idx) => idx !== i));
   }
 
+  // Receive the same product across a second lot: clone the line with an empty
+  // lot and zero qty right below it, so one PO line can land in multiple lots.
+  function splitLine(i: number) {
+    setLines((ls) => {
+      const src = ls[i];
+      const clone: Line = { ...src, ordered: null, recv: "0", lot: "", mfg: "", exp: "" };
+      const next = [...ls];
+      next.splice(i + 1, 0, clone);
+      return next;
+    });
+  }
+
   const totalQty = lines.reduce((s, l) => s + (Number(l.recv) || 0), 0);
   const producedTotal = mode === "PRODUCTION" ? totalQty : 0;
 
@@ -313,9 +325,18 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                     />
                   </td>
                   <td className="p-[11px_16px] text-center">
-                    <button onClick={() => removeLine(i)} className="text-[16px] text-[#c2606f]">
-                      ×
-                    </button>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button
+                        onClick={() => splitLine(i)}
+                        title="รับอีก Lot ของสินค้าตัวนี้ (split into another lot)"
+                        className="rounded-[6px] border border-[#cfe6d9] bg-[#eaf7f0] px-1.5 py-0.5 text-[11px] font-semibold text-[#12894f] hover:bg-[#dcf0e6]"
+                      >
+                        ＋Lot
+                      </button>
+                      <button onClick={() => removeLine(i)} className="text-[16px] text-[#c2606f]">
+                        ×
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
