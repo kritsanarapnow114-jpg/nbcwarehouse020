@@ -85,7 +85,11 @@ export function DocHistory({
     setReversing(true);
     setReverseError(null);
     try {
-      await reverseDocumentAction(reverseKind, selected.id);
+      const res = await reverseDocumentAction(reverseKind, selected.id);
+      if (res.error) {
+        setReverseError(res.error);
+        return;
+      }
       showToast(`Document ${selected.docNo} reversed (ถอยเอกสารแล้ว)`);
       closeModal();
       router.refresh();

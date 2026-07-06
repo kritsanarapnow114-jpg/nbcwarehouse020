@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { safeRevalidate } from "./revalidate";
 import { db } from "@/lib/db";
 import { nextDocNumber } from "@/lib/calc/docNumber";
 import { eligibleLots } from "@/lib/calc/fefo";
@@ -27,16 +27,18 @@ export type ConfirmReceiptInput = {
 };
 
 function revalidateAll() {
-  for (const p of ["/receive", "/dashboard", "/products", "/po", "/aging", "/locations"]) {
-    revalidatePath(p);
-  }
+  safeRevalidate(["/receive", "/dashboard", "/products", "/po", "/aging", "/locations"]);
 }
 
-export async function confirmReceiptAction(input: ConfirmReceiptInput) {
+export async function confirmReceiptAction(
+  input: ConfirmReceiptInput
+): Promise<{ docNo?: string; error?: string }> {
   const docDate = new Date(input.docDate);
-  const docNo = await nextDocNumber("RC", docDate);
 
-  await db.$transaction(async (tx) => {
+  try {
+    const docNo = await nextDocNumber("RC", docDate);
+
+    await db.$transaction(async (tx) => {
     const receipt = await tx.receipt.create({
       data: {
         docNo,
@@ -188,8 +190,11 @@ export async function confirmReceiptAction(input: ConfirmReceiptInput) {
         }
       }
     }
-  });
+    });
 
-  revalidateAll();
-  return { docNo };
+    revalidateAll();
+    return { docNo };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Failed to confirm receipt." };
+  }
 }

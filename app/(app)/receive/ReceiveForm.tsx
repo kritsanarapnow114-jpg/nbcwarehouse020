@@ -170,11 +170,15 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
     };
     try {
       const res = await confirmReceiptAction(payload);
-      setPopup({ kind: "in", message: `Receipt ${res.docNo} confirmed — inventory updated.` });
-      setLines([]);
-      setPoId("");
-      setInvoiceNo("");
-      router.refresh();
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setPopup({ kind: "in", message: `Receipt ${res.docNo} confirmed — inventory updated.` });
+        setLines([]);
+        setPoId("");
+        setInvoiceNo("");
+        router.refresh();
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to confirm receipt.");
     } finally {

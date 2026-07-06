@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { safeRevalidate } from "./revalidate";
 import { db } from "@/lib/db";
 import { nextDocNumber } from "@/lib/calc/docNumber";
 import { productLabel } from "@/lib/calc/productName";
@@ -109,7 +109,6 @@ export async function confirmCountAction(input: ConfirmCountInput) {
     }
   });
 
-  revalidatePath("/count");
-  revalidatePath("/dashboard");
+  safeRevalidate(["/count", "/dashboard", "/products", "/aging", "/locations"]);
   return { docNo };
 }

@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { safeRevalidate } from "./revalidate";
 import { db } from "@/lib/db";
 import { nextDocNumber } from "@/lib/calc/docNumber";
 import { AdjustReason } from "@prisma/client";
@@ -13,9 +13,7 @@ export type ConfirmAdjustInput = {
 };
 
 function revalidateAll() {
-  for (const p of ["/adjust", "/dashboard", "/products", "/aging", "/locations"]) {
-    revalidatePath(p);
-  }
+  safeRevalidate(["/adjust", "/dashboard", "/products", "/aging", "/locations"]);
 }
 
 export async function confirmAdjustAction(input: ConfirmAdjustInput) {

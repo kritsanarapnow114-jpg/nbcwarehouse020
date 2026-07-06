@@ -26,6 +26,7 @@ export function IssueForm({ data }: { data: IssueFormData }) {
   const [lines, setLines] = useState<Line[]>([]);
   const [popup, setPopup] = useState<{ kind: CuteBoxKind; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [lastConfirmed, setLastConfirmed] = useState<{ docNo: string; lines: Line[] } | null>(null);
 
   const available = data.products.filter((p) => !lines.some((l) => l.code === p.code));
@@ -100,12 +101,17 @@ export function IssueForm({ data }: { data: IssueFormData }) {
     };
     try {
       const res = await confirmIssueAction(payload);
-      setPopup({ kind: "out", message: `Issue ${res.docNo} confirmed — stock deducted.` });
-      setLastConfirmed({ docNo: res.docNo, lines });
-      setLines([]);
-      router.refresh();
+      if (res.error || !res.docNo) {
+        setError(res.error ?? "Failed to confirm issue.");
+      } else {
+        setError(null);
+        setPopup({ kind: "out", message: `Issue ${res.docNo} confirmed — stock deducted.` });
+        setLastConfirmed({ docNo: res.docNo, lines });
+        setLines([]);
+        router.refresh();
+      }
     } catch (e) {
-      setPopup({ kind: "draft", message: e instanceof Error ? e.message : "Failed to confirm issue." });
+      setError(e instanceof Error ? e.message : "Failed to confirm issue.");
     }
     setSaving(false);
   }
@@ -287,6 +293,12 @@ export function IssueForm({ data }: { data: IssueFormData }) {
             placeholder="+ Add line (เพิ่มรายการ) — พิมพ์ค้นหาสินค้า…"
           />
         </div>
+
+        {error && (
+          <div className="border-t border-[#f3d2d2] bg-[#fbe9e9] px-[22px] py-2.5 text-[12.5px] text-[#c53f3f]">
+            {error}
+          </div>
+        )}
 
         <div className="flex items-center gap-4 border-t border-[#eef1f5] bg-[#fafbfc] p-[16px_22px]">
           <div className="text-[12.5px] text-[#69748a]">

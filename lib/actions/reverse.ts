@@ -1,13 +1,13 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { safeRevalidate } from "./revalidate";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 
 export type ReversibleKind = "receipt" | "issue" | "adjustment" | "transfer" | "count";
 
 function revalidateAll() {
-  for (const p of [
+  safeRevalidate([
     "/receive",
     "/issue",
     "/adjust",
@@ -18,9 +18,7 @@ function revalidateAll() {
     "/aging",
     "/locations",
     "/po",
-  ]) {
-    revalidatePath(p);
-  }
+  ]);
 }
 
 const ALREADY_REVERSED = "This document has already been reversed (เอกสารนี้ถูกถอยไปแล้ว)";
@@ -29,10 +27,14 @@ const ALREADY_REVERSED = "This document has already been reversed (เอกส�
  *  the original as reversed. The original stays in history with a "Reversed"
  *  badge. Throws a bilingual error if the stock can no longer be safely undone
  *  (e.g. received stock has since been issued). */
-export async function reverseDocumentAction(kind: ReversibleKind, id: string) {
+export async function reverseDocumentAction(
+  kind: ReversibleKind,
+  id: string
+): Promise<{ docNo?: string; error?: string }> {
   let docNo = "";
 
-  await db.$transaction(async (tx) => {
+  try {
+    await db.$transaction(async (tx) => {
     if (kind === "receipt") {
       const receipt = await tx.receipt.findUnique({
         where: { id },
@@ -198,6 +200,9 @@ export async function reverseDocumentAction(kind: ReversibleKind, id: string) {
     }
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 
-  revalidateAll();
-  return { docNo };
+    revalidateAll();
+    return { docNo };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Failed to reverse document." };
+  }
 }

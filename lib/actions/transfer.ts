@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { safeRevalidate } from "./revalidate";
 import { db } from "@/lib/db";
 import { nextDocNumber } from "@/lib/calc/docNumber";
 
@@ -12,9 +12,7 @@ export type ConfirmTransferInput = {
 };
 
 function revalidateAll() {
-  for (const p of ["/transfer", "/dashboard", "/products", "/locations"]) {
-    revalidatePath(p);
-  }
+  safeRevalidate(["/transfer", "/dashboard", "/products", "/locations"]);
 }
 
 export async function confirmTransferAction(input: ConfirmTransferInput) {
