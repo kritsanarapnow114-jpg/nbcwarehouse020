@@ -3,7 +3,7 @@
 import { safeRevalidate } from "./revalidate";
 import { db } from "@/lib/db";
 import { nextDocNumber } from "@/lib/calc/docNumber";
-import { eligibleLots } from "@/lib/calc/fefo";
+import { fifoLots } from "@/lib/calc/fefo";
 
 export type ReceiveLineInput = {
   productCode: string;
@@ -161,14 +161,14 @@ export async function confirmReceiptAction(
           const materialLots = await tx.lot.findMany({
             where: { productCode: bomLine.materialProductCode },
           });
-          const eligible = eligibleLots(
+          // BOM materials are consumed FIFO (oldest received first).
+          const eligible = fifoLots(
             materialLots.map((l) => ({
               id: l.id,
               lotNo: l.lotNo,
               qty: l.qty,
               status: l.status,
-              expDate: l.expDate,
-              locationCode: l.locationCode,
+              recvDate: l.recvDate,
             }))
           );
           const totalAvailable = eligible.reduce((s, l) => s + l.qty, 0);
