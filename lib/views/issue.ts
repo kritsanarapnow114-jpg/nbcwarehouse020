@@ -59,7 +59,7 @@ export async function getIssueFormData() {
 
 export type IssueFormData = Awaited<ReturnType<typeof getIssueFormData>>;
 
-export async function getRecentIssues(limit = 20) {
+export async function getRecentIssues(limit = 400) {
   const issues = await db.issue.findMany({
     include: {
       lines: { include: { product: true, selectedLot: true } },

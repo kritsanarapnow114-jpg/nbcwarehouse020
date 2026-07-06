@@ -6,7 +6,7 @@ import { Card, CardTitle } from "./Card";
 import { Modal, ModalHeader } from "./Modal";
 import { buttonClass } from "./Button";
 import { showToast } from "./Toast";
-import { fmtDateBE } from "@/lib/calc/date";
+import { fmtDateBE, fmtDateISO } from "@/lib/calc/date";
 import { reverseDocumentAction, ReversibleKind } from "@/lib/actions/reverse";
 import { getRedoTemplateAction } from "@/lib/actions/redo";
 import { stashRedo } from "@/lib/redoTemplate";
@@ -73,6 +73,7 @@ export function DocHistory({
   const [confirming, setConfirming] = useState(false);
   const [reversing, setReversing] = useState(false);
   const [reverseError, setReverseError] = useState<string | null>(null);
+  const [filterDate, setFilterDate] = useState("");
 
   function closeModal() {
     setSelected(null);
@@ -115,16 +116,42 @@ export function DocHistory({
     router.push(res.path);
   }
 
+  const visibleRows = filterDate
+    ? rows.filter((r) => fmtDateISO(new Date(r.docDate)) === filterDate)
+    : rows;
+
   return (
     <Card className="mt-4">
-      <CardTitle>{title}</CardTitle>
+      <div className="flex flex-wrap items-center gap-2">
+        <CardTitle>{title}</CardTitle>
+        <div className="flex-1" />
+        <span className="text-[11.5px] text-[#9aa4b4]">ค้นหาวันที่:</span>
+        <input
+          type="date"
+          value={filterDate}
+          onChange={(e) => setFilterDate(e.target.value)}
+          className="font-num rounded-[7px] border border-[#d7dce4] px-2 py-1 text-[12px] outline-none focus:border-[#3E9B6E]"
+        />
+        {filterDate && (
+          <button
+            onClick={() => setFilterDate("")}
+            className="rounded-[7px] border border-[#d7dce4] bg-white px-2 py-1 text-[11.5px] text-[#69748a] hover:bg-[#f7f9fb]"
+          >
+            ล้าง
+          </button>
+        )}
+      </div>
       {rows.length === 0 ? (
         <div className="p-4 text-center text-[12.5px] text-[#9aa4b4]">
           No documents yet
         </div>
+      ) : visibleRows.length === 0 ? (
+        <div className="p-4 text-center text-[12.5px] text-[#9aa4b4]">
+          ไม่พบเอกสารของวันที่เลือก (no documents on this date)
+        </div>
       ) : (
         <div className="flex flex-col">
-          {rows.map((r) => (
+          {visibleRows.map((r) => (
             <button
               key={r.id}
               onClick={() => setSelected(r)}

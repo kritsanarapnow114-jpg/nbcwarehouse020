@@ -41,7 +41,7 @@ export async function getProductOptions() {
 
 export type ProductOption = Awaited<ReturnType<typeof getProductOptions>>[number];
 
-export async function getRecentAdjustments(limit = 20) {
+export async function getRecentAdjustments(limit = 400) {
   const rows = await db.adjustment.findMany({
     include: { lines: { include: { lot: { include: { product: true } } } } },
     orderBy: { docDate: "desc" },
@@ -66,7 +66,7 @@ export async function getRecentAdjustments(limit = 20) {
   }));
 }
 
-export async function getRecentTransfers(limit = 20) {
+export async function getRecentTransfers(limit = 400) {
   const rows = await db.transfer.findMany({
     include: { lines: { include: { lot: { include: { product: true } } } } },
     orderBy: { docDate: "desc" },
@@ -91,7 +91,7 @@ export async function getRecentTransfers(limit = 20) {
   }));
 }
 
-export async function getRecentCounts(limit = 20) {
+export async function getRecentCounts(limit = 400) {
   const rows = await db.stockCount.findMany({
     include: { lines: { include: { lot: { include: { product: true } } } } },
     orderBy: { docDate: "desc" },

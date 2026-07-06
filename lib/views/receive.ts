@@ -60,7 +60,7 @@ export async function getReceiveFormData() {
 
 export type ReceiveFormData = Awaited<ReturnType<typeof getReceiveFormData>>;
 
-export async function getRecentReceipts(limit = 20) {
+export async function getRecentReceipts(limit = 400) {
   const receipts = await db.receipt.findMany({
     include: {
       po: true,
