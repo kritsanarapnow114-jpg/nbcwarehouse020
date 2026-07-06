@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getBomAction, saveBomAction } from "@/lib/actions/products";
 import { buttonClass } from "@/components/ui/Button";
 import { showToast } from "@/components/ui/Toast";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
 type MaterialOption = { code: string; name: string; unit: string };
 type Line = { materialProductCode: string; qtyPerUnit: string; unit: string };
@@ -17,7 +18,6 @@ export function BomEditor({
 }) {
   const [lines, setLines] = useState<Line[] | null>(null);
   const [linesFor, setLinesFor] = useState<string | null>(null);
-  const [addCode, setAddCode] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +36,6 @@ export function BomEditor({
     if (!m || !shown) return;
     setLines([...shown, { materialProductCode: m.code, qtyPerUnit: "1", unit: m.unit }]);
     setLinesFor(finishedProductCode);
-    setAddCode("");
   }
 
   function updateLine(i: number, patch: Partial<Line>) {
@@ -120,18 +119,12 @@ export function BomEditor({
             </tbody>
           </table>
 
-          <select
-            value={addCode}
-            onChange={(e) => addLine(e.target.value)}
-            className="mb-2 w-full rounded-[8px] border border-dashed border-[#c4ccd8] bg-[#f7f9fb] px-2.5 py-1.5 text-[12.5px] text-[#3a4658]"
-          >
-            <option value="">+ Add material (เพิ่มวัตถุดิบ)…</option>
-            {available.map((m) => (
-              <option key={m.code} value={m.code}>
-                {m.code} · {m.name}
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            options={available.map((m) => ({ value: m.code, label: `${m.code} · ${m.name}` }))}
+            onSelect={addLine}
+            placeholder="+ Add material (เพิ่มวัตถุดิบ) — พิมพ์ค้นหา…"
+            className="mb-2 w-full rounded-[8px] border border-dashed border-[#c4ccd8] bg-[#f7f9fb] px-2.5 py-1.5 text-[12.5px] text-[#3a4658] outline-none focus:border-[#3E9B6E]"
+          />
 
           {error && (
             <div className="mb-2 rounded-[8px] bg-[#fbe9e9] px-3 py-2 text-[12px] text-[#c53f3f]">

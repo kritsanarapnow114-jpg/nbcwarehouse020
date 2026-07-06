@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Modal, ModalHeader } from "@/components/ui/Modal";
 import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup } from "@/components/ui/CuteBoxPopup";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { createPoAction } from "@/lib/actions/po";
 import { fmtDateISO } from "@/lib/calc/date";
 
@@ -52,7 +53,6 @@ function NewPoModal({
   const [vendor, setVendor] = useState("");
   const [date, setDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Line[]>([]);
-  const [addCode, setAddCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -62,7 +62,6 @@ function NewPoModal({
     const p = products.find((x) => x.code === code);
     if (!p) return;
     setLines((ls) => [...ls, { productCode: p.code, name: p.name, unit: p.unit, ordered: "0" }]);
-    setAddCode("");
   }
   function updateLine(i: number, ordered: string) {
     setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ordered } : l)));
@@ -167,18 +166,12 @@ function NewPoModal({
             </tbody>
           </table>
           <div className="border-t border-[#eef1f5] p-2">
-            <select
-              value={addCode}
-              onChange={(e) => addLine(e.target.value)}
-              className="w-full rounded-[7px] border border-dashed border-[#c4ccd8] bg-[#f7f9fb] px-2.5 py-1.5 text-[12.5px] text-[#3a4658]"
-            >
-              <option value="">+ Add product…</option>
-              {available.map((p) => (
-                <option key={p.code} value={p.code}>
-                  {p.code} · {p.name}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              options={available.map((p) => ({ value: p.code, label: `${p.code} · ${p.name}` }))}
+              onSelect={addLine}
+              placeholder="+ Add product… — พิมพ์ค้นหา"
+              className="w-full rounded-[7px] border border-dashed border-[#c4ccd8] bg-[#f7f9fb] px-2.5 py-1.5 text-[12.5px] text-[#3a4658] outline-none focus:border-[#3E9B6E]"
+            />
           </div>
         </div>
 

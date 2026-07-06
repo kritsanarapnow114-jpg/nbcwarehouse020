@@ -41,31 +41,6 @@ export default async function ProductsPage({
 
   return (
     <div className="max-w-[1280px] p-[22px_26px]">
-      <Card className="mb-4">
-        <CardTitle>Inventory Value by Product (มูลค่าคงเหลือรายสินค้า)</CardTitle>
-        <div className="flex flex-col gap-3">
-          {sortedByValue.map((v) => (
-            <div key={v.code} className="flex items-center gap-3">
-              <div className="w-[210px] flex-none text-[12.5px] leading-tight">
-                <span className="font-medium">{v.nameEn}</span>{" "}
-                <span className="font-num text-[10.5px] text-[#9aa4b4]">
-                  {v.code}
-                </span>
-              </div>
-              <div className="h-[14px] flex-1 overflow-hidden rounded-[5px] bg-[#f1f3f7]">
-                <div
-                  className="h-full rounded-[5px] bg-[#3E9B6E]"
-                  style={{ width: `${(v.totalValue / maxValue) * 100}%` }}
-                />
-              </div>
-              <div className="font-num w-[110px] text-right text-[12.5px]">
-                <Money value={v.totalValue} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
-
       <div className="mb-4 flex flex-wrap items-center gap-2.5">
         {CATEGORY_FILTERS.map((f) => {
           const active = (cat ?? "") === f.value;
@@ -100,6 +75,31 @@ export default async function ProductsPage({
       </div>
 
       <ProductsTable rows={rows} bomMaterials={bomMaterials} />
+
+      <Card className="mt-4">
+        <CardTitle>Inventory Value by Product (มูลค่าคงเหลือรายสินค้า)</CardTitle>
+        <div className="flex flex-col gap-3">
+          {sortedByValue.map((v) => (
+            <div key={v.code} className="flex items-center gap-3">
+              <div className="w-[210px] flex-none text-[12.5px] leading-tight">
+                <span className="font-medium">{v.nameEn}</span>{" "}
+                <span className="font-num text-[10.5px] text-[#9aa4b4]">
+                  {v.code}
+                </span>
+              </div>
+              <div className="h-[14px] flex-1 overflow-hidden rounded-[5px] bg-[#f1f3f7]">
+                <div
+                  className="h-full rounded-[5px] bg-[#3E9B6E]"
+                  style={{ width: `${(v.totalValue / maxValue) * 100}%` }}
+                />
+              </div>
+              <div className="font-num w-[110px] text-right text-[12.5px]">
+                <Money value={v.totalValue} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }

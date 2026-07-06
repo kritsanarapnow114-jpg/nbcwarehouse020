@@ -6,6 +6,7 @@ import { LotOption } from "@/lib/views/docCommon";
 import { confirmAdjustAction } from "@/lib/actions/adjust";
 import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup } from "@/components/ui/CuteBoxPopup";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { downloadCsv } from "@/lib/calc/csvClient";
 import { fmtDateISO } from "@/lib/calc/date";
 import { AdjustReason } from "@prisma/client";
@@ -24,7 +25,6 @@ export function AdjustForm({ lots }: { lots: LotOption[] }) {
   const [reason, setReason] = useState<AdjustReason>("COUNT_VARIANCE");
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Line[]>([]);
-  const [addId, setAddId] = useState("");
   const [popup, setPopup] = useState<{ kind: "adjust" | "draft"; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +35,6 @@ export function AdjustForm({ lots }: { lots: LotOption[] }) {
     const lot = lots.find((l) => l.id === id);
     if (!lot) return;
     setLines((ls) => [...ls, { ...lot, counted: String(lot.qty) }]);
-    setAddId("");
   }
   function updateLine(i: number, counted: string) {
     setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, counted } : l)));
@@ -179,18 +178,14 @@ export function AdjustForm({ lots }: { lots: LotOption[] }) {
         </div>
 
         <div className="flex items-center gap-2 border-t border-[#eef1f5] p-[12px_16px]">
-          <select
-            value={addId}
-            onChange={(e) => addLine(e.target.value)}
-            className="w-full rounded-[9px] border border-dashed border-[#c4ccd8] bg-[#f7f9fb] px-3 py-2 text-[13px] text-[#3a4658]"
-          >
-            <option value="">+ Add line (เพิ่มรายการ) — choose a lot…</option>
-            {available.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.productCode} · {l.name} · {l.lotNo} · {l.locationCode}
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            options={available.map((l) => ({
+              value: l.id,
+              label: `${l.productCode} · ${l.name} · ${l.lotNo} · ${l.locationCode}`,
+            }))}
+            onSelect={addLine}
+            placeholder="+ Add line (เพิ่มรายการ) — พิมพ์ค้นหาสินค้า…"
+          />
         </div>
 
         {lossValue > 0 && (

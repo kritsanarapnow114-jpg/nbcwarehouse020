@@ -6,6 +6,7 @@ import { IssueFormData } from "@/lib/views/issue";
 import { confirmIssueAction, IssueLineInput } from "@/lib/actions/issue";
 import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup, CuteBoxKind } from "@/components/ui/CuteBoxPopup";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { fmtDateISO, fmtDateBE } from "@/lib/calc/date";
 
 type Line = IssueFormData["products"][number] & { selectedLotId: string; qty: string };
@@ -22,7 +23,6 @@ export function IssueForm({ data }: { data: IssueFormData }) {
   const [issueTo, setIssueTo] = useState(ISSUE_TO_OPTIONS[0]);
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Line[]>([]);
-  const [addCode, setAddCode] = useState("");
   const [popup, setPopup] = useState<{ kind: CuteBoxKind; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [lastConfirmed, setLastConfirmed] = useState<{ docNo: string; lines: Line[] } | null>(null);
@@ -37,7 +37,6 @@ export function IssueForm({ data }: { data: IssueFormData }) {
       ...ls,
       { ...p, selectedLotId: defaultLot?.id ?? "", qty: String(defaultLot?.qty ?? 0) },
     ]);
-    setAddCode("");
   }
 
   function updateLine(i: number, patch: Partial<Line>) {
@@ -238,18 +237,11 @@ export function IssueForm({ data }: { data: IssueFormData }) {
         </div>
 
         <div className="flex items-center gap-2 border-t border-[#eef1f5] p-[12px_16px]">
-          <select
-            value={addCode}
-            onChange={(e) => addLine(e.target.value)}
-            className="w-full rounded-[9px] border border-dashed border-[#c4ccd8] bg-[#f7f9fb] px-3 py-2 text-[13px] text-[#3a4658]"
-          >
-            <option value="">+ Add line (เพิ่มรายการ) — choose a product…</option>
-            {available.map((p) => (
-              <option key={p.code} value={p.code}>
-                {p.code} · {p.name}
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            options={available.map((p) => ({ value: p.code, label: `${p.code} · ${p.name}` }))}
+            onSelect={addLine}
+            placeholder="+ Add line (เพิ่มรายการ) — พิมพ์ค้นหาสินค้า…"
+          />
         </div>
 
         <div className="flex items-center gap-4 border-t border-[#eef1f5] bg-[#fafbfc] p-[16px_22px]">

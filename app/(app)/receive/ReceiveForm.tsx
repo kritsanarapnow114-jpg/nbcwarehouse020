@@ -6,6 +6,7 @@ import { ReceiveFormData } from "@/lib/views/receive";
 import { confirmReceiptAction, ReceiveLineInput } from "@/lib/actions/receive";
 import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup, CuteBoxKind } from "@/components/ui/CuteBoxPopup";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { fmtDateISO } from "@/lib/calc/date";
 
 type Line = {
@@ -27,7 +28,6 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
   const [invoiceNo, setInvoiceNo] = useState("");
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Line[]>([]);
-  const [addCode, setAddCode] = useState("");
   const [prodLoss, setProdLoss] = useState("20");
   const [bomLossByLine, setBomLossByLine] = useState<Record<string, string>>({});
   const [popup, setPopup] = useState<{ kind: CuteBoxKind; message: string } | null>(null);
@@ -67,7 +67,6 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
       ...ls,
       { productCode: p.code, name: p.name, unit: p.unit, ordered: null, recv: "0", lot: "", loc: "", mfg: "", exp: "" },
     ]);
-    setAddCode("");
   }
 
   function updateLine(i: number, patch: Partial<Line>) {
@@ -327,18 +326,11 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
         </div>
 
         <div className="flex items-center gap-2 border-t border-[#eef1f5] p-[12px_16px]">
-          <select
-            value={addCode}
-            onChange={(e) => addLine(e.target.value)}
-            className="w-full rounded-[9px] border border-dashed border-[#c4ccd8] bg-[#f7f9fb] px-3 py-2 text-[13px] text-[#3a4658]"
-          >
-            <option value="">+ Add line (เพิ่มรายการ) — choose a product…</option>
-            {data.products.map((p) => (
-              <option key={p.code} value={p.code}>
-                {p.code} · {p.name}
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            options={data.products.map((p) => ({ value: p.code, label: `${p.code} · ${p.name}` }))}
+            onSelect={addLine}
+            placeholder="+ Add line (เพิ่มรายการ) — พิมพ์ค้นหาสินค้า…"
+          />
         </div>
 
         {error && (
