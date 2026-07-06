@@ -38,7 +38,7 @@ function printDoc(title: string, row: DocHistoryRow) {
     th,td{border:1px solid #ccc;padding:8px;font-size:13px;text-align:left}</style></head><body>
     <h2>${escapeHtml(title)}</h2>
     <p>Doc No: ${escapeHtml(row.docNo)}<br/>Date: ${escapeHtml(fmtDateBE(new Date(row.docDate)))}<br/>${escapeHtml(row.summary)}</p>
-    <table><thead><tr><th>Code</th><th>Product</th><th>Qty</th><th></th></tr></thead>
+    <table><thead><tr><th>Code</th><th>Product</th><th>Qty</th><th>Lot / Location</th></tr></thead>
     <tbody>${row.lines
       .map(
         (l) =>
@@ -118,19 +118,21 @@ export function DocHistory({
               <table className="w-full border-collapse text-[12.5px]">
                 <thead>
                   <tr className="text-left text-[#9aa4b4]">
-                    <th className="pb-2 font-medium">Code</th>
-                    <th className="pb-2 font-medium">Product</th>
-                    <th className="pb-2 text-right font-medium">Qty</th>
-                    <th className="pb-2 font-medium"></th>
+                    <th className="w-[90px] pb-2 pr-3 font-medium">Code</th>
+                    <th className="pb-2 pr-3 font-medium">Product</th>
+                    <th className="w-[100px] pb-2 pr-3 text-right font-medium">Qty</th>
+                    <th className="w-[150px] pb-2 pl-3 font-medium">Lot / Location</th>
                   </tr>
                 </thead>
                 <tbody>
                   {selected.lines.map((l, i) => (
                     <tr key={i} className="border-t border-[#eef1f5]">
-                      <td className="font-num py-2 text-[#3a4658]">{l.code}</td>
-                      <td className="py-2 font-medium">{l.name}</td>
-                      <td className="font-num py-2 text-right">{l.qtyText}</td>
-                      <td className="py-2 text-[11.5px] text-[#9aa4b4]">{l.extra}</td>
+                      <td className="font-num py-2 pr-3 text-[#3a4658]">{l.code}</td>
+                      <td className="py-2 pr-3 font-medium">{l.name}</td>
+                      <td className="font-num py-2 pr-3 text-right">{l.qtyText}</td>
+                      <td className="border-l border-[#eef1f5] py-2 pl-3 text-[11.5px] text-[#9aa4b4]">
+                        {l.extra}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
