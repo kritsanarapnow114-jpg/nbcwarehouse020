@@ -4,27 +4,44 @@ import { useState } from "react";
 import type PptxGenJSLib from "pptxgenjs";
 import type { ExecutiveSummary } from "@/lib/views/summary";
 
-// ---- Dark "dashboard" palette (navy + light-blue tiles + aqua accents) ----
-const NAVY = "0C2A43"; // page background
-const NAVY2 = "123A5A"; // alt table row / inner fill
-const CARD = "0E3450"; // card / tile body
-const CARDLINE = "2E5C80"; // card border
-const BANNER = "8FCBEA"; // light-blue tile header
-const BANNER_TX = "0C2A43"; // dark text on the banner
-const AQUA = "35A7C0"; // accent / gauge value
-const AQUA_TRK = "17456A"; // gauge remainder track
-const BLUE_L = "9AD3EF";
-const BLUE_M = "3E86B4";
-const BLUE_D = "1C5E8C";
-const WHITE = "FFFFFF";
-const TXT = "D7E5F0"; // light body text
-const MUTE = "8CA3B8";
-const AMBER = "E0A33E";
-const RED = "D9534F";
-const CATS = [BLUE_L, AQUA, BLUE_M, BLUE_D, "6FB6D9", "2C7CA8"];
+// ---- NatureWorks / Ingeo template palette (from the client's template) ----
+const BLUE = "018BBF"; // primary
+const TEAL = "009192";
+const ORANGE = "EB8A01";
+const CORAL = "FF5C3E";
+const CYAN = "22B6E6";
+const SLATE = "44546A"; // headings
+const INK = "1F2A37";
+const MUTE = "8A97A5";
+const BG = "F4F7F9"; // page background
+const PANEL = "FFFFFF"; // cards
+const CARDLINE = "E1E7EC";
+const TRACK = "E7ECF0"; // gauge/bar track
+const BANNER = "EAF4F8"; // soft blue tint
+const AMBER = ORANGE;
+const RED = CORAL;
+const CATS = [BLUE, TEAL, ORANGE, CYAN, SLATE, CORAL];
 
 const money = (v: number) => "฿" + Math.round(v).toLocaleString();
 const num = (v: number) => Math.round(v).toLocaleString();
+
+// Fetch a same-origin image as a data URL. Never throws — a miss just returns
+// null and that image is skipped, so the export always succeeds.
+async function loadImg(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise<string | null>((resolve) => {
+      const r = new FileReader();
+      r.onloadend = () => resolve(typeof r.result === "string" ? r.result : null);
+      r.onerror = () => resolve(null);
+      r.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
 
 export function ExportDeckButton({
   summary,
@@ -39,70 +56,77 @@ export function ExportDeckButton({
     setBusy(true);
     try {
       const PptxGenJS = (await import("pptxgenjs")).default;
+      const [logo, cover, worldmap] = await Promise.all([
+        loadImg("/deck/logo.jpeg"),
+        loadImg("/deck/cover.png"),
+        loadImg("/deck/worldmap.png"),
+      ]);
+
       const pptx = new PptxGenJS();
       pptx.defineLayout({ name: "WIDE", width: 13.333, height: 7.5 });
       pptx.layout = "WIDE";
       pptx.author = "NBC Warehouse";
-      pptx.title = "NBC Warehouse — Executive Summary";
+      pptx.title = "NBC Warehouse — Monthly Report";
 
       const W = 13.333;
+      const H = 7.5;
       const CT = pptx.ChartType;
-      const v3d = { v3DRotX: 14, v3DRotY: 20, v3DPerspective: 40, v3DRAngAx: false };
       const genDate = new Date().toLocaleDateString("en-GB");
       let page = 0;
 
       const SHADOW: PptxGenJSLib.ShadowProps = {
-        type: "outer", color: "05121F", opacity: 0.5, blur: 6, offset: 2, angle: 90,
+        type: "outer", color: "B9C6D0", opacity: 0.5, blur: 5, offset: 2, angle: 90,
       };
+      const LOGO_H = 0.52; // logo is 400x144
+      const LOGO_W = (400 / 144) * LOGO_H;
 
-      // ---- Chrome ---------------------------------------------------------
       const footer = (s: PptxGenJSLib.Slide) => {
         page += 1;
         s.addShape("line", { x: 0.5, y: 7.12, w: 12.33, h: 0, line: { color: CARDLINE, width: 1 } });
-        s.addText("NBC Warehouse · สรุปผู้บริหารคลังสินค้า", { x: 0.5, y: 7.14, w: 6, h: 0.3, fontSize: 8, color: MUTE, valign: "middle" });
+        s.addText("NBC Warehouse · Ingeo by NatureWorks", { x: 0.5, y: 7.14, w: 6, h: 0.3, fontSize: 8, color: MUTE, valign: "middle" });
         s.addText("CONFIDENTIAL", { x: W / 2 - 1.5, y: 7.14, w: 3, h: 0.3, fontSize: 8, color: MUTE, align: "center", valign: "middle", charSpacing: 2 });
-        s.addText(String(page), { x: W - 1.0, y: 7.14, w: 0.5, h: 0.3, fontSize: 8.5, bold: true, color: BLUE_L, align: "right", valign: "middle" });
+        s.addText(String(page), { x: W - 1.0, y: 7.14, w: 0.5, h: 0.3, fontSize: 8.5, bold: true, color: BLUE, align: "right", valign: "middle" });
       };
 
-      const header = (s: PptxGenJSLib.Slide, title: string, th: string, no: number) => {
-        s.background = { color: NAVY };
-        s.addShape("roundRect", { x: 0.5, y: 0.3, w: 0.52, h: 0.52, rectRadius: 0.1, fill: { color: AQUA } });
-        s.addText(String(no).padStart(2, "0"), { x: 0.5, y: 0.3, w: 0.52, h: 0.52, fontSize: 15, bold: true, color: NAVY, align: "center", valign: "middle" });
-        s.addText(title, { x: 1.2, y: 0.24, w: 8.2, h: 0.44, fontSize: 22, bold: true, color: WHITE, valign: "middle" });
-        s.addText(th, { x: 1.2, y: 0.66, w: 8.2, h: 0.3, fontSize: 11, color: BLUE_L, valign: "middle" });
-        s.addShape("roundRect", { x: W - 4.2, y: 0.36, w: 3.7, h: 0.42, rectRadius: 0.21, fill: { color: AQUA } });
-        s.addText(periodLabel, { x: W - 4.2, y: 0.36, w: 3.7, h: 0.42, fontSize: 10, color: NAVY, bold: true, align: "center", valign: "middle" });
-        s.addShape("line", { x: 0.5, y: 1.02, w: 12.33, h: 0, line: { color: CARDLINE, width: 1 } });
+      const header = (s: PptxGenJSLib.Slide, title: string, th: string, no: number, accent = BLUE) => {
+        s.background = { color: BG };
+        s.addText(String(no).padStart(2, "0"), { x: 0.5, y: 0.3, w: 0.9, h: 0.6, fontSize: 30, bold: true, color: accent, valign: "middle" });
+        s.addText(title, { x: 1.35, y: 0.28, w: 8.0, h: 0.44, fontSize: 22, bold: true, color: SLATE, valign: "middle" });
+        s.addText(th, { x: 1.37, y: 0.7, w: 8.0, h: 0.3, fontSize: 11, color: MUTE, valign: "middle" });
+        s.addShape("rect", { x: 1.37, y: 0.66, w: 0.9, h: 0.035, fill: { color: accent } });
+        if (logo) s.addImage({ data: logo, x: W - 0.5 - LOGO_W, y: 0.32, w: LOGO_W, h: LOGO_H });
+        s.addShape("roundRect", { x: W - 4.6, y: 0.98, w: 4.1, h: 0.34, rectRadius: 0.17, fill: { color: BANNER } });
+        s.addText(periodLabel, { x: W - 4.6, y: 0.98, w: 4.1, h: 0.34, fontSize: 9.5, bold: true, color: BLUE, align: "center", valign: "middle" });
+        s.addShape("line", { x: 0.5, y: 1.42, w: 12.33, h: 0, line: { color: CARDLINE, width: 1 } });
         footer(s);
       };
 
-      const newSlide = (title: string, th: string, no: number) => {
+      const newSlide = (title: string, th: string, no: number, accent = BLUE) => {
         const s = pptx.addSlide();
-        header(s, title, th, no);
+        header(s, title, th, no, accent);
         return s;
       };
 
-      // Banner-style KPI tile (light-blue header + dark body), the reference look.
+      // KPI tile — white card, colored top strip, big colored number.
       const tile = (
         s: PptxGenJSLib.Slide,
         x: number, y: number, w: number, h: number,
-        label: string, value: string, valueColor = WHITE, sub?: string, valueSize = 20
+        label: string, value: string, valueColor = INK, sub?: string, valueSize = 22, accent = BLUE
       ) => {
-        s.addShape("roundRect", { x, y, w, h, rectRadius: 0.06, fill: { color: CARD }, line: { color: CARDLINE, width: 1 }, shadow: SHADOW });
-        s.addShape("roundRect", { x, y, w, h: 0.48, rectRadius: 0.06, fill: { color: BANNER } });
-        s.addShape("rect", { x, y: y + 0.24, w, h: 0.24, fill: { color: BANNER } });
-        s.addText(label, { x: x + 0.08, y: y + 0.02, w: w - 0.16, h: 0.44, fontSize: 9.5, bold: true, color: BANNER_TX, align: "center", valign: "middle" });
-        s.addText(value, { x: x + 0.08, y: y + 0.52, w: w - 0.16, h: h - (sub ? 0.82 : 0.6), fontSize: valueSize, bold: true, color: valueColor, align: "center", valign: "middle", fit: "shrink" });
-        if (sub) s.addText(sub, { x: x + 0.08, y: y + h - 0.3, w: w - 0.16, h: 0.26, fontSize: 8, color: MUTE, align: "center" });
+        s.addShape("roundRect", { x, y, w, h, rectRadius: 0.05, fill: { color: PANEL }, line: { color: CARDLINE, width: 1 }, shadow: SHADOW });
+        s.addShape("roundRect", { x, y, w, h: 0.12, rectRadius: 0.05, fill: { color: accent } });
+        s.addShape("rect", { x, y: y + 0.06, w, h: 0.08, fill: { color: accent } });
+        s.addText(label, { x: x + 0.15, y: y + 0.2, w: w - 0.3, h: 0.4, fontSize: 9.5, bold: true, color: SLATE, align: "center", valign: "middle" });
+        s.addText(value, { x: x + 0.1, y: y + 0.56, w: w - 0.2, h: h - (sub ? 0.86 : 0.66), fontSize: valueSize, bold: true, color: valueColor, align: "center", valign: "middle", fit: "shrink" });
+        if (sub) s.addText(sub, { x: x + 0.12, y: y + h - 0.3, w: w - 0.24, h: 0.26, fontSize: 8, color: MUTE, align: "center" });
       };
 
       const panel = (s: PptxGenJSLib.Slide, x: number, y: number, w: number, h: number, title?: string) => {
-        s.addShape("roundRect", { x, y, w, h, rectRadius: 0.06, fill: { color: CARD }, line: { color: CARDLINE, width: 1 }, shadow: SHADOW });
-        if (title) s.addText(title, { x: x + 0.15, y: y + 0.12, w: w - 0.3, h: 0.34, fontSize: 12, bold: true, color: WHITE, align: "center" });
+        s.addShape("roundRect", { x, y, w, h, rectRadius: 0.05, fill: { color: PANEL }, line: { color: CARDLINE, width: 1 }, shadow: SHADOW });
+        if (title) s.addText(title, { x: x + 0.15, y: y + 0.12, w: w - 0.3, h: 0.34, fontSize: 12, bold: true, color: SLATE, align: "center" });
       };
 
-      // Donut gauge (like the reference Engagement / Effectiveness rings).
-      const gauge = (s: PptxGenJSLib.Slide, x: number, y: number, w: number, h: number, label: string, pct: number, color = AQUA) => {
+      const gauge = (s: PptxGenJSLib.Slide, x: number, y: number, w: number, h: number, label: string, pct: number, color = BLUE) => {
         panel(s, x, y, w, h);
         const p = Math.max(0, Math.min(100, pct));
         const size = Math.min(w - 0.4, h - 1.0);
@@ -111,105 +135,103 @@ export function ExportDeckButton({
         s.addChart(
           CT.doughnut,
           [{ name: "g", labels: ["value", "rest"], values: [p, 100 - p] }],
-          { x: cx, y: cy, w: size, h: size, holeSize: 72, chartColors: [color, AQUA_TRK], showLegend: false, showTitle: false, showValue: false, showPercent: false, dataBorder: { pt: 0, color: NAVY } }
+          { x: cx, y: cy, w: size, h: size, holeSize: 74, chartColors: [color, TRACK], showLegend: false, showTitle: false, showValue: false, showPercent: false, dataBorder: { pt: 0, color: PANEL } }
         );
-        s.addText(`${Math.round(p)}%`, { x: cx, y: cy, w: size, h: size, align: "center", valign: "middle", fontSize: 20, bold: true, color: WHITE });
-        s.addText(label, { x: x + 0.1, y: y + h - 0.52, w: w - 0.2, h: 0.42, fontSize: 10, bold: true, color: TXT, align: "center", valign: "middle" });
+        s.addText(`${Math.round(p)}%`, { x: cx, y: cy, w: size, h: size, align: "center", valign: "middle", fontSize: 20, bold: true, color: SLATE });
+        s.addText(label, { x: x + 0.1, y: y + h - 0.52, w: w - 0.2, h: 0.42, fontSize: 10, bold: true, color: SLATE, align: "center", valign: "middle" });
       };
 
       const st = summary.stats;
       const d = summary.detail;
 
-      // ================= Slide 1: Title =================
+      // ================= Slide 1: Cover (warehouse photo) =================
       const t = pptx.addSlide();
-      t.background = { color: NAVY };
-      t.addShape("rect", { x: 0, y: 0, w: W, h: 0.18, fill: { color: AQUA } });
-      t.addText("WAREHOUSE MANAGEMENT REPORT", { x: 0.8, y: 1.4, w: 11, h: 0.4, fontSize: 13, bold: true, color: BLUE_L, charSpacing: 4 });
-      t.addText("NBC Warehouse", { x: 0.78, y: 1.85, w: 11.7, h: 1.0, fontSize: 46, bold: true, color: WHITE });
-      t.addText("Executive Summary · สรุปผู้บริหารคลังสินค้า", { x: 0.8, y: 3.0, w: 11.7, h: 0.6, fontSize: 20, color: TXT });
-      t.addShape("roundRect", { x: 0.8, y: 3.75, w: 5.5, h: 0.5, rectRadius: 0.25, fill: { color: AQUA } });
-      t.addText(`ช่วงข้อมูล (Period):  ${periodLabel}`, { x: 0.8, y: 3.75, w: 5.5, h: 0.5, fontSize: 12, bold: true, color: NAVY, align: "center", valign: "middle" });
-      tile(t, 0.8, 5.15, 3.75, 1.6, "Inventory Value (มูลค่าคงเหลือ)", money(st.inventoryValue), WHITE, `${num(st.skuCount)} SKU · ${num(st.lotCount)} lots`, 22);
-      tile(t, 4.79, 5.15, 3.75, 1.6, "Received (รับเข้า)", num(st.receivedUnits), WHITE, "units this period", 22);
-      tile(t, 8.78, 5.15, 3.75, 1.6, "Issued (จ่ายออก)", num(st.issuedUnits), WHITE, "units this period", 22);
-      t.addText(`Generated: ${genDate}`, { x: W - 4, y: 6.95, w: 3.5, h: 0.3, fontSize: 9.5, color: MUTE, align: "right" });
+      t.background = { color: SLATE };
+      if (cover) t.addImage({ data: cover, x: 0, y: 0, w: W, h: H, sizing: { type: "cover", w: W, h: H } });
+      // legibility scrim on the lower-left
+      t.addShape("roundRect", { x: 0, y: 3.9, w: 9.4, h: 3.6, rectRadius: 0.02, fill: { color: INK, transparency: 22 } });
+      t.addShape("rect", { x: 0, y: 0, w: W, h: 0.16, fill: { color: BLUE } });
+      if (logo) t.addImage({ data: logo, x: 0.6, y: 0.55, w: LOGO_W * 1.7, h: LOGO_H * 1.7 });
+      t.addText("MONTHLY WAREHOUSE REPORT", { x: 0.65, y: 4.15, w: 9, h: 0.4, fontSize: 14, bold: true, color: "CFEAF4", charSpacing: 3 });
+      t.addText("NBC Warehouse", { x: 0.6, y: 4.55, w: 9.2, h: 0.9, fontSize: 44, bold: true, color: "FFFFFF" });
+      t.addText("Executive Summary · สรุปผู้บริหารคลังสินค้า", { x: 0.63, y: 5.55, w: 9, h: 0.5, fontSize: 18, color: "EAF6FB" });
+      t.addShape("roundRect", { x: 0.65, y: 6.25, w: 5.4, h: 0.5, rectRadius: 0.25, fill: { color: BLUE } });
+      t.addText(`ช่วงข้อมูล (Period):  ${periodLabel}`, { x: 0.65, y: 6.25, w: 5.4, h: 0.5, fontSize: 12, bold: true, color: "FFFFFF", align: "center", valign: "middle" });
+      t.addText(`Generated: ${genDate}`, { x: W - 3.5, y: 6.95, w: 3.0, h: 0.3, fontSize: 9.5, color: "DDE8EE", align: "right" });
 
       // ================= Slide 2: Executive Dashboard =================
       const g = pptx.addSlide();
-      g.background = { color: NAVY };
-      g.addText("Executive Dashboard", { x: 0, y: 0.24, w: W, h: 0.5, fontSize: 26, bold: true, color: WHITE, align: "center" });
-      g.addText(`ภาพรวมคลังสินค้า · ${periodLabel}`, { x: 0, y: 0.74, w: W, h: 0.3, fontSize: 11, color: BLUE_L, align: "center" });
-      g.addShape("line", { x: 0.5, y: 1.12, w: 12.33, h: 0, line: { color: CARDLINE, width: 1 } });
+      g.background = { color: BG };
+      g.addText("Executive Dashboard", { x: 0.5, y: 0.3, w: 8, h: 0.5, fontSize: 26, bold: true, color: SLATE });
+      g.addText(`ภาพรวมคลังสินค้า · ${periodLabel}`, { x: 0.52, y: 0.82, w: 8, h: 0.3, fontSize: 11, color: MUTE });
+      if (logo) g.addImage({ data: logo, x: W - 0.5 - LOGO_W, y: 0.32, w: LOGO_W, h: LOGO_H });
+      g.addShape("line", { x: 0.5, y: 1.2, w: 12.33, h: 0, line: { color: CARDLINE, width: 1 } });
       footer(g);
 
-      const TY = [1.24, 2.68, 4.12, 5.56];
-      const TH = 1.34;
-      // Left column
-      tile(g, 0.28, TY[0], 2.2, TH, "Inventory Value", money(st.inventoryValue), WHITE, "มูลค่าคงเหลือ", 15);
-      tile(g, 0.28, TY[1], 2.2, TH, "SKU Count", num(st.skuCount), WHITE, "จำนวนสินค้า", 20);
-      tile(g, 0.28, TY[2], 2.2, TH, "Lots On Hand", num(st.lotCount), WHITE, "ล็อตคงเหลือ", 20);
-      tile(g, 0.28, TY[3], 2.2, TH, "Received", num(st.receivedUnits), WHITE, "รับเข้า (units)", 20);
-      // Right column
+      const TY = [1.32, 2.74, 4.16, 5.58];
+      const TH = 1.32;
+      tile(g, 0.28, TY[0], 2.2, TH, "Inventory Value", money(st.inventoryValue), BLUE, "มูลค่าคงเหลือ", 15, BLUE);
+      tile(g, 0.28, TY[1], 2.2, TH, "SKU Count", num(st.skuCount), INK, "จำนวนสินค้า", 20, TEAL);
+      tile(g, 0.28, TY[2], 2.2, TH, "Lots On Hand", num(st.lotCount), INK, "ล็อตคงเหลือ", 20, TEAL);
+      tile(g, 0.28, TY[3], 2.2, TH, "Received", num(st.receivedUnits), BLUE, "รับเข้า (units)", 20, BLUE);
       const RX = W - 0.28 - 2.2;
-      tile(g, RX, TY[0], 2.2, TH, "Issued", num(st.issuedUnits), WHITE, "จ่ายออก (units)", 20);
-      tile(g, RX, TY[1], 2.2, TH, "Loss Value", money(st.lossValue), WHITE, "มูลค่าสูญเสีย", 15);
-      tile(g, RX, TY[2], 2.2, TH, "PO Received", num(d.po.totalReceived), WHITE, `จาก ${num(d.po.totalOrdered)} สั่ง`, 20);
-      tile(g, RX, TY[3], 2.2, TH, "Transfers", num(d.transfer.totalUnits), WHITE, "ย้ายที่ (units)", 20);
+      tile(g, RX, TY[0], 2.2, TH, "Issued", num(st.issuedUnits), ORANGE, "จ่ายออก (units)", 20, ORANGE);
+      tile(g, RX, TY[1], 2.2, TH, "Loss Value", money(st.lossValue), CORAL, "มูลค่าสูญเสีย", 15, CORAL);
+      tile(g, RX, TY[2], 2.2, TH, "PO Received", num(d.po.totalReceived), INK, `จาก ${num(d.po.totalOrdered)} สั่ง`, 20, TEAL);
+      tile(g, RX, TY[3], 2.2, TH, "Transfers", num(d.transfer.totalUnits), INK, "ย้ายที่ (units)", 20, BLUE);
 
-      // Center region
-      const CX = 2.66, CW = RX - 0.18 - CX; // center width
+      const CX = 2.66, CW = RX - 0.18 - CX;
       const cardW = (CW - 0.18) / 2;
-      // Row 1: two 3D column charts
-      panel(g, CX, TY[0], cardW, 2.42, "Value by Category (หมวด)");
+      panel(g, CX, TY[0], cardW, 2.4, "Value by Category (หมวด)");
       if (summary.categories.length)
-        g.addChart(CT.bar3d, [{ name: "Value", labels: summary.categories.map((c) => c.name), values: summary.categories.map((c) => c.value) }], {
-          x: CX + 0.1, y: TY[0] + 0.5, w: cardW - 0.2, h: 1.82, barDir: "col", bar3DShape: "cylinder", ...v3d,
-          chartColors: CATS, showValue: false, showLegend: false, showTitle: false,
-          catAxisLabelColor: TXT, catAxisLabelFontSize: 7, valAxisLabelColor: MUTE, valAxisLabelFontSize: 7, valGridLine: { style: "dash", color: CARDLINE, size: 1 },
+        g.addChart(CT.bar, [{ name: "Value", labels: summary.categories.map((c) => c.name), values: summary.categories.map((c) => c.value) }], {
+          x: CX + 0.1, y: TY[0] + 0.5, w: cardW - 0.2, h: 1.8, barDir: "col", chartColors: CATS,
+          showValue: false, showLegend: false, showTitle: false,
+          catAxisLabelColor: SLATE, catAxisLabelFontSize: 7, valAxisLabelColor: MUTE, valAxisLabelFontSize: 7, valGridLine: { style: "dash", color: TRACK, size: 1 }, barGapWidthPct: 40,
         });
-      panel(g, CX + cardW + 0.18, TY[0], cardW, 2.42, "Time-to-Expiry (อายุคงเหลือ)");
+      const bx = CX + cardW + 0.18;
+      panel(g, bx, TY[0], cardW, 2.4, "Time-to-Expiry (อายุคงเหลือ)");
       if (summary.expiry.buckets.length) {
-        const bx = CX + cardW + 0.18;
-        const bColors = summary.expiry.buckets.map((_, i) => (i < 3 ? RED : i === 3 ? AMBER : AQUA));
-        g.addChart(CT.bar3d, [{ name: "Value", labels: summary.expiry.buckets.map((b) => b.label), values: summary.expiry.buckets.map((b) => b.value) }], {
-          x: bx + 0.1, y: TY[0] + 0.5, w: cardW - 0.2, h: 1.82, barDir: "col", bar3DShape: "cylinder", ...v3d,
-          chartColors: bColors, showValue: false, showLegend: false, showTitle: false,
-          catAxisLabelColor: TXT, catAxisLabelFontSize: 7, valAxisLabelColor: MUTE, valAxisLabelFontSize: 7, valGridLine: { style: "dash", color: CARDLINE, size: 1 },
+        const bColors = summary.expiry.buckets.map((_, i) => (i < 3 ? RED : i === 3 ? AMBER : TEAL));
+        g.addChart(CT.bar, [{ name: "Value", labels: summary.expiry.buckets.map((b) => b.label), values: summary.expiry.buckets.map((b) => b.value) }], {
+          x: bx + 0.1, y: TY[0] + 0.5, w: cardW - 0.2, h: 1.8, barDir: "col", chartColors: bColors,
+          showValue: false, showLegend: false, showTitle: false,
+          catAxisLabelColor: SLATE, catAxisLabelFontSize: 7, valAxisLabelColor: MUTE, valAxisLabelFontSize: 7, valGridLine: { style: "dash", color: TRACK, size: 1 }, barGapWidthPct: 40,
         });
       }
-      // Row 2: storage chart (wide) + two gauges
-      const R2Y = 3.76, R2H = 3.2;
+      const R2Y = 3.82, R2H = 3.16;
       const gaugeW = 1.9;
       const stW = CW - gaugeW * 2 - 0.18 * 2;
       panel(g, CX, R2Y, stW, R2H, "Storage by Zone (พื้นที่)");
       if (summary.storage.zones.length)
-        g.addChart(CT.bar3d, [{ name: "Utilization %", labels: summary.storage.zones.map((z) => `Zone ${z.name}`), values: summary.storage.zones.map((z) => z.pct) }], {
-          x: CX + 0.12, y: R2Y + 0.5, w: stW - 0.24, h: R2H - 0.65, barDir: "bar", bar3DShape: "box", ...v3d, chartColors: [AQUA],
-          showValue: true, dataLabelColor: WHITE, dataLabelFontSize: 8, dataLabelFontBold: true,
-          valAxisMinVal: 0, valAxisMaxVal: 100, valAxisLabelColor: MUTE, valAxisLabelFontSize: 7, catAxisLabelColor: TXT, catAxisLabelFontSize: 8,
-          showLegend: false, showTitle: false, valGridLine: { style: "dash", color: CARDLINE, size: 1 },
+        g.addChart(CT.bar, [{ name: "Utilization %", labels: summary.storage.zones.map((z) => `Zone ${z.name}`), values: summary.storage.zones.map((z) => z.pct) }], {
+          x: CX + 0.12, y: R2Y + 0.5, w: stW - 0.24, h: R2H - 0.65, barDir: "bar", chartColors: [BLUE],
+          showValue: true, dataLabelColor: SLATE, dataLabelFontSize: 8, dataLabelFontBold: true,
+          valAxisMinVal: 0, valAxisMaxVal: 100, valAxisLabelColor: MUTE, valAxisLabelFontSize: 7, catAxisLabelColor: SLATE, catAxisLabelFontSize: 8,
+          showLegend: false, showTitle: false, valGridLine: { style: "dash", color: TRACK, size: 1 }, barGapWidthPct: 45,
         });
-      gauge(g, CX + stW + 0.18, R2Y, gaugeW, R2H, "Production Yield (ผลิต)", d.production.yieldPct, AQUA);
-      gauge(g, CX + stW + 0.18 + gaugeW + 0.18, R2Y, gaugeW, R2H, "Count Accuracy (นับสต็อก)", d.count.accuracyPct, BLUE_L);
+      gauge(g, CX + stW + 0.18, R2Y, gaugeW, R2H, "Production Yield (ผลิต)", d.production.yieldPct, TEAL);
+      gauge(g, CX + stW + 0.18 + gaugeW + 0.18, R2Y, gaugeW, R2H, "Count Accuracy (นับสต็อก)", d.count.accuracyPct, BLUE);
 
       // ================= Slide 3: KPIs =================
       const k = newSlide("Key Performance Indicators", "ตัวชี้วัดหลัก", 1);
       const kw = (W - 1.0 - 0.35 * (summary.kpis.length - 1)) / summary.kpis.length;
       summary.kpis.forEach((kpi, i) => {
         const x = 0.5 + i * (kw + 0.35);
-        tile(k, x, 2.0, kw, 2.5, kpi.label, kpi.value, kpi.tone === "ok" ? BLUE_L : AMBER, `${kpi.th} · ${kpi.target}`, 24);
+        const acc = kpi.tone === "ok" ? TEAL : ORANGE;
+        tile(k, x, 2.1, kw, 2.5, kpi.label, kpi.value, acc, `${kpi.th} · ${kpi.target}`, 24, acc);
       });
-      k.addText("เขียวฟ้า = ผ่านเกณฑ์ · เหลือง = เฝ้าระวัง (vs target)", { x: 0.5, y: 4.8, w: 12, h: 0.4, fontSize: 11, italic: true, color: MUTE });
+      k.addText("เขียว = ผ่านเกณฑ์ · ส้ม = เฝ้าระวัง (เทียบกับเป้าหมาย)", { x: 0.5, y: 4.9, w: 12, h: 0.4, fontSize: 11, italic: true, color: MUTE });
 
       // ================= Divider: Operations Detail =================
       const dv = pptx.addSlide();
-      dv.background = { color: NAVY };
-      dv.addShape("ellipse", { x: 9.7, y: -1.6, w: 5.2, h: 5.2, fill: { color: AQUA, transparency: 82 } });
-      dv.addShape("ellipse", { x: 11.2, y: 3.4, w: 4.2, h: 4.2, fill: { color: BLUE_M, transparency: 84 } });
-      dv.addShape("rect", { x: 0.8, y: 3.05, w: 0.8, h: 0.09, fill: { color: AQUA } });
-      dv.addText("SECTION 02", { x: 0.8, y: 2.5, w: 10, h: 0.4, fontSize: 13, bold: true, color: BLUE_L, charSpacing: 3 });
-      dv.addText("Operations Detail", { x: 0.8, y: 3.25, w: 11, h: 0.9, fontSize: 40, bold: true, color: WHITE });
-      dv.addText("รายละเอียดการดำเนินงาน", { x: 0.8, y: 4.25, w: 11, h: 0.5, fontSize: 18, color: TXT });
+      dv.background = { color: BG };
+      if (worldmap) dv.addImage({ data: worldmap, x: 0, y: 0.5, w: W, h: H - 1.0, sizing: { type: "contain", w: W, h: H - 1.0 } });
+      dv.addShape("rect", { x: 0.8, y: 3.05, w: 0.9, h: 0.09, fill: { color: BLUE } });
+      dv.addText("SECTION 02", { x: 0.8, y: 2.5, w: 10, h: 0.4, fontSize: 13, bold: true, color: BLUE, charSpacing: 3 });
+      dv.addText("Operations Detail", { x: 0.78, y: 3.25, w: 11, h: 0.9, fontSize: 42, bold: true, color: SLATE });
+      dv.addText("รายละเอียดการดำเนินงาน", { x: 0.8, y: 4.3, w: 11, h: 0.5, fontSize: 18, color: MUTE });
+      if (logo) dv.addImage({ data: logo, x: W - 0.5 - LOGO_W, y: 0.32, w: LOGO_W, h: LOGO_H });
       footer(dv);
 
       // ================= Detail table slides =================
@@ -218,21 +240,21 @@ export function ExportDeckButton({
       const tableSlide = (
         title: string, th: string, no: number,
         headers: string[], rows: (string | number)[][], weights: number[],
-        summaryLine?: string
+        summaryLine?: string, accent = BLUE
       ) => {
-        const s = newSlide(title, th, no);
-        let top = 1.75;
+        const s = newSlide(title, th, no, accent);
+        let top = 2.1;
         if (summaryLine) {
-          s.addShape("roundRect", { x: 0.5, y: 1.32, w: 12.33, h: 0.42, rectRadius: 0.08, fill: { color: NAVY2 }, line: { color: CARDLINE, width: 1 } });
-          s.addText(summaryLine, { x: 0.7, y: 1.32, w: 12, h: 0.42, fontSize: 11, bold: true, color: BLUE_L, valign: "middle" });
-          top = 1.95;
+          s.addShape("roundRect", { x: 0.5, y: 1.6, w: 12.33, h: 0.42, rectRadius: 0.06, fill: { color: BANNER }, line: { color: CARDLINE, width: 1 } });
+          s.addText(summaryLine, { x: 0.7, y: 1.6, w: 12, h: 0.42, fontSize: 11, bold: true, color: BLUE, valign: "middle" });
+          top = 2.28;
         }
         const totalW = 12.33;
         const wsum = weights.reduce((a, b) => a + b, 0);
         const colW = weights.map((wt) => (wt / wsum) * totalW);
         const headRow: PptxGenJSLib.TableRow = headers.map((h) => ({
           text: h,
-          options: { bold: true, color: NAVY, fill: { color: BANNER }, fontSize: 10, valign: "middle", margin: [3, 4, 3, 4] as [number, number, number, number] },
+          options: { bold: true, color: "FFFFFF", fill: { color: accent }, fontSize: 10, valign: "middle", margin: [3, 4, 3, 4] as [number, number, number, number] },
         }));
         const bodyRows: PptxGenJSLib.TableRow[] = rows.length
           ? rows.map((r, ri) =>
@@ -241,8 +263,8 @@ export function ExportDeckButton({
                 options: {
                   fontSize: 9.5,
                   bold: ci === 0,
-                  color: ci === 0 ? WHITE : TXT,
-                  fill: { color: ri % 2 ? CARD : NAVY2 },
+                  color: ci === 0 ? SLATE : INK,
+                  fill: { color: ri % 2 ? PANEL : BANNER },
                   valign: "middle",
                   margin: [2, 4, 2, 4] as [number, number, number, number],
                 },
@@ -251,7 +273,7 @@ export function ExportDeckButton({
           : [[
               {
                 text: "— no data for this period (ไม่มีข้อมูลช่วงนี้) —",
-                options: { fontSize: 10, italic: true, color: MUTE, colspan: headers.length, align: "center" as const, fill: { color: CARD } },
+                options: { fontSize: 10, italic: true, color: MUTE, colspan: headers.length, align: "center" as const, fill: { color: PANEL } },
               },
             ]];
         s.addTable([headRow, ...bodyRows], {
@@ -267,7 +289,8 @@ export function ExportDeckButton({
         ["SAP Material", "Material Description", "Date", "Qty", "Lot"],
         d.production.rows.map((r) => [r.code, r.name, dfmt(r.docDate), `${num(r.qty)} ${r.unit}`, r.lotNo]),
         [2, 4, 1.8, 1.6, 2],
-        `${num(d.production.docCount)} docs   ·   ผลิตได้ ${num(d.production.totalProduced)}   ·   สูญเสีย ${num(d.production.totalProdLoss)}   ·   Yield ${d.production.yieldPct.toFixed(1)}%`
+        `${num(d.production.docCount)} docs   ·   ผลิตได้ ${num(d.production.totalProduced)}   ·   สูญเสีย ${num(d.production.totalProdLoss)}   ·   Yield ${d.production.yieldPct.toFixed(1)}%`,
+        TEAL
       );
 
       tableSlide(
@@ -275,7 +298,8 @@ export function ExportDeckButton({
         ["SAP Material", "Material Description", "On hand", "Value", "Lots"],
         d.balances.map((r) => [r.code, r.name, `${num(r.onHand)} ${r.unit}`, money(r.value), num(r.lotCount)]),
         [2, 4.2, 2, 2.2, 1],
-        `มูลค่าคงเหลือรวม ${money(st.inventoryValue)}   ·   ${num(st.skuCount)} SKU   ·   ${num(st.lotCount)} lots`
+        `มูลค่าคงเหลือรวม ${money(st.inventoryValue)}   ·   ${num(st.skuCount)} SKU   ·   ${num(st.lotCount)} lots`,
+        BLUE
       );
 
       tableSlide(
@@ -286,7 +310,8 @@ export function ExportDeckButton({
           num(r.ageDays), r.daysLeft == null ? "— ไม่มีวันหมดอายุ" : r.daysLeft < 0 ? `หมดอายุแล้ว ${Math.abs(r.daysLeft)} วัน` : `${num(r.daysLeft)} วัน`,
         ]),
         [1.9, 2.9, 1.7, 1, 1.5, 1.3, 2.6],
-        "เรียงจากล็อตที่รับเข้ามานานที่สุด · อายุคงเหลือ = จำนวนวันก่อนหมดอายุ"
+        "เรียงจากล็อตที่รับเข้ามานานที่สุด · อายุคงเหลือ = จำนวนวันก่อนหมดอายุ",
+        ORANGE
       );
 
       tableSlide(
@@ -294,7 +319,8 @@ export function ExportDeckButton({
         ["SAP Material", "Material Description", "Date", "Qty", "Lot", "Loc"],
         d.receiving.rows.map((r) => [r.code, r.name, dfmt(r.docDate), `${num(r.qty)} ${r.unit}`, r.lotNo, r.location]),
         [2, 3.6, 1.8, 1.6, 2, 1],
-        `${num(d.receiving.docCount)} docs   ·   รับเข้ารวม ${num(d.receiving.totalUnits)} units`
+        `${num(d.receiving.docCount)} docs   ·   รับเข้ารวม ${num(d.receiving.totalUnits)} units`,
+        TEAL
       );
 
       tableSlide(
@@ -302,7 +328,8 @@ export function ExportDeckButton({
         ["SAP Material", "Material Description", "Date", "Qty", "Lot", "Issued To"],
         d.issuing.rows.map((r) => [r.code, r.name, dfmt(r.docDate), `${num(r.qty)} ${r.unit}`, r.lotNo, r.issueTo]),
         [2, 3.4, 1.8, 1.6, 2, 2],
-        `${num(d.issuing.docCount)} docs   ·   จ่ายออกรวม ${num(d.issuing.totalUnits)} units`
+        `${num(d.issuing.docCount)} docs   ·   จ่ายออกรวม ${num(d.issuing.totalUnits)} units`,
+        ORANGE
       );
 
       tableSlide(
@@ -310,7 +337,8 @@ export function ExportDeckButton({
         ["SAP Material", "Description", "Date", "Qty", "Lot", "From", "To"],
         d.transfer.rows.map((r) => [r.code, r.name, dfmt(r.docDate), `${num(r.qty)} ${r.unit}`, r.lotNo, r.from, r.to]),
         [2, 3, 1.6, 1.5, 1.9, 1.3, 1.3],
-        `${num(d.transfer.docCount)} docs   ·   ย้ายรวม ${num(d.transfer.totalUnits)} units`
+        `${num(d.transfer.docCount)} docs   ·   ย้ายรวม ${num(d.transfer.totalUnits)} units`,
+        BLUE
       );
 
       tableSlide(
@@ -321,7 +349,8 @@ export function ExportDeckButton({
           r.variance > 0 ? `+${num(r.variance)}` : num(r.variance), r.lotNo,
         ]),
         [2, 3, 1.6, 1.4, 1.4, 1.5, 2],
-        `${num(d.count.docCount)} docs   ·   ${num(d.count.lineCount)} lines   ·   Accuracy ${d.count.accuracyPct.toFixed(1)}%`
+        `${num(d.count.docCount)} docs   ·   ${num(d.count.lineCount)} lines   ·   Accuracy ${d.count.accuracyPct.toFixed(1)}%`,
+        TEAL
       );
 
       tableSlide(
@@ -329,10 +358,11 @@ export function ExportDeckButton({
         ["PO No.", "Vendor", "Date", "SAP Material", "Ordered", "Received", "Remaining", "Status"],
         d.po.rows.map((r) => [r.no, r.vendor, dfmt(r.date), r.code, num(r.ordered), num(r.received), num(r.remaining), r.status]),
         [1.8, 2.6, 1.6, 2, 1.3, 1.3, 1.4, 1.4],
-        `${num(d.po.docCount)} POs   ·   รับแล้ว ${num(d.po.totalReceived)} / สั่ง ${num(d.po.totalOrdered)}`
+        `${num(d.po.docCount)} POs   ·   รับแล้ว ${num(d.po.totalReceived)} / สั่ง ${num(d.po.totalOrdered)}`,
+        BLUE
       );
 
-      await pptx.writeFile({ fileName: `NBC-Warehouse-Summary-${genDate.replace(/\//g, "-")}.pptx` });
+      await pptx.writeFile({ fileName: `NBC-Warehouse-Monthly-Report-${genDate.replace(/\//g, "-")}.pptx` });
     } finally {
       setBusy(false);
     }
