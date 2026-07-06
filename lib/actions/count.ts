@@ -30,7 +30,8 @@ const ZONE_LABEL_MAP: Record<string, Zone | null> = {
 export async function getLotsByZoneAction(pullZone: string) {
   const zone = ZONE_LABEL_MAP[pullZone] ?? null;
   const lots = await db.lot.findMany({
-    where: zone ? { location: { zone } } : {},
+    // Only pull lots that still have stock — skip depleted / placeholder lots.
+    where: { qty: { gt: 0 }, ...(zone ? { location: { zone } } : {}) },
     include: { product: true },
     orderBy: [{ locationCode: "asc" }, { productCode: "asc" }],
   });
