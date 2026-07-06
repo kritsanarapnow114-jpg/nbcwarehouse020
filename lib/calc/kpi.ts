@@ -76,7 +76,7 @@ export async function deliveryKpi(range: Range): Promise<KpiResult> {
 
 export async function qualityKpi(range: Range): Promise<KpiResult> {
   const receipts = await db.receipt.findMany({
-    where: { mode: "PRODUCTION", docDate: { gte: range.start, lte: range.end } },
+    where: { mode: "PRODUCTION", docDate: { gte: range.start, lte: range.end }, reversedAt: null },
   });
   const produced = receipts.reduce((s, r) => s + (r.producedTotal ?? 0), 0);
   const loss = receipts.reduce((s, r) => s + (r.prodLoss ?? 0), 0);
@@ -117,7 +117,7 @@ export async function accuracyKpi(range: Range): Promise<KpiResult> {
 /** Full-history breakdowns for the KPI drill-down modals — intentionally not period-filtered. */
 export async function qualityBreakdown() {
   const receipts = await db.receipt.findMany({
-    where: { mode: "PRODUCTION" },
+    where: { mode: "PRODUCTION", reversedAt: null },
     orderBy: { docDate: "desc" },
     take: 30,
   });

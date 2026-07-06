@@ -77,6 +77,7 @@ export async function getAccuracyBreakdownAction() {
 
 export async function getRecentIssueDocsAction() {
   const issues = await db.issue.findMany({
+    where: { reversedAt: null },
     orderBy: { docDate: "desc" },
     take: 15,
     select: { docNo: true },

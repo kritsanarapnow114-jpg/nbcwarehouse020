@@ -5,10 +5,12 @@ import { productLabel } from "@/lib/calc/productName";
 
 export async function getReportData(range: Range) {
   const docDateInRange = { docDate: { gte: range.start, lte: range.end } };
+  // Reversed documents are a wash — leave them out of the reports.
+  const activeInRange = { ...docDateInRange, reversedAt: null };
 
   const [receipts, issues, adjustments, transfers, pos, counts] = await Promise.all([
     db.receipt.findMany({
-      where: docDateInRange,
+      where: activeInRange,
       include: {
         po: true,
         lines: { include: { product: true } },
@@ -17,17 +19,17 @@ export async function getReportData(range: Range) {
       orderBy: { docDate: "desc" },
     }),
     db.issue.findMany({
-      where: docDateInRange,
+      where: activeInRange,
       include: { lines: { include: { product: true, selectedLot: true } } },
       orderBy: { docDate: "desc" },
     }),
     db.adjustment.findMany({
-      where: docDateInRange,
+      where: activeInRange,
       include: { lines: { include: { lot: { include: { product: true } } } } },
       orderBy: { docDate: "desc" },
     }),
     db.transfer.findMany({
-      where: docDateInRange,
+      where: activeInRange,
       include: { lines: { include: { lot: { include: { product: true } } } } },
       orderBy: { docDate: "desc" },
     }),

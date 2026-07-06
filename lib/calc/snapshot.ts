@@ -26,19 +26,19 @@ export async function getLotsAsOf(asOf: Date): Promise<LotSnapshot[]> {
   const [lots, laterReceiptLines, laterIssueLines, laterAdjLines, laterTransferLines] = await Promise.all([
     db.lot.findMany(),
     db.receiptLine.findMany({
-      where: { receipt: { docDate: { gt: asOf } } },
+      where: { receipt: { docDate: { gt: asOf }, reversedAt: null } },
       select: { lotId: true, recvQty: true },
     }),
     db.issueLine.findMany({
-      where: { issue: { docDate: { gt: asOf } } },
+      where: { issue: { docDate: { gt: asOf }, reversedAt: null } },
       select: { selectedLotId: true, qty: true },
     }),
     db.adjustmentLine.findMany({
-      where: { adjustment: { docDate: { gt: asOf } } },
+      where: { adjustment: { docDate: { gt: asOf }, reversedAt: null } },
       select: { lotId: true, sysQty: true, countedQty: true },
     }),
     db.transferLine.findMany({
-      where: { transfer: { docDate: { gt: asOf } } },
+      where: { transfer: { docDate: { gt: asOf }, reversedAt: null } },
       select: { lotId: true, fromLocationCode: true },
       orderBy: { transfer: { docDate: "asc" } },
     }),

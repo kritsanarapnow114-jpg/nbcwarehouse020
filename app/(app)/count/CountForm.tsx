@@ -153,6 +153,83 @@ export function CountForm({
     );
   }
 
+  function handlePrint() {
+    const esc = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    type PrintRow = {
+      code: string;
+      name: string;
+      lot: string;
+      loc: string;
+      sys: number;
+      counted: number;
+      off: boolean;
+    };
+    const rows: PrintRow[] = [
+      ...lines.map((l) => ({
+        code: l.productCode,
+        name: l.name,
+        lot: l.lotNo,
+        loc: l.locationCode,
+        sys: l.sysQty,
+        counted: Number(l.counted) || 0,
+        off: false,
+      })),
+      ...offLines.map((l) => ({
+        code: l.productCode,
+        name: l.name,
+        lot: l.lotNo || "-",
+        loc: l.locationCode,
+        sys: 0,
+        counted: Number(l.counted) || 0,
+        off: true,
+      })),
+    ];
+    const w = window.open("", "_blank", "width=900,height=980");
+    if (!w) return;
+    w.document.write(`
+      <html><head><title>Stock Count</title>
+      <style>
+        body{font-family:sans-serif;padding:32px;color:#16202e}
+        h2{margin:0 0 4px}
+        .meta{font-size:13px;color:#69748a;margin-bottom:16px}
+        table{width:100%;border-collapse:collapse;margin-top:8px}
+        th,td{border:1px solid #ccc;padding:7px 9px;font-size:12.5px;text-align:left}
+        th{background:#f2f5f8}
+        td.num,th.num{text-align:right}
+        .off{background:#fff8ec}
+        .tag{font-size:10px;background:#f4c65a;color:#7a5b00;padding:1px 5px;border-radius:4px;margin-left:6px}
+      </style></head><body>
+      <h2>Stock Count (นับสต็อก)</h2>
+      <div class="meta">Pull: ${esc(pullZone)} &nbsp;·&nbsp; Doc date: ${esc(docDate)} &nbsp;·&nbsp; ${rows.length} lines</div>
+      <table>
+        <thead><tr>
+          <th>SAP Material Master</th><th>Material Description</th><th>Lot</th>
+          <th>Location</th><th class="num">System</th><th class="num">Counted</th><th class="num">Variance</th>
+        </tr></thead>
+        <tbody>
+          ${rows
+            .map((r) => {
+              const v = r.counted - r.sys;
+              return `<tr class="${r.off ? "off" : ""}">
+                <td>${esc(r.code)}</td>
+                <td>${esc(r.name)}${r.off ? '<span class="tag">นอกระบบ</span>' : ""}</td>
+                <td>${esc(r.lot)}</td>
+                <td>${esc(r.loc)}</td>
+                <td class="num">${r.sys.toLocaleString()}</td>
+                <td class="num">${r.counted.toLocaleString()}</td>
+                <td class="num">${v > 0 ? "+" : ""}${v}</td>
+              </tr>`;
+            })
+            .join("")}
+        </tbody>
+      </table>
+      </body></html>
+    `);
+    w.document.close();
+    w.print();
+  }
+
   return (
     <>
       <div className="overflow-hidden rounded-[14px] border border-[#e7ebf1] bg-white shadow-[0_1px_2px_rgba(20,30,48,.04),0_6px_18px_rgba(20,30,48,.035)]">
@@ -339,6 +416,13 @@ export function CountForm({
             )}
           </div>
           <div className="flex-1" />
+          <button
+            onClick={handlePrint}
+            disabled={lines.length === 0 && offLines.length === 0}
+            className={buttonClass("secondary")}
+          >
+            ⎙ Print
+          </button>
           <button
             onClick={() => setPopup({ kind: "draft", message: "Draft saved locally (not yet posted)." })}
             className={buttonClass("secondary")}

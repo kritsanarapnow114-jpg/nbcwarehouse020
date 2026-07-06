@@ -29,19 +29,19 @@ export async function buildStockCard(
   const [receiptLines, issueLines, adjustmentLines, transferLines] =
     await Promise.all([
       db.receiptLine.findMany({
-        where: { productCode },
+        where: { productCode, receipt: { reversedAt: null } },
         include: { receipt: true },
       }),
       db.issueLine.findMany({
-        where: { productCode },
+        where: { productCode, issue: { reversedAt: null } },
         include: { issue: true, selectedLot: true },
       }),
       db.adjustmentLine.findMany({
-        where: { lot: { productCode } },
+        where: { lot: { productCode }, adjustment: { reversedAt: null } },
         include: { adjustment: true, lot: true },
       }),
       db.transferLine.findMany({
-        where: { lot: { productCode } },
+        where: { lot: { productCode }, transfer: { reversedAt: null } },
         include: { transfer: true, lot: true },
       }),
     ]);

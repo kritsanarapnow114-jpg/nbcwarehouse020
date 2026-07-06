@@ -69,6 +69,7 @@ export async function getPurchaseOrders(opts?: {
     include: {
       lines: { include: { product: true } },
       receipts: {
+        where: { reversedAt: null },
         include: { lines: { include: { product: true } } },
         orderBy: { docDate: "desc" },
       },

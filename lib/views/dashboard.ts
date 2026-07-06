@@ -31,11 +31,11 @@ export async function getInventoryStats(range: Range) {
 
   const [recvAgg, issAgg] = await Promise.all([
     db.receiptLine.findMany({
-      where: { receipt: { docDate: { gte: range.start, lte: range.end } } },
+      where: { receipt: { docDate: { gte: range.start, lte: range.end }, reversedAt: null } },
       select: { recvQty: true },
     }),
     db.issueLine.findMany({
-      where: { issue: { docDate: { gte: range.start, lte: range.end } } },
+      where: { issue: { docDate: { gte: range.start, lte: range.end }, reversedAt: null } },
       select: { qty: true },
     }),
   ]);
@@ -154,12 +154,12 @@ export async function getMovementDetail(range: Range, limit = 5) {
   const [recv, iss] = await Promise.all([
     db.receiptLine.groupBy({
       by: ["productCode"],
-      where: { receipt: { docDate: { gte: range.start, lte: range.end } } },
+      where: { receipt: { docDate: { gte: range.start, lte: range.end }, reversedAt: null } },
       _sum: { recvQty: true },
     }),
     db.issueLine.groupBy({
       by: ["productCode"],
-      where: { issue: { docDate: { gte: range.start, lte: range.end } } },
+      where: { issue: { docDate: { gte: range.start, lte: range.end }, reversedAt: null } },
       _sum: { qty: true },
     }),
   ]);
@@ -191,7 +191,7 @@ export async function getSlowMoving(asOf: Date = todayBangkok(), thresholdDays =
   }
 
   const lastIssues = await db.issueLine.findMany({
-    where: { issue: { docDate: { lte: asOf } } },
+    where: { issue: { docDate: { lte: asOf }, reversedAt: null } },
     include: { issue: true },
   });
   const lastIssueByProduct = new Map<string, Date>();
@@ -283,11 +283,11 @@ export async function getMovementBuckets(range: Range): Promise<MovementBucket[]
 
   const [recvLines, issueLines] = await Promise.all([
     db.receiptLine.findMany({
-      where: { receipt: { docDate: { gte: range.start, lte: range.end } } },
+      where: { receipt: { docDate: { gte: range.start, lte: range.end }, reversedAt: null } },
       include: { receipt: true },
     }),
     db.issueLine.findMany({
-      where: { issue: { docDate: { gte: range.start, lte: range.end } } },
+      where: { issue: { docDate: { gte: range.start, lte: range.end }, reversedAt: null } },
       include: { issue: true },
     }),
   ]);
