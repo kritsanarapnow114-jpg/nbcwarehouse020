@@ -11,10 +11,10 @@ import { fmtDateISO, fmtDateBE } from "@/lib/calc/date";
 type Line = IssueFormData["products"][number] & { selectedLotId: string; qty: string };
 
 const ISSUE_TO_OPTIONS = [
-  "Production — Line A",
-  "Production — Line B",
-  "Wholesale — Customer",
-  "Write-off",
+  "PRODUCTION-AREA110",
+  "PRODUCTION-AREA140",
+  "LAB-AREA010",
+  "PACKING LINE-AREA020",
 ];
 
 export function IssueForm({ data }: { data: IssueFormData }) {

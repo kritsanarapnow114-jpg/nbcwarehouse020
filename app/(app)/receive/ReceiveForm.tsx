@@ -202,7 +202,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
           ) : (
             <div>
               <div className="mb-1 text-[11.5px] text-[#69748a]">Source (รับจาก)</div>
-              <div className="pt-1 text-[13px] font-medium">Production — Line A (ฝ่ายผลิต)</div>
+              <div className="pt-1 text-[13px] font-medium">PACKING LINE-AREA020</div>
             </div>
           )}
           {mode === "PO" && (
