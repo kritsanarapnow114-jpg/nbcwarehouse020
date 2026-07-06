@@ -21,6 +21,7 @@ const BANNER = "EAF4F8"; // soft blue tint
 const AMBER = ORANGE;
 const RED = CORAL;
 const CATS = [BLUE, TEAL, ORANGE, CYAN, SLATE, CORAL];
+const FONT = "Aptos Narrow";
 
 const money = (v: number) => "฿" + Math.round(v).toLocaleString();
 const num = (v: number) => Math.round(v).toLocaleString();
@@ -56,21 +57,18 @@ export function ExportDeckButton({
     setBusy(true);
     try {
       const PptxGenJS = (await import("pptxgenjs")).default;
-      const [logo, cover, worldmap] = await Promise.all([
-        loadImg("/deck/logo.jpeg"),
-        loadImg("/deck/cover.png"),
-        loadImg("/deck/worldmap.png"),
-      ]);
+      const logo = await loadImg("/deck/logo.jpeg");
 
       const pptx = new PptxGenJS();
       pptx.defineLayout({ name: "WIDE", width: 13.333, height: 7.5 });
       pptx.layout = "WIDE";
       pptx.author = "NBC Warehouse";
       pptx.title = "NBC Warehouse — Monthly Report";
+      pptx.theme = { headFontFace: FONT, bodyFontFace: FONT };
 
       const W = 13.333;
-      const H = 7.5;
       const CT = pptx.ChartType;
+      const cf = { dataLabelFontFace: FONT, catAxisLabelFontFace: FONT, valAxisLabelFontFace: FONT };
       const genDate = new Date().toLocaleDateString("en-GB");
       let page = 0;
 
@@ -135,7 +133,7 @@ export function ExportDeckButton({
         s.addChart(
           CT.doughnut,
           [{ name: "g", labels: ["value", "rest"], values: [p, 100 - p] }],
-          { x: cx, y: cy, w: size, h: size, holeSize: 74, chartColors: [color, TRACK], showLegend: false, showTitle: false, showValue: false, showPercent: false, dataBorder: { pt: 0, color: PANEL } }
+          { x: cx, y: cy, w: size, h: size, holeSize: 74, chartColors: [color, TRACK], showLegend: false, showTitle: false, ...cf, showValue: false, showPercent: false, dataBorder: { pt: 0, color: PANEL } }
         );
         s.addText(`${Math.round(p)}%`, { x: cx, y: cy, w: size, h: size, align: "center", valign: "middle", fontSize: 20, bold: true, color: SLATE });
         s.addText(label, { x: x + 0.1, y: y + h - 0.52, w: w - 0.2, h: 0.42, fontSize: 10, bold: true, color: SLATE, align: "center", valign: "middle" });
@@ -144,20 +142,25 @@ export function ExportDeckButton({
       const st = summary.stats;
       const d = summary.detail;
 
-      // ================= Slide 1: Cover (warehouse photo) =================
+      // ================= Slide 1: Title (blue) =================
       const t = pptx.addSlide();
-      t.background = { color: SLATE };
-      if (cover) t.addImage({ data: cover, x: 0, y: 0, w: W, h: H, sizing: { type: "cover", w: W, h: H } });
-      // legibility scrim on the lower-left
-      t.addShape("roundRect", { x: 0, y: 3.9, w: 9.4, h: 3.6, rectRadius: 0.02, fill: { color: INK, transparency: 22 } });
-      t.addShape("rect", { x: 0, y: 0, w: W, h: 0.16, fill: { color: BLUE } });
-      if (logo) t.addImage({ data: logo, x: 0.6, y: 0.55, w: LOGO_W * 1.7, h: LOGO_H * 1.7 });
-      t.addText("MONTHLY WAREHOUSE REPORT", { x: 0.65, y: 4.15, w: 9, h: 0.4, fontSize: 14, bold: true, color: "CFEAF4", charSpacing: 3 });
-      t.addText("NBC Warehouse", { x: 0.6, y: 4.55, w: 9.2, h: 0.9, fontSize: 44, bold: true, color: "FFFFFF" });
-      t.addText("Executive Summary · สรุปผู้บริหารคลังสินค้า", { x: 0.63, y: 5.55, w: 9, h: 0.5, fontSize: 18, color: "EAF6FB" });
-      t.addShape("roundRect", { x: 0.65, y: 6.25, w: 5.4, h: 0.5, rectRadius: 0.25, fill: { color: BLUE } });
-      t.addText(`ช่วงข้อมูล (Period):  ${periodLabel}`, { x: 0.65, y: 6.25, w: 5.4, h: 0.5, fontSize: 12, bold: true, color: "FFFFFF", align: "center", valign: "middle" });
-      t.addText(`Generated: ${genDate}`, { x: W - 3.5, y: 6.95, w: 3.0, h: 0.3, fontSize: 9.5, color: "DDE8EE", align: "right" });
+      t.background = { color: BLUE };
+      t.addShape("ellipse", { x: 9.3, y: -2.0, w: 6.0, h: 6.0, fill: { color: CYAN, transparency: 62 } });
+      t.addShape("ellipse", { x: 11.0, y: 2.4, w: 4.6, h: 4.6, fill: { color: TEAL, transparency: 70 } });
+      t.addShape("rect", { x: 0, y: 0, w: W, h: 0.18, fill: { color: TEAL } });
+      if (logo) {
+        t.addShape("roundRect", { x: 0.6, y: 0.55, w: 2.6, h: 1.05, rectRadius: 0.1, fill: { color: "FFFFFF" }, shadow: SHADOW });
+        t.addImage({ data: logo, x: 0.82, y: 0.73, w: LOGO_W * 1.55, h: LOGO_H * 1.55 });
+      }
+      t.addText("MONTHLY WAREHOUSE REPORT", { x: 0.65, y: 2.35, w: 11, h: 0.4, fontSize: 14, bold: true, color: "CFEFFF", charSpacing: 3 });
+      t.addText("NBC Warehouse", { x: 0.6, y: 2.8, w: 11.7, h: 1.0, fontSize: 48, bold: true, color: "FFFFFF" });
+      t.addText("Executive Summary · สรุปผู้บริหารคลังสินค้า", { x: 0.63, y: 3.95, w: 11, h: 0.5, fontSize: 20, color: "EAF6FB" });
+      t.addShape("roundRect", { x: 0.65, y: 4.75, w: 5.6, h: 0.52, rectRadius: 0.26, fill: { color: "FFFFFF" } });
+      t.addText(`ช่วงข้อมูล (Period):  ${periodLabel}`, { x: 0.65, y: 4.75, w: 5.6, h: 0.52, fontSize: 12, bold: true, color: BLUE, align: "center", valign: "middle" });
+      tile(t, 0.65, 5.5, 3.72, 1.45, "Inventory Value (มูลค่าคงเหลือ)", money(st.inventoryValue), BLUE, `${num(st.skuCount)} SKU · ${num(st.lotCount)} lots`, 18, BLUE);
+      tile(t, 4.63, 5.5, 3.72, 1.45, "Received (รับเข้า)", num(st.receivedUnits), TEAL, "units this period", 18, TEAL);
+      tile(t, 8.61, 5.5, 3.72, 1.45, "Issued (จ่ายออก)", num(st.issuedUnits), ORANGE, "units this period", 18, ORANGE);
+      t.addText(`Generated: ${genDate}`, { x: W - 3.5, y: 5.05, w: 3.0, h: 0.3, fontSize: 9.5, color: "DDE8EE", align: "right" });
 
       // ================= Slide 2: Executive Dashboard =================
       const g = pptx.addSlide();
@@ -186,7 +189,7 @@ export function ExportDeckButton({
       if (summary.categories.length)
         g.addChart(CT.bar, [{ name: "Value", labels: summary.categories.map((c) => c.name), values: summary.categories.map((c) => c.value) }], {
           x: CX + 0.1, y: TY[0] + 0.5, w: cardW - 0.2, h: 1.8, barDir: "col", chartColors: CATS,
-          showValue: false, showLegend: false, showTitle: false,
+          showValue: false, showLegend: false, showTitle: false, ...cf,
           catAxisLabelColor: SLATE, catAxisLabelFontSize: 7, valAxisLabelColor: MUTE, valAxisLabelFontSize: 7, valGridLine: { style: "dash", color: TRACK, size: 1 }, barGapWidthPct: 40,
         });
       const bx = CX + cardW + 0.18;
@@ -195,7 +198,7 @@ export function ExportDeckButton({
         const bColors = summary.expiry.buckets.map((_, i) => (i < 3 ? RED : i === 3 ? AMBER : TEAL));
         g.addChart(CT.bar, [{ name: "Value", labels: summary.expiry.buckets.map((b) => b.label), values: summary.expiry.buckets.map((b) => b.value) }], {
           x: bx + 0.1, y: TY[0] + 0.5, w: cardW - 0.2, h: 1.8, barDir: "col", chartColors: bColors,
-          showValue: false, showLegend: false, showTitle: false,
+          showValue: false, showLegend: false, showTitle: false, ...cf,
           catAxisLabelColor: SLATE, catAxisLabelFontSize: 7, valAxisLabelColor: MUTE, valAxisLabelFontSize: 7, valGridLine: { style: "dash", color: TRACK, size: 1 }, barGapWidthPct: 40,
         });
       }
@@ -208,7 +211,7 @@ export function ExportDeckButton({
           x: CX + 0.12, y: R2Y + 0.5, w: stW - 0.24, h: R2H - 0.65, barDir: "bar", chartColors: [BLUE],
           showValue: true, dataLabelColor: SLATE, dataLabelFontSize: 8, dataLabelFontBold: true,
           valAxisMinVal: 0, valAxisMaxVal: 100, valAxisLabelColor: MUTE, valAxisLabelFontSize: 7, catAxisLabelColor: SLATE, catAxisLabelFontSize: 8,
-          showLegend: false, showTitle: false, valGridLine: { style: "dash", color: TRACK, size: 1 }, barGapWidthPct: 45,
+          showLegend: false, showTitle: false, ...cf, valGridLine: { style: "dash", color: TRACK, size: 1 }, barGapWidthPct: 45,
         });
       gauge(g, CX + stW + 0.18, R2Y, gaugeW, R2H, "Production Yield (ผลิต)", d.production.yieldPct, TEAL);
       gauge(g, CX + stW + 0.18 + gaugeW + 0.18, R2Y, gaugeW, R2H, "Count Accuracy (นับสต็อก)", d.count.accuracyPct, BLUE);
@@ -219,20 +222,23 @@ export function ExportDeckButton({
       summary.kpis.forEach((kpi, i) => {
         const x = 0.5 + i * (kw + 0.35);
         const acc = kpi.tone === "ok" ? TEAL : ORANGE;
-        tile(k, x, 2.1, kw, 2.5, kpi.label, kpi.value, acc, `${kpi.th} · ${kpi.target}`, 24, acc);
+        tile(k, x, 2.1, kw, 4.05, kpi.label, kpi.value, acc, `${kpi.th} · เป้าหมาย ${kpi.target}`, 40, acc);
       });
-      k.addText("เขียว = ผ่านเกณฑ์ · ส้ม = เฝ้าระวัง (เทียบกับเป้าหมาย)", { x: 0.5, y: 4.9, w: 12, h: 0.4, fontSize: 11, italic: true, color: MUTE });
+      k.addText("เขียว = ผ่านเกณฑ์ · ส้ม = เฝ้าระวัง (เทียบกับเป้าหมาย)", { x: 0.5, y: 6.35, w: 12, h: 0.4, fontSize: 12.5, italic: true, color: MUTE });
 
-      // ================= Divider: Operations Detail =================
+      // ================= Divider: Operations Detail (blue) =================
       const dv = pptx.addSlide();
-      dv.background = { color: BG };
-      if (worldmap) dv.addImage({ data: worldmap, x: 0, y: 0.5, w: W, h: H - 1.0, sizing: { type: "contain", w: W, h: H - 1.0 } });
-      dv.addShape("rect", { x: 0.8, y: 3.05, w: 0.9, h: 0.09, fill: { color: BLUE } });
-      dv.addText("SECTION 02", { x: 0.8, y: 2.5, w: 10, h: 0.4, fontSize: 13, bold: true, color: BLUE, charSpacing: 3 });
-      dv.addText("Operations Detail", { x: 0.78, y: 3.25, w: 11, h: 0.9, fontSize: 42, bold: true, color: SLATE });
-      dv.addText("รายละเอียดการดำเนินงาน", { x: 0.8, y: 4.3, w: 11, h: 0.5, fontSize: 18, color: MUTE });
-      if (logo) dv.addImage({ data: logo, x: W - 0.5 - LOGO_W, y: 0.32, w: LOGO_W, h: LOGO_H });
-      footer(dv);
+      dv.background = { color: BLUE };
+      dv.addShape("ellipse", { x: 9.6, y: -1.8, w: 5.6, h: 5.6, fill: { color: CYAN, transparency: 64 } });
+      dv.addShape("ellipse", { x: 11.2, y: 3.2, w: 4.4, h: 4.4, fill: { color: TEAL, transparency: 72 } });
+      dv.addShape("rect", { x: 0.8, y: 3.05, w: 0.9, h: 0.09, fill: { color: "FFFFFF" } });
+      dv.addText("SECTION 02", { x: 0.8, y: 2.5, w: 10, h: 0.4, fontSize: 14, bold: true, color: "CFEFFF", charSpacing: 3 });
+      dv.addText("Operations Detail", { x: 0.78, y: 3.25, w: 11.5, h: 0.9, fontSize: 46, bold: true, color: "FFFFFF" });
+      dv.addText("รายละเอียดการดำเนินงาน · ผลิต · ยอดคงเหลือ · Aging · GR · GI · TF · Count · PO", { x: 0.8, y: 4.35, w: 11.8, h: 0.5, fontSize: 16, color: "EAF6FB" });
+      if (logo) {
+        dv.addShape("roundRect", { x: W - 0.5 - 2.3, y: 0.4, w: 2.3, h: 0.92, rectRadius: 0.1, fill: { color: "FFFFFF" }, shadow: SHADOW });
+        dv.addImage({ data: logo, x: W - 0.5 - 2.3 + 0.2, y: 0.56, w: LOGO_W, h: LOGO_H });
+      }
 
       // ================= Detail table slides =================
       const dfmt = (iso: string) => new Date(iso).toLocaleDateString("en-GB");
@@ -243,43 +249,48 @@ export function ExportDeckButton({
         summaryLine?: string, accent = BLUE
       ) => {
         const s = newSlide(title, th, no, accent);
-        let top = 2.1;
+        let top = 2.05;
         if (summaryLine) {
-          s.addShape("roundRect", { x: 0.5, y: 1.6, w: 12.33, h: 0.42, rectRadius: 0.06, fill: { color: BANNER }, line: { color: CARDLINE, width: 1 } });
-          s.addText(summaryLine, { x: 0.7, y: 1.6, w: 12, h: 0.42, fontSize: 11, bold: true, color: BLUE, valign: "middle" });
-          top = 2.28;
+          s.addShape("roundRect", { x: 0.5, y: 1.58, w: 12.33, h: 0.5, rectRadius: 0.06, fill: { color: BANNER }, line: { color: CARDLINE, width: 1 } });
+          s.addText(summaryLine, { x: 0.7, y: 1.58, w: 12, h: 0.5, fontSize: 12.5, bold: true, color: BLUE, valign: "middle", fontFace: FONT });
+          top = 2.32;
         }
         const totalW = 12.33;
         const wsum = weights.reduce((a, b) => a + b, 0);
         const colW = weights.map((wt) => (wt / wsum) * totalW);
+        // Grow the rows to fill the slide so there's no big empty gap below.
+        const nRows = Math.max(rows.length, 1) + 1; // + header
+        const avail = 6.98 - top;
+        const rowH = Math.min(0.7, Math.max(0.3, avail / nRows));
         const headRow: PptxGenJSLib.TableRow = headers.map((h) => ({
           text: h,
-          options: { bold: true, color: "FFFFFF", fill: { color: accent }, fontSize: 10, valign: "middle", margin: [3, 4, 3, 4] as [number, number, number, number] },
+          options: { bold: true, color: "FFFFFF", fill: { color: accent }, fontSize: 12, valign: "middle", fontFace: FONT, margin: [3, 5, 3, 5] as [number, number, number, number] },
         }));
         const bodyRows: PptxGenJSLib.TableRow[] = rows.length
           ? rows.map((r, ri) =>
               r.map((c, ci) => ({
                 text: String(c),
                 options: {
-                  fontSize: 9.5,
+                  fontSize: 11.5,
                   bold: ci === 0,
                   color: ci === 0 ? SLATE : INK,
                   fill: { color: ri % 2 ? PANEL : BANNER },
                   valign: "middle",
-                  margin: [2, 4, 2, 4] as [number, number, number, number],
+                  fontFace: FONT,
+                  margin: [2, 5, 2, 5] as [number, number, number, number],
                 },
               }))
             )
           : [[
               {
                 text: "— no data for this period (ไม่มีข้อมูลช่วงนี้) —",
-                options: { fontSize: 10, italic: true, color: MUTE, colspan: headers.length, align: "center" as const, fill: { color: PANEL } },
+                options: { fontSize: 12, italic: true, color: MUTE, colspan: headers.length, align: "center" as const, fill: { color: PANEL }, fontFace: FONT },
               },
             ]];
         s.addTable([headRow, ...bodyRows], {
           x: 0.5, y: top, w: totalW, colW,
           border: { type: "solid", color: CARDLINE, pt: 0.5 },
-          rowH: 0.3, valign: "middle",
+          rowH, valign: "middle",
         });
         return s;
       };
