@@ -47,6 +47,8 @@ export function ExportDeckButton({
 
       const W = 13.333;
       const CT = pptx.ChartType;
+      // Shared 3-D camera angle for every chart, so the whole deck reads as 3D.
+      const v3d = { v3DRotX: 14, v3DRotY: 20, v3DPerspective: 40, v3DRAngAx: false };
       const genDate = new Date().toLocaleDateString("en-GB");
       let page = 0;
 
@@ -177,14 +179,14 @@ export function ExportDeckButton({
       panel(st, 4.35, 1.85, 8.45, 4.9, "By zone (แยกตามโซน)");
       if (summary.storage.zones.length) {
         st.addChart(
-          CT.bar,
+          CT.bar3d,
           [{ name: "Utilization %", labels: summary.storage.zones.map((z) => `Zone ${z.name}`), values: summary.storage.zones.map((z) => z.pct) }],
           {
-            x: 4.55, y: 2.45, w: 8.05, h: 4.15, barDir: "bar", chartColors: [GREEN],
-            showValue: true, dataLabelPosition: "outEnd", dataLabelColor: SLATE, dataLabelFontSize: 10, dataLabelFontBold: true,
+            x: 4.55, y: 2.4, w: 8.05, h: 4.25, barDir: "bar", bar3DShape: "box", ...v3d, chartColors: [GREEN],
+            showValue: true, dataLabelColor: SLATE, dataLabelFontSize: 10, dataLabelFontBold: true,
             valAxisMinVal: 0, valAxisMaxVal: 100, valAxisLabelColor: MUTE, valAxisLabelFontSize: 9,
             catAxisLabelColor: SLATE, catAxisLabelFontSize: 10, showLegend: false, showTitle: false,
-            barGapWidthPct: 45, valGridLine: { style: "dash", color: TRACK, size: 1 },
+            barGapWidthPct: 55, valGridLine: { style: "dash", color: TRACK, size: 1 },
           }
         );
       }
@@ -196,13 +198,12 @@ export function ExportDeckButton({
       panel(cat, 0.5, 1.85, 6.3, 4.9);
       if (summary.categories.length) {
         cat.addChart(
-          CT.doughnut,
+          CT.bar3d,
           [{ name: "Value", labels: summary.categories.map((c) => c.name), values: summary.categories.map((c) => c.value) }],
           {
-            x: 0.6, y: 2.0, w: 6.1, h: 4.6, holeSize: 58, chartColors: PALETTE,
-            showLegend: true, legendPos: "b", legendColor: SLATE, legendFontSize: 10,
-            showValue: false, showPercent: true, dataLabelColor: "FFFFFF", dataLabelFontSize: 10, dataLabelFontBold: true,
-            showTitle: false,
+            x: 0.62, y: 2.05, w: 6.06, h: 4.55, barDir: "col", bar3DShape: "cylinder", ...v3d, chartColors: PALETTE,
+            showValue: false, catAxisLabelColor: SLATE, catAxisLabelFontSize: 9,
+            valAxisLabelColor: MUTE, valAxisLabelFontSize: 8, showLegend: false, showTitle: false, barGapWidthPct: 60,
           }
         );
       }
@@ -223,13 +224,13 @@ export function ExportDeckButton({
       if (summary.expiry.buckets.length) {
         const bColors = summary.expiry.buckets.map((_, i) => (i < 3 ? RED : i === 3 ? GOLD : GREEN));
         ex.addChart(
-          CT.bar,
+          CT.bar3d,
           [{ name: "Value", labels: summary.expiry.buckets.map((b) => `${b.label} (${b.count})`), values: summary.expiry.buckets.map((b) => b.value) }],
           {
-            x: 4.55, y: 2.45, w: 8.05, h: 4.15, barDir: "col", chartColors: bColors,
+            x: 4.55, y: 2.4, w: 8.05, h: 4.25, barDir: "col", bar3DShape: "cylinder", ...v3d, chartColors: bColors,
             showValue: false, valAxisLabelColor: MUTE, valAxisLabelFontSize: 9,
             catAxisLabelColor: SLATE, catAxisLabelFontSize: 9.5, showLegend: false, showTitle: false,
-            barGapWidthPct: 40, valGridLine: { style: "dash", color: TRACK, size: 1 },
+            barGapWidthPct: 55, valGridLine: { style: "dash", color: TRACK, size: 1 },
           }
         );
       }
@@ -239,24 +240,26 @@ export function ExportDeckButton({
       panel(mv, 0.5, 1.85, 6.05, 4.9, "Received (รับเข้า)");
       if (summary.movement.received.length) {
         mv.addChart(
-          CT.bar,
+          CT.bar3d,
           [{ name: "Received", labels: summary.movement.received.map((r) => r.code), values: summary.movement.received.map((r) => r.qty) }],
           {
-            x: 0.7, y: 2.5, w: 5.65, h: 4.1, barDir: "bar", chartColors: [OK],
-            showValue: true, dataLabelPosition: "outEnd", dataLabelColor: SLATE, dataLabelFontSize: 9, dataLabelFontBold: true,
-            valAxisHidden: true, catAxisLabelColor: SLATE, catAxisLabelFontSize: 9, showLegend: false, showTitle: false, barGapWidthPct: 40,
+            x: 0.68, y: 2.45, w: 5.7, h: 4.15, barDir: "bar", bar3DShape: "box", ...v3d, chartColors: [OK],
+            showValue: true, dataLabelColor: SLATE, dataLabelFontSize: 9, dataLabelFontBold: true,
+            catAxisLabelColor: SLATE, catAxisLabelFontSize: 9, valAxisLabelColor: MUTE, valAxisLabelFontSize: 8,
+            showLegend: false, showTitle: false, barGapWidthPct: 55,
           }
         );
       } else mv.addText("— no data —", { x: 0.7, y: 3.5, w: 5, h: 0.3, fontSize: 11, color: MUTE });
       panel(mv, 6.75, 1.85, 6.05, 4.9, "Issued (จ่ายออก)");
       if (summary.movement.issued.length) {
         mv.addChart(
-          CT.bar,
+          CT.bar3d,
           [{ name: "Issued", labels: summary.movement.issued.map((r) => r.code), values: summary.movement.issued.map((r) => r.qty) }],
           {
-            x: 6.95, y: 2.5, w: 5.65, h: 4.1, barDir: "bar", chartColors: [ORANGE],
-            showValue: true, dataLabelPosition: "outEnd", dataLabelColor: SLATE, dataLabelFontSize: 9, dataLabelFontBold: true,
-            valAxisHidden: true, catAxisLabelColor: SLATE, catAxisLabelFontSize: 9, showLegend: false, showTitle: false, barGapWidthPct: 40,
+            x: 6.93, y: 2.45, w: 5.7, h: 4.15, barDir: "bar", bar3DShape: "box", ...v3d, chartColors: [ORANGE],
+            showValue: true, dataLabelColor: SLATE, dataLabelFontSize: 9, dataLabelFontBold: true,
+            catAxisLabelColor: SLATE, catAxisLabelFontSize: 9, valAxisLabelColor: MUTE, valAxisLabelFontSize: 8,
+            showLegend: false, showTitle: false, barGapWidthPct: 55,
           }
         );
       } else mv.addText("— no data —", { x: 6.95, y: 3.5, w: 5, h: 0.3, fontSize: 11, color: MUTE });
