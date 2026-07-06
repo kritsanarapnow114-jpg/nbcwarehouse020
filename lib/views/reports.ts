@@ -17,7 +17,7 @@ export async function getReportData(range: Range) {
     }),
     db.issue.findMany({
       where: docDateInRange,
-      include: { lines: { include: { product: true } } },
+      include: { lines: { include: { product: true, selectedLot: true } } },
       orderBy: { docDate: "desc" },
     }),
     db.adjustment.findMany({
@@ -42,37 +42,48 @@ export async function getReportData(range: Range) {
     }),
   ]);
 
-  // Receiving
-  const receiving = {
-    docCount: receipts.length,
-    totalUnits: receipts.reduce((s, r) => s + r.lines.reduce((ls, l) => ls + l.recvQty, 0), 0),
-    rows: receipts.map((r) => ({
-      id: r.id,
+  // Receiving — one row per product/lot line received
+  const receivingRows = receipts.flatMap((r) =>
+    r.lines.map((l) => ({
       docNo: r.docNo,
       docDate: r.docDate.toISOString(),
       mode: r.mode,
       poNo: r.po?.no ?? null,
-      qty: r.lines.reduce((s, l) => s + l.recvQty, 0),
-      lineCount: r.lines.length,
-    })),
+      code: l.productCode,
+      name: `${l.product.nameEn} (${l.product.nameTh})`,
+      lotNo: l.lotNo,
+      locationCode: l.locationCode,
+      qty: l.recvQty,
+      unit: l.product.unit,
+    }))
+  );
+  const receiving = {
+    docCount: receipts.length,
+    totalUnits: receivingRows.reduce((s, r) => s + r.qty, 0),
+    rows: receivingRows,
   };
 
-  // Issuing
-  const issuing = {
-    docCount: issues.length,
-    totalUnits: issues.reduce((s, i) => s + i.lines.reduce((ls, l) => ls + l.qty, 0), 0),
-    rows: issues.map((i) => ({
-      id: i.id,
+  // Issuing — one row per product/lot line issued
+  const issuingRows = issues.flatMap((i) =>
+    i.lines.map((l) => ({
       docNo: i.docNo,
       docDate: i.docDate.toISOString(),
       issueTo: i.issueTo,
-      qty: i.lines.reduce((s, l) => s + l.qty, 0),
-      lineCount: i.lines.length,
-    })),
+      code: l.productCode,
+      name: `${l.product.nameEn} (${l.product.nameTh})`,
+      lotNo: l.selectedLot.lotNo,
+      qty: l.qty,
+      unit: l.product.unit,
+    }))
+  );
+  const issuing = {
+    docCount: issues.length,
+    totalUnits: issuingRows.reduce((s, r) => s + r.qty, 0),
+    rows: issuingRows,
   };
 
-  // Loss — negative-variance adjustment lines, valued at product price
-  const adjLossLines = adjustments.flatMap((a) =>
+  // Loss — one row per negative-variance adjustment line, valued at product price
+  const lossRows = adjustments.flatMap((a) =>
     a.lines
       .filter((l) => l.countedQty < l.sysQty)
       .map((l) => ({
@@ -82,19 +93,33 @@ export async function getReportData(range: Range) {
         code: l.lot.productCode,
         name: `${l.lot.product.nameEn} (${l.lot.product.nameTh})`,
         lotNo: l.lot.lotNo,
+        locationCode: l.lot.locationCode,
         qty: l.sysQty - l.countedQty,
         value: (l.sysQty - l.countedQty) * l.lot.product.price,
       }))
   );
   const loss = {
-    docCount: new Set(adjLossLines.map((l) => l.docNo)).size,
-    totalQty: adjLossLines.reduce((s, l) => s + l.qty, 0),
-    totalValue: adjLossLines.reduce((s, l) => s + l.value, 0),
-    rows: adjLossLines,
+    docCount: new Set(lossRows.map((l) => l.docNo)).size,
+    totalQty: lossRows.reduce((s, l) => s + l.qty, 0),
+    totalValue: lossRows.reduce((s, l) => s + l.value, 0),
+    rows: lossRows,
   };
 
-  // Production & production loss — Receipt rows with mode = PRODUCTION
+  // Production — one row per finished-good lot produced, plus per-material loss lines
   const productionReceipts = receipts.filter((r) => r.mode === "PRODUCTION");
+  const productionRows = productionReceipts.flatMap((r) =>
+    r.lines.map((l) => ({
+      docNo: r.docNo,
+      docDate: r.docDate.toISOString(),
+      code: l.productCode,
+      name: `${l.product.nameEn} (${l.product.nameTh})`,
+      lotNo: l.lotNo,
+      locationCode: l.locationCode,
+      qty: l.recvQty,
+      unit: l.product.unit,
+      prodLoss: r.prodLoss ?? 0,
+    }))
+  );
   const totalProduced = productionReceipts.reduce((s, r) => s + (r.producedTotal ?? 0), 0);
   const totalProdLoss = productionReceipts.reduce((s, r) => s + (r.prodLoss ?? 0), 0);
   const bomLossRows = productionReceipts.flatMap((r) =>
@@ -114,65 +139,74 @@ export async function getReportData(range: Range) {
     totalProdLoss,
     yieldPct: totalProduced + totalProdLoss > 0 ? (totalProduced / (totalProduced + totalProdLoss)) * 100 : 100,
     bomLossValue: bomLossRows.reduce((s, r) => s + r.value, 0),
-    rows: productionReceipts.map((r) => ({
-      id: r.id,
-      docNo: r.docNo,
-      docDate: r.docDate.toISOString(),
-      producedTotal: r.producedTotal ?? 0,
-      prodLoss: r.prodLoss ?? 0,
-    })),
+    rows: productionRows,
     bomLossRows,
   };
 
-  // Purchase Orders (by order date within range)
+  // Purchase Orders — one row per ordered product line (by PO date within range)
+  const poRows = pos.flatMap((p) =>
+    p.lines.map((l) => ({
+      no: p.no,
+      vendor: p.vendor,
+      date: p.date.toISOString(),
+      status: p.status,
+      code: l.productCode,
+      name: `${l.product.nameEn} (${l.product.nameTh})`,
+      ordered: l.ordered,
+      received: l.received,
+      remaining: l.ordered - l.received,
+    }))
+  );
   const po = {
     docCount: pos.length,
-    totalOrdered: pos.reduce((s, p) => s + p.lines.reduce((ls, l) => ls + l.ordered, 0), 0),
-    totalReceived: pos.reduce((s, p) => s + p.lines.reduce((ls, l) => ls + l.received, 0), 0),
-    rows: pos.map((p) => {
-      const ordered = p.lines.reduce((s, l) => s + l.ordered, 0);
-      const received = p.lines.reduce((s, l) => s + l.received, 0);
-      return {
-        id: p.id,
-        no: p.no,
-        vendor: p.vendor,
-        date: p.date.toISOString(),
-        status: p.status,
-        ordered,
-        received,
-        receivedPct: ordered > 0 ? (received / ordered) * 100 : 0,
-      };
-    }),
+    totalOrdered: poRows.reduce((s, r) => s + r.ordered, 0),
+    totalReceived: poRows.reduce((s, r) => s + r.received, 0),
+    rows: poRows,
   };
 
-  // Transfers
-  const transfer = {
-    docCount: transfers.length,
-    totalUnits: transfers.reduce((s, t) => s + t.lines.reduce((ls, l) => ls + l.qty, 0), 0),
-    rows: transfers.map((t) => ({
-      id: t.id,
+  // Transfers — one row per lot moved
+  const transferRows = transfers.flatMap((t) =>
+    t.lines.map((l) => ({
       docNo: t.docNo,
       docDate: t.docDate.toISOString(),
       operator: t.operator,
-      qty: t.lines.reduce((s, l) => s + l.qty, 0),
-      lineCount: t.lines.length,
-    })),
+      code: l.lot.productCode,
+      name: `${l.lot.product.nameEn} (${l.lot.product.nameTh})`,
+      lotNo: l.lot.lotNo,
+      fromLocationCode: l.fromLocationCode,
+      toLocationCode: l.toLocationCode,
+      qty: l.qty,
+      unit: l.lot.product.unit,
+    }))
+  );
+  const transfer = {
+    docCount: transfers.length,
+    totalUnits: transferRows.reduce((s, r) => s + r.qty, 0),
+    rows: transferRows,
   };
 
-  // Stock counts / accuracy
-  const countLines = counts.flatMap((c) => c.lines);
-  const accuratelines = countLines.filter((l) => l.countedQty === l.sysQty).length;
-  const count = {
-    docCount: counts.length,
-    lineCount: countLines.length,
-    accuracyPct: countLines.length > 0 ? (accuratelines / countLines.length) * 100 : 100,
-    rows: counts.map((c) => ({
-      id: c.id,
+  // Stock counts — one row per counted lot, with variance
+  const countRows = counts.flatMap((c) =>
+    c.lines.map((l) => ({
       docNo: c.docNo,
       docDate: c.docDate.toISOString(),
       pullZone: c.pullZone,
-      lineCount: c.lines.length,
-    })),
+      code: l.lot.productCode,
+      name: `${l.lot.product.nameEn} (${l.lot.product.nameTh})`,
+      lotNo: l.lot.lotNo,
+      locationCode: l.lot.locationCode,
+      sysQty: l.sysQty,
+      countedQty: l.countedQty,
+      variance: l.countedQty - l.sysQty,
+      unit: l.lot.product.unit,
+    }))
+  );
+  const accurateLines = countRows.filter((r) => r.variance === 0).length;
+  const count = {
+    docCount: counts.length,
+    lineCount: countRows.length,
+    accuracyPct: countRows.length > 0 ? (accurateLines / countRows.length) * 100 : 100,
+    rows: countRows,
   };
 
   return { receiving, issuing, loss, production, po, transfer, count };

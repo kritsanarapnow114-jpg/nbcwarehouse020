@@ -87,29 +87,39 @@ export default async function ReportsPage({
         </Card>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-4">
+      <div className="mb-4">
         <Card>
-          <CardTitle>Receiving (รับสินค้า)</CardTitle>
+          <CardTitle>Receiving (รับสินค้า) — detail by line</CardTitle>
           <ReportTable
-            cols={["Doc No.", "Date", "Mode", "PO Ref.", "Qty"]}
+            cols={["Doc No.", "Date", "Mode", "PO Ref.", "Code", "Product", "Lot", "Location", "Qty"]}
             rows={data.receiving.rows.map((r) => [
               r.docNo,
               fmtDateBE(new Date(r.docDate)),
               r.mode,
               r.poNo ?? "—",
-              r.qty.toLocaleString(),
+              r.code,
+              r.name,
+              r.lotNo,
+              r.locationCode,
+              `${r.qty.toLocaleString()} ${r.unit}`,
             ])}
           />
         </Card>
+      </div>
+
+      <div className="mb-4">
         <Card>
-          <CardTitle>Issuing (จ่ายสินค้า)</CardTitle>
+          <CardTitle>Issuing (จ่ายสินค้า) — detail by line</CardTitle>
           <ReportTable
-            cols={["Doc No.", "Date", "Issued To", "Qty"]}
+            cols={["Doc No.", "Date", "Issued To", "Code", "Product", "Lot", "Qty"]}
             rows={data.issuing.rows.map((r) => [
               r.docNo,
               fmtDateBE(new Date(r.docDate)),
               r.issueTo,
-              r.qty.toLocaleString(),
+              r.code,
+              r.name,
+              r.lotNo,
+              `${r.qty.toLocaleString()} ${r.unit}`,
             ])}
           />
         </Card>
@@ -119,13 +129,15 @@ export default async function ReportsPage({
         <Card>
           <CardTitle>Loss (สูญเสีย) — negative variance from Adjustments</CardTitle>
           <ReportTable
-            cols={["Doc No.", "Date", "Reason", "Product", "Lot", "Qty short", "Value"]}
+            cols={["Doc No.", "Date", "Reason", "Code", "Product", "Lot", "Location", "Qty short", "Value"]}
             rows={data.loss.rows.map((r) => [
               r.docNo,
               fmtDateBE(new Date(r.docDate)),
               r.reason,
+              r.code,
               r.name,
               r.lotNo,
+              r.locationCode,
               r.qty.toLocaleString(),
               `฿${Math.round(r.value).toLocaleString()}`,
             ])}
@@ -133,25 +145,34 @@ export default async function ReportsPage({
         </Card>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-4">
+      <div className="mb-4">
         <Card>
-          <CardTitle>Production (ผลิต)</CardTitle>
+          <CardTitle>Production (ผลิต) — finished-goods lots produced</CardTitle>
           <ReportTable
-            cols={["Doc No.", "Date", "Produced", "Loss"]}
+            cols={["Doc No.", "Date", "Code", "Product", "Lot", "Location", "Qty", "Doc loss"]}
             rows={data.production.rows.map((r) => [
               r.docNo,
               fmtDateBE(new Date(r.docDate)),
-              r.producedTotal.toLocaleString(),
+              r.code,
+              r.name,
+              r.lotNo,
+              r.locationCode,
+              `${r.qty.toLocaleString()} ${r.unit}`,
               r.prodLoss.toLocaleString(),
             ])}
           />
         </Card>
+      </div>
+
+      <div className="mb-4">
         <Card>
           <CardTitle>Production material loss (สูญเสียวัตถุดิบจากผลิต)</CardTitle>
           <ReportTable
-            cols={["Doc No.", "Material", "Loss qty", "Value"]}
+            cols={["Doc No.", "Date", "Material Code", "Material", "Loss qty", "Value"]}
             rows={data.production.bomLossRows.map((r) => [
               r.docNo,
+              fmtDateBE(new Date(r.docDate)),
+              r.materialCode,
               r.materialName,
               `${r.lossQty.toLocaleString()} ${r.unit}`,
               `฿${Math.round(r.value).toLocaleString()}`,
@@ -160,30 +181,21 @@ export default async function ReportsPage({
         </Card>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-4">
+      <div className="mb-4">
         <Card>
-          <CardTitle>Purchase Orders (ใบสั่งซื้อ)</CardTitle>
+          <CardTitle>Purchase Orders (ใบสั่งซื้อ) — detail by line</CardTitle>
           <ReportTable
-            cols={["PO No.", "Vendor", "Date", "Status", "Ordered", "Received"]}
+            cols={["PO No.", "Vendor", "Date", "Status", "Code", "Product", "Ordered", "Received", "Remaining"]}
             rows={data.po.rows.map((r) => [
               r.no,
               r.vendor,
               fmtDateBE(new Date(r.date)),
               r.status,
+              r.code,
+              r.name,
               r.ordered.toLocaleString(),
-              `${r.received.toLocaleString()} (${r.receivedPct.toFixed(0)}%)`,
-            ])}
-          />
-        </Card>
-        <Card>
-          <CardTitle>Transfers (ย้ายที่เก็บ)</CardTitle>
-          <ReportTable
-            cols={["Doc No.", "Date", "Operator", "Qty"]}
-            rows={data.transfer.rows.map((r) => [
-              r.docNo,
-              fmtDateBE(new Date(r.docDate)),
-              r.operator,
-              r.qty.toLocaleString(),
+              r.received.toLocaleString(),
+              r.remaining.toLocaleString(),
             ])}
           />
         </Card>
@@ -191,14 +203,40 @@ export default async function ReportsPage({
 
       <div className="mb-4">
         <Card>
-          <CardTitle>Stock Count (นับสต็อก)</CardTitle>
+          <CardTitle>Transfers (ย้ายที่เก็บ) — detail by line</CardTitle>
           <ReportTable
-            cols={["Doc No.", "Date", "Zone", "Lines"]}
+            cols={["Doc No.", "Date", "Operator", "Code", "Product", "Lot", "From", "To", "Qty"]}
+            rows={data.transfer.rows.map((r) => [
+              r.docNo,
+              fmtDateBE(new Date(r.docDate)),
+              r.operator,
+              r.code,
+              r.name,
+              r.lotNo,
+              r.fromLocationCode,
+              r.toLocationCode,
+              `${r.qty.toLocaleString()} ${r.unit}`,
+            ])}
+          />
+        </Card>
+      </div>
+
+      <div className="mb-4">
+        <Card>
+          <CardTitle>Stock Count (นับสต็อก) — detail by line</CardTitle>
+          <ReportTable
+            cols={["Doc No.", "Date", "Zone", "Code", "Product", "Lot", "Location", "System", "Counted", "Variance"]}
             rows={data.count.rows.map((r) => [
               r.docNo,
               fmtDateBE(new Date(r.docDate)),
               r.pullZone,
-              String(r.lineCount),
+              r.code,
+              r.name,
+              r.lotNo,
+              r.locationCode,
+              r.sysQty.toLocaleString(),
+              r.countedQty.toLocaleString(),
+              r.variance > 0 ? `+${r.variance.toLocaleString()}` : r.variance.toLocaleString(),
             ])}
           />
         </Card>
