@@ -10,13 +10,19 @@ import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { downloadCsv } from "@/lib/calc/csvClient";
 import { fmtDateISO } from "@/lib/calc/date";
 
-const OPERATORS = ["Somchai K.", "Wipha S.", "Warehouse team"];
-
 type Line = LotOption & { toLocationCode: string; moveQty: string };
 
-export function TransferForm({ lots, locations }: { lots: LotOption[]; locations: string[] }) {
+export function TransferForm({
+  lots,
+  locations,
+  operators,
+}: {
+  lots: LotOption[];
+  locations: string[];
+  operators: string[];
+}) {
   const router = useRouter();
-  const [operator, setOperator] = useState(OPERATORS[0]);
+  const [operator, setOperator] = useState(operators[0] ?? "");
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Line[]>([]);
   const [popup, setPopup] = useState<{ kind: "transfer" | "draft"; message: string } | null>(null);
@@ -105,7 +111,7 @@ export function TransferForm({ lots, locations }: { lots: LotOption[]; locations
               onChange={(e) => setOperator(e.target.value)}
               className="rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
             >
-              {OPERATORS.map((o) => (
+              {operators.map((o) => (
                 <option key={o} value={o}>
                   {o}
                 </option>
