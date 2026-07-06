@@ -48,7 +48,7 @@ export async function getInventoryStats(range: Range) {
   return { inventoryValue, skuCount, lotCount, receivedUnits, issuedUnits, lossValue };
 }
 
-/** Dashboard's Storage Utilization widget only shows zones A-D (Spare Parts / zone E omitted here, per design). */
+/** Dashboard's Storage Utilization widget only shows zones A-C (the active zone set — legacy D/E bins, if any, still count toward the total). */
 export async function getStorageUtilization(asOf: Date) {
   const [locations, products, snapshot] = await Promise.all([
     db.location.findMany(),
@@ -79,7 +79,7 @@ export async function getStorageUtilization(asOf: Date) {
     zoneAgg.set(loc.zone, z);
   }
 
-  const zones = (["A", "B", "C", "D"] as Zone[])
+  const zones = (["A", "B", "C"] as Zone[])
     .filter((z) => zoneAgg.has(z))
     .map((z) => {
       const agg = zoneAgg.get(z)!;

@@ -17,7 +17,6 @@ const ZONE_LABEL_MAP: Record<string, Zone | null> = {
   "Zone A — Raw Material": "A",
   "Zone B — Liquids": "B",
   "Zone C — Packaging": "C",
-  "Zone D — Finished": "D",
 };
 
 export async function getLotsByZoneAction(pullZone: string) {

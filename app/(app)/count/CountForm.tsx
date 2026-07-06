@@ -14,7 +14,6 @@ const ZONES = [
   "Zone A — Raw Material",
   "Zone B — Liquids",
   "Zone C — Packaging",
-  "Zone D — Finished",
 ];
 
 type Row = Awaited<ReturnType<typeof getLotsByZoneAction>>[number] & { counted: string };

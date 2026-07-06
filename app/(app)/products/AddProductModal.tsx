@@ -55,7 +55,7 @@ function AddProductModal({
               <option value="RAW_MATERIAL">Raw Material</option>
               <option value="PACKAGING">Packaging</option>
               <option value="FINISHED_GOODS">Finished Goods</option>
-              <option value="SPARE_PARTS">Spare Parts</option>
+              <option value="SPARE_PARTS">IO & Resin</option>
             </select>
           </Field>
         </div>

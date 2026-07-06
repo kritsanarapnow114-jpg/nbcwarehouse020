@@ -10,7 +10,7 @@ const CATEGORY_FILTERS = [
   { value: "RAW_MATERIAL", label: "Raw Material" },
   { value: "PACKAGING", label: "Packaging" },
   { value: "FINISHED_GOODS", label: "Finished (สำเร็จรูป)" },
-  { value: "SPARE_PARTS", label: "Spare (อะไหล่)" },
+  { value: "SPARE_PARTS", label: "IO & Resin" },
 ];
 
 export default async function ProductsPage({

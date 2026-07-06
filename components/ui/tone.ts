@@ -20,7 +20,7 @@ export const CATEGORY_LABEL: Record<string, { en: string; th: string }> = {
   RAW_MATERIAL: { en: "Raw Material", th: "วัตถุดิบ" },
   PACKAGING: { en: "Packaging", th: "บรรจุภัณฑ์" },
   FINISHED_GOODS: { en: "Finished Goods", th: "สินค้าสำเร็จรูป" },
-  SPARE_PARTS: { en: "Spare Parts", th: "อะไหล่" },
+  SPARE_PARTS: { en: "IO & Resin", th: "IO & Resin" },
 };
 
 export const ZONE_LABEL: Record<string, string> = {

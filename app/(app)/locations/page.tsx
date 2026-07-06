@@ -10,8 +10,6 @@ const ZONE_FILTERS = [
   { value: "A", label: "Zone A" },
   { value: "B", label: "Zone B" },
   { value: "C", label: "Zone C" },
-  { value: "D", label: "Zone D" },
-  { value: "E", label: "Zone E" },
 ];
 
 export default async function LocationsPage({
