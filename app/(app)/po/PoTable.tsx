@@ -11,7 +11,8 @@ import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { buttonClass } from "@/components/ui/Button";
 import { Tone } from "@/components/ui/tone";
 import { fmtDateBE } from "@/lib/calc/date";
-import { deletePoAction, addPoLinesAction } from "@/lib/actions/po";
+import { deletePoAction, addPoLinesAction, updatePoAction } from "@/lib/actions/po";
+import { fmtDateISO } from "@/lib/calc/date";
 import { showToast } from "@/components/ui/Toast";
 
 type PoProduct = { code: string; name: string };
@@ -33,10 +34,37 @@ export function PoTable({ rows, products = [] }: { rows: PoRow[]; products?: PoP
   const [selected, setSelected] = useState<PoRow | null>(null);
   const [newLines, setNewLines] = useState<{ productCode: string; name: string; ordered: string }[]>([]);
   const [savingLines, setSavingLines] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editVendor, setEditVendor] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  function openDetail(po: PoRow) {
+    setSelected(po);
+    setEditing(false);
+    setEditVendor(po.vendor);
+    setEditDate(fmtDateISO(new Date(po.date)));
+  }
 
   function closeDetail() {
     setSelected(null);
     setNewLines([]);
+    setEditing(false);
+  }
+
+  async function saveEdit() {
+    if (!selected) return;
+    setSavingEdit(true);
+    const res = await updatePoAction(selected.id, { vendor: editVendor, date: editDate });
+    setSavingEdit(false);
+    if (res.error) {
+      showToast(res.error);
+      return;
+    }
+    showToast(`Updated ${selected.no}`);
+    setEditing(false);
+    closeDetail();
+    router.refresh();
   }
 
   function addDraftLine(code: string) {
@@ -83,7 +111,7 @@ export function PoTable({ rows, products = [] }: { rows: PoRow[]; products?: PoP
             {rows.map((po) => (
               <tr
                 key={po.id}
-                onClick={() => setSelected(po)}
+                onClick={() => openDetail(po)}
                 className="cursor-pointer border-t border-[#eef1f5] hover:bg-[#f7f9fb]"
               >
                 <Td className="font-num text-[12px] text-[#3a4658]">
@@ -151,29 +179,74 @@ export function PoTable({ rows, products = [] }: { rows: PoRow[]; products?: PoP
                   </span>
                 </span>
               }
+              action={
+                !editing ? (
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="flex items-center gap-1.5 rounded-[8px] border border-[#d7dce4] bg-white px-2.5 py-1.5 text-[12px] font-medium text-[#3a4658] hover:bg-[#f7f9fb]"
+                  >
+                    ✎ Edit
+                  </button>
+                ) : undefined
+              }
               onClose={closeDetail}
             />
             <div className="p-5">
-              <div className="mb-4 flex items-center gap-6 text-[12.5px] text-[#69748a]">
-                <div>
-                  Date:{" "}
-                  <span className="font-num text-[#16202e]">
-                    {fmtDateBE(new Date(selected.date))}
-                  </span>
+              {editing ? (
+                <div className="mb-4 rounded-[10px] border border-[#e7ebf1] bg-[#fafbfc] p-3">
+                  <div className="mb-2 text-[11.5px] font-semibold uppercase tracking-wide text-[#69748a]">
+                    Edit PO details (แก้ไขข้อมูล PO)
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11.5px] font-medium text-[#69748a]">Vendor (ผู้ขาย)</span>
+                      <input
+                        value={editVendor}
+                        onChange={(e) => setEditVendor(e.target.value)}
+                        className="rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#3E9B6E]"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11.5px] font-medium text-[#69748a]">Doc date (วันที่)</span>
+                      <input
+                        type="date"
+                        value={editDate}
+                        onChange={(e) => setEditDate(e.target.value)}
+                        className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#3E9B6E]"
+                      />
+                    </label>
+                  </div>
+                  <div className="mt-3 flex justify-end gap-2">
+                    <button onClick={() => setEditing(false)} className={buttonClass("secondary")}>
+                      Cancel
+                    </button>
+                    <button onClick={saveEdit} disabled={savingEdit} className={buttonClass("primary")}>
+                      {savingEdit ? "Saving…" : "Save changes"}
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  Amount:{" "}
-                  <span className="font-num font-semibold text-[#16202e]">
-                    <Money value={selected.amount} />
-                  </span>
+              ) : (
+                <div className="mb-4 flex items-center gap-6 text-[12.5px] text-[#69748a]">
+                  <div>
+                    Date:{" "}
+                    <span className="font-num text-[#16202e]">
+                      {fmtDateBE(new Date(selected.date))}
+                    </span>
+                  </div>
+                  <div>
+                    Amount:{" "}
+                    <span className="font-num font-semibold text-[#16202e]">
+                      <Money value={selected.amount} />
+                    </span>
+                  </div>
+                  <div>
+                    Status:{" "}
+                    <Badge tone={STATUS_TONE[selected.status]}>
+                      {STATUS_LABEL[selected.status]}
+                    </Badge>
+                  </div>
                 </div>
-                <div>
-                  Status:{" "}
-                  <Badge tone={STATUS_TONE[selected.status]}>
-                    {STATUS_LABEL[selected.status]}
-                  </Badge>
-                </div>
-              </div>
+              )}
 
               <table className="w-full border-collapse text-[12.5px]">
                 <thead>

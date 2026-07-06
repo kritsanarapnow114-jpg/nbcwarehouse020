@@ -51,6 +51,23 @@ export async function createPoAction(input: CreatePoInput): Promise<FormState> {
   return { no };
 }
 
+/** Edit an existing PO's header fields (vendor / doc date) from its detail modal. */
+export async function updatePoAction(
+  poId: string,
+  input: { vendor?: string; date?: string }
+): Promise<{ error?: string }> {
+  const po = await db.purchaseOrder.findUnique({ where: { id: poId } });
+  if (!po) return { error: "PO not found" };
+
+  const data: { vendor?: string; date?: Date } = {};
+  if (input.vendor !== undefined) data.vendor = input.vendor.trim() || po.vendor;
+  if (input.date) data.date = new Date(input.date);
+
+  await db.purchaseOrder.update({ where: { id: poId }, data });
+  revalidatePoPaths();
+  return {};
+}
+
 /** Add product lines to an existing PO (from the PO detail modal). Merges into
  *  an existing line for the same product; recomputes the PO status. */
 export async function addPoLinesAction(
