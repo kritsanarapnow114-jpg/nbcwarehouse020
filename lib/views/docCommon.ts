@@ -27,6 +27,20 @@ export async function getLocationCodes() {
   return locs.map((l) => l.code);
 }
 
+export async function getProductOptions() {
+  const products = await db.product.findMany({
+    where: { deletedAt: null },
+    orderBy: { code: "asc" },
+  });
+  return products.map((p) => ({
+    code: p.code,
+    name: productLabel(p.nameEn, p.nameTh),
+    unit: p.unit,
+  }));
+}
+
+export type ProductOption = Awaited<ReturnType<typeof getProductOptions>>[number];
+
 export async function getRecentAdjustments(limit = 20) {
   const rows = await db.adjustment.findMany({
     include: { lines: { include: { lot: { include: { product: true } } } } },

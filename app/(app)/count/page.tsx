@@ -1,9 +1,14 @@
-import { getRecentCounts, getLotOptions } from "@/lib/views/docCommon";
+import { getRecentCounts, getLotOptions, getProductOptions, getLocationCodes } from "@/lib/views/docCommon";
 import { CountForm } from "./CountForm";
 import { DocHistory, DocHistoryRow } from "@/components/ui/DocHistory";
 
 export default async function CountPage() {
-  const [counts, lots] = await Promise.all([getRecentCounts(), getLotOptions()]);
+  const [counts, lots, products, locations] = await Promise.all([
+    getRecentCounts(),
+    getLotOptions(),
+    getProductOptions(),
+    getLocationCodes(),
+  ]);
 
   const rows: DocHistoryRow[] = counts.map((c) => ({
     id: c.id,
@@ -24,7 +29,7 @@ export default async function CountPage() {
 
   return (
     <div className="max-w-[1240px] p-[22px_26px]">
-      <CountForm lots={lots} />
+      <CountForm lots={lots} products={products} locations={locations} />
       <DocHistory title="Recent Counts (ประวัติการนับสต็อก)" rows={rows} accentColor="#3E9B6E" />
     </div>
   );

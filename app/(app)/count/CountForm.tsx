@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getLotsByZoneAction, confirmCountAction } from "@/lib/actions/count";
-import { LotOption } from "@/lib/views/docCommon";
+import { LotOption, ProductOption } from "@/lib/views/docCommon";
 import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup } from "@/components/ui/CuteBoxPopup";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
@@ -18,12 +18,30 @@ const ZONES = [
 ];
 
 type Row = Awaited<ReturnType<typeof getLotsByZoneAction>>[number] & { counted: string };
+type OffRow = {
+  key: string;
+  productCode: string;
+  name: string;
+  unit: string;
+  lotNo: string;
+  locationCode: string;
+  counted: string;
+};
 
-export function CountForm({ lots }: { lots: LotOption[] }) {
+export function CountForm({
+  lots,
+  products,
+  locations,
+}: {
+  lots: LotOption[];
+  products: ProductOption[];
+  locations: string[];
+}) {
   const router = useRouter();
   const [pullZone, setPullZone] = useState(ZONES[0]);
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Row[]>([]);
+  const [offLines, setOffLines] = useState<OffRow[]>([]);
   const [popup, setPopup] = useState<{ kind: "count" | "draft"; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +88,29 @@ export function CountForm({ lots }: { lots: LotOption[] }) {
     setLines((ls) => ls.filter((_, idx) => idx !== i));
   }
 
+  function addOffLine(productCode: string) {
+    const p = products.find((x) => x.code === productCode);
+    if (!p) return;
+    setOffLines((ls) => [
+      ...ls,
+      {
+        key: `${productCode}-${Date.now()}`,
+        productCode: p.code,
+        name: p.name,
+        unit: p.unit,
+        lotNo: "",
+        locationCode: locations[0] ?? "",
+        counted: "0",
+      },
+    ]);
+  }
+  function updateOffLine(i: number, patch: Partial<OffRow>) {
+    setOffLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
+  }
+  function removeOffLine(i: number) {
+    setOffLines((ls) => ls.filter((_, idx) => idx !== i));
+  }
+
   async function handleConfirm() {
     setSaving(true);
     setError(null);
@@ -78,9 +119,16 @@ export function CountForm({ lots }: { lots: LotOption[] }) {
         pullZone,
         docDate,
         lines: lines.map((l) => ({ lotId: l.id, countedQty: Number(l.counted) || 0 })),
+        offSystemLines: offLines.map((l) => ({
+          productCode: l.productCode,
+          lotNo: l.lotNo,
+          locationCode: l.locationCode,
+          countedQty: Number(l.counted) || 0,
+        })),
       });
       setPopup({ kind: "count", message: `Count ${res.docNo} saved — feeds Inventory Accuracy KPI.` });
       setLines([]);
+      setOffLines([]);
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save count.");
@@ -191,7 +239,58 @@ export function CountForm({ lots }: { lots: LotOption[] }) {
                   </tr>
                 );
               })}
-              {lines.length === 0 && (
+              {offLines.map((l, i) => {
+                const counted = Number(l.counted) || 0;
+                return (
+                  <tr key={l.key} className="border-t border-[#eef1f5] bg-[#fff8ec]">
+                    <td className="font-num p-[11px_16px] text-[12px] text-[#3a4658]">{l.productCode}</td>
+                    <td className="p-[11px_16px] font-medium">
+                      {l.name}
+                      <span className="ml-1.5 rounded-[5px] bg-[#f4c65a] px-1.5 py-0.5 text-[10px] font-semibold text-[#7a5b00]">
+                        นอกระบบ
+                      </span>
+                    </td>
+                    <td className="p-[11px_16px]">
+                      <input
+                        value={l.lotNo}
+                        onChange={(e) => updateOffLine(i, { lotNo: e.target.value })}
+                        placeholder="Lot / -"
+                        className="font-num w-[110px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
+                      />
+                    </td>
+                    <td className="p-[11px_16px]">
+                      <select
+                        value={l.locationCode}
+                        onChange={(e) => updateOffLine(i, { locationCode: e.target.value })}
+                        className="font-num rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
+                      >
+                        {locations.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="font-num p-[11px_16px] text-right text-[#9aa4b4]">0</td>
+                    <td className="p-[11px_16px] text-right">
+                      <input
+                        value={l.counted}
+                        onChange={(e) => updateOffLine(i, { counted: e.target.value })}
+                        className="font-num w-[84px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-right text-[13px]"
+                      />
+                    </td>
+                    <td className="font-num p-[11px_16px] text-right font-semibold text-[#17935a]">
+                      +{counted}
+                    </td>
+                    <td className="p-[11px_16px] text-center">
+                      <button onClick={() => removeOffLine(i)} className="text-[16px] text-[#c2606f]">
+                        ×
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {lines.length === 0 && offLines.length === 0 && (
                 <tr>
                   <td colSpan={8} className="p-6 text-center text-[#9aa4b4]">
                     Choose a zone and click &quot;Pull lots&quot;, or add a lot below.
@@ -202,15 +301,28 @@ export function CountForm({ lots }: { lots: LotOption[] }) {
           </table>
         </div>
 
-        <div className="flex items-center gap-2 border-t border-[#eef1f5] p-[12px_16px]">
-          <SearchableSelect
-            options={available.map((l) => ({
-              value: l.id,
-              label: `${l.productCode} · ${l.name} · ${l.lotNo} · ${l.locationCode}`,
-            }))}
-            onSelect={addLine}
-            placeholder="+ Add line (เพิ่มรายการ) — พิมพ์ค้นหาสินค้า…"
-          />
+        <div className="flex flex-col gap-2 border-t border-[#eef1f5] p-[12px_16px] sm:flex-row sm:items-center">
+          <div className="flex-1">
+            <SearchableSelect
+              options={available.map((l) => ({
+                value: l.id,
+                label: `${l.productCode} · ${l.name} · ${l.lotNo} · ${l.locationCode}`,
+              }))}
+              onSelect={addLine}
+              placeholder="+ Add line (เพิ่มรายการ) — พิมพ์ค้นหาสินค้า…"
+            />
+          </div>
+          <div className="flex-1">
+            <SearchableSelect
+              options={products.map((p) => ({
+                value: p.code,
+                label: `${p.code} · ${p.name}`,
+              }))}
+              onSelect={addOffLine}
+              placeholder="+ พบของนอกระบบ (found off-system) — พิมพ์ค้นหา…"
+              className="w-full rounded-[7px] border border-dashed border-[#e0b64a] bg-[#fff8ec] px-2.5 py-1.5 text-[12.5px] text-[#7a5b00] outline-none focus:border-[#d99e1f]"
+            />
+          </div>
         </div>
 
         {error && (
@@ -220,7 +332,12 @@ export function CountForm({ lots }: { lots: LotOption[] }) {
         )}
 
         <div className="flex items-center gap-4 border-t border-[#eef1f5] bg-[#fafbfc] p-[16px_22px]">
-          <div className="text-[12.5px] text-[#69748a]">{lines.length} lines</div>
+          <div className="text-[12.5px] text-[#69748a]">
+            {lines.length + offLines.length} lines
+            {offLines.length > 0 && (
+              <span className="ml-1 text-[#b8860b]">· {offLines.length} off-system</span>
+            )}
+          </div>
           <div className="flex-1" />
           <button
             onClick={() => setPopup({ kind: "draft", message: "Draft saved locally (not yet posted)." })}
@@ -230,7 +347,7 @@ export function CountForm({ lots }: { lots: LotOption[] }) {
           </button>
           <button
             onClick={handleConfirm}
-            disabled={saving || lines.length === 0}
+            disabled={saving || (lines.length === 0 && offLines.length === 0)}
             className={buttonClass("primary")}
           >
             {saving ? "Saving…" : "Save count (บันทึกนับสต็อก)"}
