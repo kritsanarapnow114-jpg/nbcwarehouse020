@@ -239,10 +239,12 @@ export async function getCountProgress(asOf: Date = todayBangkok()) {
     return `${date.getFullYear()}-${date.getMonth()}`;
   }
 
+  // Calendar order Jan → Dec of the current year.
+  const year = asOf.getFullYear();
   const monthly: { label: string; counted: number; plan: number }[] = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(asOf.getFullYear(), asOf.getMonth() - i, 1);
-    const key = bucketFor(d);
+  for (let mo = 0; mo < 12; mo++) {
+    const d = new Date(year, mo, 1);
+    const key = `${year}-${mo}`;
     const countedLots = new Set<string>();
     for (const c of counts) {
       if (bucketFor(c.docDate) === key) {
@@ -252,7 +254,7 @@ export async function getCountProgress(asOf: Date = todayBangkok()) {
     monthly.push({
       label: d.toLocaleDateString("en-US", { month: "short" }),
       counted: countedLots.size,
-      plan: monthPlanFor(d.getMonth()),
+      plan: monthPlanFor(mo),
     });
   }
 

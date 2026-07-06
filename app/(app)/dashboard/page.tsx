@@ -52,9 +52,6 @@ export default async function DashboardPage({
     getActionRequired(range.end),
   ]);
 
-  const countMaxMonthly = Math.max(1, ...countProgress.monthly.map((m) => m.plan));
-  const countMaxWeekly = Math.max(1, ...countProgress.weekly.map((m) => m.plan));
-
   return (
     <div className="max-w-[1280px] p-[24px_26px]">
       <PeriodSelector basePath="/dashboard" mode={mode} date={dateStr} start={startStr} end={endStr} />
@@ -242,8 +239,8 @@ export default async function DashboardPage({
           </div>
           <div className="flex flex-col gap-3">
             {countProgress.monthly.map((m) => {
-              const pct = Math.min(100, (m.counted / countMaxMonthly) * 100);
               const donePct = m.plan > 0 ? (m.counted / m.plan) * 100 : 0;
+              const pct = Math.min(100, donePct);
               return (
                 <div key={m.label} className="flex items-center gap-2.5">
                   <span className="w-[34px] text-[12px] text-[#69748a]">{m.label}</span>
@@ -276,8 +273,8 @@ export default async function DashboardPage({
           </div>
           <div className="flex flex-col gap-3">
             {countProgress.weekly.map((m) => {
-              const pct = Math.min(100, (m.counted / countMaxWeekly) * 100);
               const donePct = m.plan > 0 ? (m.counted / m.plan) * 100 : 0;
+              const pct = Math.min(100, donePct);
               return (
                 <div key={m.label} className="flex items-center gap-2.5">
                   <span className="w-[34px] text-[12px] text-[#69748a]">{m.label}</span>
