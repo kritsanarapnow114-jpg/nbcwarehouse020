@@ -68,6 +68,43 @@ export async function updatePoAction(
   return {};
 }
 
+/** Update the ordered quantity of existing PO lines; recomputes PO status.
+ *  A line set to 0 (or blank) is removed from the PO. */
+export async function updatePoLineQtysAction(
+  poId: string,
+  updates: { lineId: string; ordered: number }[]
+): Promise<{ error?: string }> {
+  const po = await db.purchaseOrder.findUnique({ where: { id: poId }, include: { lines: true } });
+  if (!po) return { error: "PO not found" };
+  const lineIds = new Set(po.lines.map((l) => l.id));
+
+  await db.$transaction(async (tx) => {
+    for (const u of updates) {
+      if (!lineIds.has(u.lineId)) continue;
+      if (u.ordered <= 0) {
+        await tx.purchaseOrderLine.delete({ where: { id: u.lineId } });
+      } else {
+        await tx.purchaseOrderLine.update({
+          where: { id: u.lineId },
+          data: { ordered: u.ordered },
+        });
+      }
+    }
+    const fresh = await tx.purchaseOrder.findUnique({ where: { id: poId }, include: { lines: true } });
+    if (fresh) {
+      const allDone = fresh.lines.every((l) => l.received >= l.ordered);
+      const anyReceived = fresh.lines.some((l) => l.received > 0);
+      await tx.purchaseOrder.update({
+        where: { id: poId },
+        data: { status: allDone ? "COMPLETE" : anyReceived ? "PENDING" : "OPEN" },
+      });
+    }
+  });
+
+  revalidatePoPaths();
+  return {};
+}
+
 /** Add product lines to an existing PO (from the PO detail modal). Merges into
  *  an existing line for the same product; recomputes the PO status. */
 export async function addPoLinesAction(

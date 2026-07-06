@@ -11,7 +11,7 @@ import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { buttonClass } from "@/components/ui/Button";
 import { Tone } from "@/components/ui/tone";
 import { fmtDateBE } from "@/lib/calc/date";
-import { deletePoAction, addPoLinesAction, updatePoAction } from "@/lib/actions/po";
+import { deletePoAction, addPoLinesAction, updatePoAction, updatePoLineQtysAction } from "@/lib/actions/po";
 import { fmtDateISO } from "@/lib/calc/date";
 import { showToast } from "@/components/ui/Toast";
 
@@ -37,6 +37,7 @@ export function PoTable({ rows, products = [] }: { rows: PoRow[]; products?: PoP
   const [editing, setEditing] = useState(false);
   const [editVendor, setEditVendor] = useState("");
   const [editDate, setEditDate] = useState("");
+  const [editQtys, setEditQtys] = useState<Record<string, string>>({});
   const [savingEdit, setSavingEdit] = useState(false);
 
   function openDetail(po: PoRow) {
@@ -44,6 +45,7 @@ export function PoTable({ rows, products = [] }: { rows: PoRow[]; products?: PoP
     setEditing(false);
     setEditVendor(po.vendor);
     setEditDate(fmtDateISO(new Date(po.date)));
+    setEditQtys(Object.fromEntries(po.lines.map((l) => [l.id, String(l.ordered)])));
   }
 
   function closeDetail() {
@@ -56,6 +58,12 @@ export function PoTable({ rows, products = [] }: { rows: PoRow[]; products?: PoP
     if (!selected) return;
     setSavingEdit(true);
     const res = await updatePoAction(selected.id, { vendor: editVendor, date: editDate });
+    if (!res.error) {
+      await updatePoLineQtysAction(
+        selected.id,
+        selected.lines.map((l) => ({ lineId: l.id, ordered: Number(editQtys[l.id]) || 0 }))
+      );
+    }
     setSavingEdit(false);
     if (res.error) {
       showToast(res.error);
@@ -194,8 +202,11 @@ export function PoTable({ rows, products = [] }: { rows: PoRow[]; products?: PoP
             <div className="p-5">
               {editing ? (
                 <div className="mb-4 rounded-[10px] border border-[#e7ebf1] bg-[#fafbfc] p-3">
-                  <div className="mb-2 text-[11.5px] font-semibold uppercase tracking-wide text-[#69748a]">
+                  <div className="mb-1 text-[11.5px] font-semibold uppercase tracking-wide text-[#69748a]">
                     Edit PO details (แก้ไขข้อมูล PO)
+                  </div>
+                  <div className="mb-2 text-[11px] text-[#9aa4b4]">
+                    แก้จำนวนสั่งในตารางด้านล่างได้ · ใส่ 0 เพื่อลบรายการ (edit qty below; 0 removes the line)
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <label className="flex flex-col gap-1">
@@ -264,7 +275,19 @@ export function PoTable({ rows, products = [] }: { rows: PoRow[]; products?: PoP
                       <td className="font-num py-2">{l.productCode}</td>
                       <td className="py-2">{l.productName}</td>
                       <td className="font-num py-2 text-right">
-                        {l.ordered.toLocaleString()}
+                        {editing ? (
+                          <input
+                            value={editQtys[l.id] ?? ""}
+                            onChange={(e) =>
+                              setEditQtys((q) => ({ ...q, [l.id]: e.target.value }))
+                            }
+                            type="number"
+                            min="0"
+                            className="font-num w-[90px] rounded-[6px] border border-[#d7dce4] px-2 py-1 text-right text-[12.5px]"
+                          />
+                        ) : (
+                          l.ordered.toLocaleString()
+                        )}
                       </td>
                       <td className="font-num py-2 text-right">
                         {l.received.toLocaleString()}
