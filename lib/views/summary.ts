@@ -12,7 +12,7 @@ import { getProductRows } from "./products";
 import { getAgingRows } from "./aging";
 import { kpiBand } from "@/lib/calc/kpi";
 
-const DETAIL_CAP = 14;
+const DETAIL_CAP = 12;
 
 /** All the numbers a summary presentation needs, computed for one period.
  *  Plain-serializable so it can be handed to the client PowerPoint builder. */

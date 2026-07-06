@@ -114,14 +114,14 @@ export function ExportDeckButton({
         s.addShape("roundRect", { x, y, w, h, rectRadius: 0.05, fill: { color: PANEL }, line: { color: CARDLINE, width: 1 }, shadow: SHADOW });
         s.addShape("roundRect", { x, y, w, h: 0.12, rectRadius: 0.05, fill: { color: accent } });
         s.addShape("rect", { x, y: y + 0.06, w, h: 0.08, fill: { color: accent } });
-        s.addText(label, { x: x + 0.15, y: y + 0.2, w: w - 0.3, h: 0.4, fontSize: 9.5, bold: true, color: SLATE, align: "center", valign: "middle" });
+        s.addText(label, { x: x + 0.15, y: y + 0.2, w: w - 0.3, h: 0.4, fontSize: 11, bold: true, color: SLATE, align: "center", valign: "middle" });
         s.addText(value, { x: x + 0.1, y: y + 0.56, w: w - 0.2, h: h - (sub ? 0.86 : 0.66), fontSize: valueSize, bold: true, color: valueColor, align: "center", valign: "middle", fit: "shrink" });
         if (sub) s.addText(sub, { x: x + 0.12, y: y + h - 0.3, w: w - 0.24, h: 0.26, fontSize: 8, color: MUTE, align: "center" });
       };
 
       const panel = (s: PptxGenJSLib.Slide, x: number, y: number, w: number, h: number, title?: string) => {
         s.addShape("roundRect", { x, y, w, h, rectRadius: 0.05, fill: { color: PANEL }, line: { color: CARDLINE, width: 1 }, shadow: SHADOW });
-        if (title) s.addText(title, { x: x + 0.15, y: y + 0.12, w: w - 0.3, h: 0.34, fontSize: 12, bold: true, color: SLATE, align: "center" });
+        if (title) s.addText(title, { x: x + 0.15, y: y + 0.12, w: w - 0.3, h: 0.34, fontSize: 13, bold: true, color: SLATE, align: "center" });
       };
 
       const gauge = (s: PptxGenJSLib.Slide, x: number, y: number, w: number, h: number, label: string, pct: number, color = BLUE) => {
@@ -136,7 +136,7 @@ export function ExportDeckButton({
           { x: cx, y: cy, w: size, h: size, holeSize: 74, chartColors: [color, TRACK], showLegend: false, showTitle: false, ...cf, showValue: false, showPercent: false, dataBorder: { pt: 0, color: PANEL } }
         );
         s.addText(`${Math.round(p)}%`, { x: cx, y: cy, w: size, h: size, align: "center", valign: "middle", fontSize: 20, bold: true, color: SLATE });
-        s.addText(label, { x: x + 0.1, y: y + h - 0.52, w: w - 0.2, h: 0.42, fontSize: 10, bold: true, color: SLATE, align: "center", valign: "middle" });
+        s.addText(label, { x: x + 0.1, y: y + h - 0.54, w: w - 0.2, h: 0.44, fontSize: 12, bold: true, color: SLATE, align: "center", valign: "middle" });
       };
 
       const st = summary.stats;
@@ -219,12 +219,19 @@ export function ExportDeckButton({
       // ================= Slide 3: KPIs =================
       const k = newSlide("Key Performance Indicators", "ตัวชี้วัดหลัก", 1);
       const kw = (W - 1.0 - 0.35 * (summary.kpis.length - 1)) / summary.kpis.length;
+      const ky = 2.05, kh = 4.15;
       summary.kpis.forEach((kpi, i) => {
         const x = 0.5 + i * (kw + 0.35);
         const acc = kpi.tone === "ok" ? TEAL : ORANGE;
-        tile(k, x, 2.1, kw, 4.05, kpi.label, kpi.value, acc, `${kpi.th} · เป้าหมาย ${kpi.target}`, 40, acc);
+        k.addShape("roundRect", { x, y: ky, w: kw, h: kh, rectRadius: 0.05, fill: { color: PANEL }, line: { color: CARDLINE, width: 1 }, shadow: SHADOW });
+        k.addShape("roundRect", { x, y: ky, w: kw, h: 0.14, rectRadius: 0.05, fill: { color: acc } });
+        k.addShape("rect", { x, y: ky + 0.07, w: kw, h: 0.08, fill: { color: acc } });
+        k.addText(kpi.label, { x: x + 0.12, y: ky + 0.42, w: kw - 0.24, h: 0.5, fontSize: 20, bold: true, color: SLATE, align: "center", fontFace: FONT });
+        k.addText(kpi.value, { x: x + 0.1, y: ky + 1.25, w: kw - 0.2, h: 1.5, fontSize: 54, bold: true, color: acc, align: "center", valign: "middle", fit: "shrink", fontFace: FONT });
+        k.addText(kpi.th, { x: x + 0.14, y: ky + 3.0, w: kw - 0.28, h: 0.5, fontSize: 16, bold: true, color: SLATE, align: "center", fontFace: FONT });
+        k.addText(kpi.target, { x: x + 0.14, y: ky + 3.5, w: kw - 0.28, h: 0.55, fontSize: 12, color: MUTE, align: "center", valign: "top", fontFace: FONT });
       });
-      k.addText("เขียว = ผ่านเกณฑ์ · ส้ม = เฝ้าระวัง (เทียบกับเป้าหมาย)", { x: 0.5, y: 6.35, w: 12, h: 0.4, fontSize: 12.5, italic: true, color: MUTE });
+      k.addText("เขียว = ผ่านเกณฑ์ · ส้ม = เฝ้าระวัง (เทียบกับเป้าหมาย)", { x: 0.5, y: 6.4, w: 12, h: 0.4, fontSize: 13, italic: true, color: MUTE, fontFace: FONT });
 
       // ================= Divider: Operations Detail (blue) =================
       const dv = pptx.addSlide();
@@ -252,7 +259,7 @@ export function ExportDeckButton({
         let top = 2.05;
         if (summaryLine) {
           s.addShape("roundRect", { x: 0.5, y: 1.58, w: 12.33, h: 0.5, rectRadius: 0.06, fill: { color: BANNER }, line: { color: CARDLINE, width: 1 } });
-          s.addText(summaryLine, { x: 0.7, y: 1.58, w: 12, h: 0.5, fontSize: 12.5, bold: true, color: BLUE, valign: "middle", fontFace: FONT });
+          s.addText(summaryLine, { x: 0.7, y: 1.58, w: 12, h: 0.5, fontSize: 14, bold: true, color: BLUE, valign: "middle", fontFace: FONT });
           top = 2.32;
         }
         const totalW = 12.33;
@@ -261,17 +268,17 @@ export function ExportDeckButton({
         // Grow the rows to fill the slide so there's no big empty gap below.
         const nRows = Math.max(rows.length, 1) + 1; // + header
         const avail = 6.98 - top;
-        const rowH = Math.min(0.7, Math.max(0.3, avail / nRows));
+        const rowH = Math.min(0.72, Math.max(0.36, avail / nRows));
         const headRow: PptxGenJSLib.TableRow = headers.map((h) => ({
           text: h,
-          options: { bold: true, color: "FFFFFF", fill: { color: accent }, fontSize: 12, valign: "middle", fontFace: FONT, margin: [3, 5, 3, 5] as [number, number, number, number] },
+          options: { bold: true, color: "FFFFFF", fill: { color: accent }, fontSize: 13, valign: "middle", fontFace: FONT, margin: [3, 5, 3, 5] as [number, number, number, number] },
         }));
         const bodyRows: PptxGenJSLib.TableRow[] = rows.length
           ? rows.map((r, ri) =>
               r.map((c, ci) => ({
                 text: String(c),
                 options: {
-                  fontSize: 11.5,
+                  fontSize: 13,
                   bold: ci === 0,
                   color: ci === 0 ? SLATE : INK,
                   fill: { color: ri % 2 ? PANEL : BANNER },
