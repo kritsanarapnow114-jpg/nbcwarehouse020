@@ -39,7 +39,7 @@ export async function getReportData(range: Range) {
       orderBy: { date: "desc" },
     }),
     db.stockCount.findMany({
-      where: docDateInRange,
+      where: activeInRange,
       include: { lines: { include: { lot: { include: { product: true } } } } },
       orderBy: { docDate: "desc" },
     }),

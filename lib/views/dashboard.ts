@@ -228,7 +228,7 @@ export async function getCountProgress(asOf: Date = todayBangkok()) {
   const monthlyPlan = plan.monthly ?? totalLots;
   const weeklyPlan = plan.weekly ?? totalLots;
   const counts = await db.stockCount.findMany({
-    where: { docDate: { lte: asOf } },
+    where: { docDate: { lte: asOf }, reversedAt: null },
     include: { lines: true },
   });
 

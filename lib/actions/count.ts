@@ -102,6 +102,7 @@ export async function confirmCountAction(input: ConfirmCountInput) {
           lotId: lot.id,
           sysQty,
           countedQty: sysQty + off.countedQty,
+          addedQty: off.countedQty, // stock brought in — undone if the count is reversed
         },
       });
     }

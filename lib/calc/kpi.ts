@@ -95,7 +95,7 @@ export async function qualityKpi(range: Range): Promise<KpiResult> {
 
 export async function accuracyKpi(range: Range): Promise<KpiResult> {
   const counts = await db.stockCount.findMany({
-    where: { docDate: { gte: range.start, lte: range.end } },
+    where: { docDate: { gte: range.start, lte: range.end }, reversedAt: null },
     include: { lines: true },
   });
   const lines = counts.flatMap((c) => c.lines);
@@ -137,6 +137,7 @@ export async function qualityBreakdown() {
 
 export async function accuracyBreakdown() {
   const counts = await db.stockCount.findMany({
+    where: { reversedAt: null },
     include: { lines: true },
     orderBy: { docDate: "desc" },
     take: 20,

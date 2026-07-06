@@ -297,10 +297,11 @@ model TransferLine {
 }
 
 model StockCount {
-  id       String   @id @default(cuid())
-  docNo    String   @unique
-  pullZone String // "All zones" | "Zone A - Raw Material" | ...
-  docDate  DateTime
+  id         String    @id @default(cuid())
+  docNo      String    @unique
+  pullZone   String // "All zones" | "Zone A - Raw Material" | ...
+  docDate    DateTime
+  reversedAt DateTime? // set when the document is reversed/voided
 
   lines StockCountLine[]
 }
@@ -313,6 +314,7 @@ model StockCountLine {
   lot          Lot        @relation(fields: [lotId], references: [id])
   sysQty       Float
   countedQty   Float
+  addedQty     Float      @default(0) // stock this line actually added (off-system finds); 0 for plain counts
 }
 
 model DocSequence {

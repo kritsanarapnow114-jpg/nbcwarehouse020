@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 
-export type ReversibleKind = "receipt" | "issue" | "adjustment" | "transfer";
+export type ReversibleKind = "receipt" | "issue" | "adjustment" | "transfer" | "count";
 
 function revalidateAll() {
   for (const p of [
@@ -12,6 +12,7 @@ function revalidateAll() {
     "/issue",
     "/adjust",
     "/transfer",
+    "/count",
     "/dashboard",
     "/products",
     "/aging",
@@ -124,6 +125,28 @@ export async function reverseDocumentAction(kind: ReversibleKind, id: string) {
       }
 
       await tx.adjustment.update({ where: { id }, data: { reversedAt: new Date() } });
+    } else if (kind === "count") {
+      const count = await tx.stockCount.findUnique({ where: { id }, include: { lines: true } });
+      if (!count) throw new Error("Stock count not found");
+      if (count.reversedAt) throw new Error(ALREADY_REVERSED);
+      docNo = count.docNo;
+
+      // A plain count doesn't move stock. Only "off-system found" lines added
+      // stock (addedQty > 0) — remove exactly what they brought in.
+      for (const line of count.lines) {
+        if (line.addedQty <= 0) continue;
+        const lot = await tx.lot.findUnique({ where: { id: line.lotId } });
+        if (!lot) continue;
+        const next = lot.qty - line.addedQty;
+        if (next < 0) {
+          throw new Error(
+            `Cannot reverse — stock of ${lot.productCode} would go negative (ถอยไม่ได้ เพราะสต็อกจะติดลบ)`
+          );
+        }
+        await tx.lot.update({ where: { id: lot.id }, data: { qty: next } });
+      }
+
+      await tx.stockCount.update({ where: { id }, data: { reversedAt: new Date() } });
     } else {
       // transfer
       const transfer = await tx.transfer.findUnique({

@@ -15,6 +15,7 @@ export default async function CountPage() {
     docNo: c.docNo,
     docDate: c.docDate,
     summary: c.pullZone,
+    reversedAt: c.reversedAt,
     lineCount: c.lineCount,
     lines: c.lines.map((l) => {
       const variance = l.countedQty - l.sysQty;
@@ -30,7 +31,7 @@ export default async function CountPage() {
   return (
     <div className="max-w-[1240px] p-[22px_26px]">
       <CountForm lots={lots} products={products} locations={locations} />
-      <DocHistory title="Recent Counts (ประวัติการนับสต็อก)" rows={rows} accentColor="#3E9B6E" />
+      <DocHistory title="Recent Counts (ประวัติการนับสต็อก)" rows={rows} accentColor="#3E9B6E" reverseKind="count" />
     </div>
   );
 }

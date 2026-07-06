@@ -101,6 +101,7 @@ export async function getRecentCounts(limit = 20) {
     id: c.id,
     docNo: c.docNo,
     docDate: c.docDate.toISOString(),
+    reversedAt: c.reversedAt ? c.reversedAt.toISOString() : null,
     pullZone: c.pullZone,
     lineCount: c.lines.length,
     lines: c.lines.map((l) => ({
