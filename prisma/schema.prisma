@@ -307,6 +307,13 @@ model DocSequence {
   @@unique([prefix, beYear])
 }
 
+/** Marks one-time seed steps (e.g. a bulk product import) as already applied,
+ *  so re-running seed on every deploy doesn't re-create rows the user deleted. */
+model SeedFlag {
+  key       String   @id
+  appliedAt DateTime @default(now())
+}
+
 model KpiLog {
   id         String   @id @default(cuid())
   key        KpiKey

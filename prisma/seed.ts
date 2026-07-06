@@ -41,9 +41,12 @@ async function main() {
     },
   });
 
-  // Real product master data from the customer's SAP export — upserted
-  // unconditionally (by code) on every deploy, same as the user accounts
-  // above, so it lands in production too without touching existing stock.
+  // Real product master data from the customer's SAP export — applied once
+  // (guarded by a SeedFlag) rather than every deploy, so deleting one of
+  // these products later is permanent instead of being re-added on the
+  // next build.
+  const REAL_PRODUCTS_FLAG = "real_products_sap_import_v1";
+  const realProductsFlag = await db.seedFlag.findUnique({ where: { key: REAL_PRODUCTS_FLAG } });
   const realProducts = [
     { code: "20000004", nameEn: "LACTIC ACID TOTES 1200KG", category: Category.RAW_MATERIAL, unit: "kg", price: 65, pallet: 1200, width: 1.1, length: 1.2, stackLevels: 1 },
     { code: "20000009", nameEn: "REAXIS C129 1250KG", category: Category.RAW_MATERIAL, unit: "kg", price: 18.32, pallet: 1250, width: 1.1, length: 1.2, stackLevels: 1 },
@@ -82,8 +85,11 @@ async function main() {
     { code: "NS-SSTC8000E", nameEn: "SHALLOW SHELL SSTC8000E", category: Category.SPARE_PARTS, unit: "kg", price: 0, pallet: 1000, width: 1.1, length: 1.1, stackLevels: 1 },
     { code: "20000172", nameEn: "MAGNESIUM SULFATE HEPTAHYDRATE 1000KG", category: Category.RAW_MATERIAL, unit: "kg", price: 9, pallet: 1000, width: 1.1, length: 1.2, stackLevels: 1 },
   ];
-  for (const p of realProducts) {
-    await db.product.upsert({ where: { code: p.code }, update: {}, create: p });
+  if (!realProductsFlag) {
+    for (const p of realProducts) {
+      await db.product.upsert({ where: { code: p.code }, update: {}, create: p });
+    }
+    await db.seedFlag.create({ data: { key: REAL_PRODUCTS_FLAG } });
   }
 
   // Safe to run on every deploy: skip the demo business-data seed entirely if
