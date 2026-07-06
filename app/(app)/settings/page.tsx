@@ -1,8 +1,7 @@
 import { getUsers } from "@/lib/views/users";
+import { db } from "@/lib/db";
 import {
   getAppSettings,
-  COUNT_PLAN_MONTHLY_KEY,
-  COUNT_PLAN_WEEKLY_KEY,
   getCountPlanDetailed,
 } from "@/lib/views/settings";
 import { ResetDataCard } from "./ResetDataCard";
@@ -12,23 +11,28 @@ import { CountPlanCard } from "./CountPlanCard";
 import { SubtitlesCard } from "./SubtitlesCard";
 
 export default async function SettingsPage() {
-  const [users, settings] = await Promise.all([getUsers(), getAppSettings()]);
+  const [users, settings, totalLots] = await Promise.all([
+    getUsers(),
+    getAppSettings(),
+    db.lot.count(),
+  ]);
 
   const subtitleOverrides: Record<string, string> = {};
   for (const [k, v] of Object.entries(settings)) {
     if (k.startsWith("subtitle.")) subtitleOverrides[k.slice("subtitle.".length)] = v;
   }
 
-  // Prefill each month/week input: its own saved value, else the legacy single
-  // value (so an existing global target shows in every box until customized).
+  // Prefill each box with the effective plan the dashboard uses: the month/week's
+  // own target, else the legacy single value, else "count every lot" (totalLots).
+  // This way no box is ever blank — the numbers match what's shown on the chart.
   const plan = getCountPlanDetailed(settings);
-  const globalMonthly = settings[COUNT_PLAN_MONTHLY_KEY] ?? "";
-  const globalWeekly = settings[COUNT_PLAN_WEEKLY_KEY] ?? "";
+  const effective = (own: number | null, fallback: number | null) =>
+    String(own ?? fallback ?? totalLots);
   const monthsInit = Array.from({ length: 12 }, (_, i) =>
-    plan.months[i] != null ? String(plan.months[i]) : globalMonthly
+    effective(plan.months[i], plan.monthlyFallback)
   );
   const weeksInit = Array.from({ length: 5 }, (_, i) =>
-    plan.weeks[i] != null ? String(plan.weeks[i]) : globalWeekly
+    effective(plan.weeks[i], plan.weeklyFallback)
   );
 
   return (
