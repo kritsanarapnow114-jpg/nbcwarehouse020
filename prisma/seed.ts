@@ -92,6 +92,24 @@ async function main() {
     await db.seedFlag.create({ data: { key: REAL_PRODUCTS_FLAG } });
   }
 
+  // Real warehouse bin layout the customer provided — 84 bins in Zone A
+  // (A01-A84) and 84 in Zone B (B01-B84), each 1.2m x 15m. One-time import
+  // like the product catalog above: deleting a bin later is permanent.
+  const REAL_LOCATIONS_FLAG = "real_locations_v1";
+  const realLocationsFlag = await db.seedFlag.findUnique({ where: { key: REAL_LOCATIONS_FLAG } });
+  if (!realLocationsFlag) {
+    const realLocations: { code: string; zone: Zone; width: number; length: number }[] = [];
+    for (let i = 1; i <= 84; i++) {
+      const suffix = String(i).padStart(2, "0");
+      realLocations.push({ code: `A${suffix}`, zone: Zone.A, width: 1.2, length: 15 });
+      realLocations.push({ code: `B${suffix}`, zone: Zone.B, width: 1.2, length: 15 });
+    }
+    for (const l of realLocations) {
+      await db.location.upsert({ where: { code: l.code }, update: {}, create: l });
+    }
+    await db.seedFlag.create({ data: { key: REAL_LOCATIONS_FLAG } });
+  }
+
   // Safe to run on every deploy: skip the demo business-data seed entirely if
   // this database already has data (e.g. a production DB already in real use).
   const existingLots = await db.lot.count();
