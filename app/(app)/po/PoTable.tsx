@@ -175,6 +175,45 @@ export function PoTable({ rows }: { rows: PoRow[] }) {
                   )}
                 </tbody>
               </table>
+
+              <div className="mb-2 mt-5 text-[12.5px] font-semibold text-[#16202e]">
+                Receiving history (ประวัติการรับ)
+              </div>
+              <table className="w-full border-collapse text-[12.5px]">
+                <thead>
+                  <tr className="text-left text-[#9aa4b4]">
+                    <th className="pb-2 font-medium">Date</th>
+                    <th className="pb-2 font-medium">Invoice</th>
+                    <th className="pb-2 font-medium">Code</th>
+                    <th className="pb-2 font-medium">Product</th>
+                    <th className="pb-2 font-medium">Lot</th>
+                    <th className="pb-2 text-right font-medium">Qty</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selected.receipts.flatMap((r) =>
+                    r.lines.map((l, i) => (
+                      <tr key={`${r.id}-${i}`} className="border-t border-[#eef1f5]">
+                        <td className="font-num py-2">{fmtDateBE(new Date(r.docDate))}</td>
+                        <td className="font-num py-2">{r.invoiceNo ?? "—"}</td>
+                        <td className="font-num py-2">{l.productCode}</td>
+                        <td className="py-2">{l.productName}</td>
+                        <td className="font-num py-2">{l.lotNo}</td>
+                        <td className="font-num py-2 text-right">
+                          {l.qty.toLocaleString()} {l.unit}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                  {selected.receipts.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-4 text-center text-[#9aa4b4]">
+                        Not received yet (ยังไม่มีการรับ)
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </>
         )}

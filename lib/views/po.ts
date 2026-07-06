@@ -10,6 +10,20 @@ export type PoLineRow = {
   remaining: number;
 };
 
+export type PoReceiptRow = {
+  id: string;
+  docNo: string;
+  docDate: string;
+  invoiceNo: string | null;
+  lines: {
+    productCode: string;
+    productName: string;
+    lotNo: string;
+    qty: number;
+    unit: string;
+  }[];
+};
+
 export type PoRow = {
   id: string;
   no: string;
@@ -19,6 +33,7 @@ export type PoRow = {
   amount: number;
   receivedPct: number;
   lines: PoLineRow[];
+  receipts: PoReceiptRow[];
 };
 
 export async function getProductPickerList() {
@@ -39,7 +54,13 @@ export async function getPurchaseOrders(opts?: {
 }): Promise<PoRow[]> {
   const pos = await db.purchaseOrder.findMany({
     where: opts?.status ? { status: opts.status as never } : {},
-    include: { lines: { include: { product: true } } },
+    include: {
+      lines: { include: { product: true } },
+      receipts: {
+        include: { lines: { include: { product: true } } },
+        orderBy: { docDate: "desc" },
+      },
+    },
     orderBy: { date: "desc" },
   });
 
@@ -68,6 +89,19 @@ export async function getPurchaseOrders(opts?: {
         ordered: l.ordered,
         received: l.received,
         remaining: l.ordered - l.received,
+      })),
+      receipts: po.receipts.map((r) => ({
+        id: r.id,
+        docNo: r.docNo,
+        docDate: r.docDate.toISOString(),
+        invoiceNo: r.invoiceNo,
+        lines: r.lines.map((l) => ({
+          productCode: l.productCode,
+          productName: l.product.nameEn,
+          lotNo: l.lotNo,
+          qty: l.recvQty,
+          unit: l.product.unit,
+        })),
       })),
     };
   });
