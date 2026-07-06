@@ -43,7 +43,7 @@ function printDoc(title: string, row: DocHistoryRow) {
     th,td{border:1px solid #ccc;padding:8px;font-size:13px;text-align:left}</style></head><body>
     <h2>${escapeHtml(title)}</h2>
     <p>Doc No: ${escapeHtml(row.docNo)}<br/>Date: ${escapeHtml(fmtDateBE(new Date(row.docDate)))}<br/>${escapeHtml(row.summary)}</p>
-    <table><thead><tr><th>Code</th><th>Product</th><th>Qty</th><th>Lot / Location</th></tr></thead>
+    <table><thead><tr><th>SAP Material Master</th><th>Material Description</th><th>Qty</th><th>Lot / Location</th></tr></thead>
     <tbody>${row.lines
       .map(
         (l) =>
@@ -163,8 +163,8 @@ export function DocHistory({
               <table className="w-full border-collapse text-[12.5px]">
                 <thead>
                   <tr className="text-left text-[#9aa4b4]">
-                    <th className="w-[90px] pb-2 pr-3 font-medium">Code</th>
-                    <th className="pb-2 pr-3 font-medium">Product</th>
+                    <th className="w-[90px] pb-2 pr-3 font-medium">SAP Material Master</th>
+                    <th className="pb-2 pr-3 font-medium">Material Description</th>
                     <th className="w-[100px] pb-2 pr-3 text-right font-medium">Qty</th>
                     <th className="w-[150px] pb-2 pl-3 font-medium">Lot / Location</th>
                   </tr>

@@ -239,8 +239,8 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
           <table className="w-full min-w-[960px] border-collapse text-[13px]">
             <thead>
               <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
-                <th className="p-[10px_16px] text-[11.5px] font-medium">Code</th>
-                <th className="p-[10px_16px] text-[11.5px] font-medium">Product</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">SAP Material Master</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">Material Description</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">
                   {mode === "PO" ? "Ordered (สั่งตาม PO)" : "Produced (จำนวนผลิต)"}
                 </th>
@@ -383,7 +383,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
             <thead>
               <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
                 <th className="p-[10px_22px] text-[11.5px] font-medium">Material used (วัตถุดิบที่ใช้)</th>
-                <th className="p-[10px_16px] text-[11.5px] font-medium">Code</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">SAP Material Master</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Per unit (ต่อหน่วย)</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Consumed (ใช้ไป)</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Loss / scrap (เสีย)</th>

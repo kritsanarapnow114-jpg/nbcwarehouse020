@@ -75,7 +75,7 @@ export function TransferForm({
       <style>body{font-family:sans-serif;padding:32px}table{width:100%;border-collapse:collapse;margin-top:16px}
       th,td{border:1px solid #ccc;padding:8px;font-size:13px;text-align:left}</style></head><body>
       <h2>Transfer Slip</h2><p>Operator: ${operator}<br/>Date: ${docDate}</p>
-      <table><thead><tr><th>Code</th><th>Product</th><th>Lot</th><th>From</th><th>To</th><th>Qty</th></tr></thead>
+      <table><thead><tr><th>SAP Material Master</th><th>Material Description</th><th>Lot</th><th>From</th><th>To</th><th>Qty</th></tr></thead>
       <tbody>${lines
         .map(
           (l) =>
@@ -90,7 +90,7 @@ export function TransferForm({
   function handleExport() {
     downloadCsv(
       "transfer-draft.csv",
-      ["Code", "Product", "Lot", "From", "To", "Qty"],
+      ["SAP Material Master", "Material Description", "Lot", "From", "To", "Qty"],
       lines.map((l) => [l.productCode, l.name, l.lotNo, l.locationCode, l.toLocationCode, l.moveQty])
     );
   }
@@ -137,8 +137,8 @@ export function TransferForm({
           <table className="w-full min-w-[860px] border-collapse text-[13px]">
             <thead>
               <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
-                <th className="p-[10px_16px] text-[11.5px] font-medium">Code</th>
-                <th className="p-[10px_16px] text-[11.5px] font-medium">Product</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">SAP Material Master</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">Material Description</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Lot</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">From</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">To</th>

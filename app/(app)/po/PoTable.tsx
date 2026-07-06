@@ -140,8 +140,8 @@ export function PoTable({ rows }: { rows: PoRow[] }) {
               <table className="w-full border-collapse text-[12.5px]">
                 <thead>
                   <tr className="text-left text-[#9aa4b4]">
-                    <th className="pb-2 font-medium">Code</th>
-                    <th className="pb-2 font-medium">Product</th>
+                    <th className="pb-2 font-medium">SAP Material Master</th>
+                    <th className="pb-2 font-medium">Material Description</th>
                     <th className="pb-2 text-right font-medium">Ordered</th>
                     <th className="pb-2 text-right font-medium">Received</th>
                     <th className="pb-2 text-right font-medium">Remaining</th>
@@ -184,8 +184,8 @@ export function PoTable({ rows }: { rows: PoRow[] }) {
                   <tr className="text-left text-[#9aa4b4]">
                     <th className="pb-2 font-medium">Date</th>
                     <th className="pb-2 font-medium">Invoice</th>
-                    <th className="pb-2 font-medium">Code</th>
-                    <th className="pb-2 font-medium">Product</th>
+                    <th className="pb-2 font-medium">SAP Material Master</th>
+                    <th className="pb-2 font-medium">Material Description</th>
                     <th className="pb-2 font-medium">Lot</th>
                     <th className="pb-2 text-right font-medium">Qty</th>
                   </tr>

@@ -140,7 +140,7 @@ export function CountForm({
   function handleExport() {
     downloadCsv(
       "stock-count-draft.csv",
-      ["Code", "Product", "Lot", "Location", "SysQty", "CountedQty", "Variance"],
+      ["SAP Material Master", "Material Description", "Lot", "Location", "SysQty", "CountedQty", "Variance"],
       lines.map((l) => [
         l.productCode,
         l.name,
@@ -198,8 +198,8 @@ export function CountForm({
           <table className="w-full min-w-[860px] border-collapse text-[13px]">
             <thead>
               <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
-                <th className="p-[10px_16px] text-[11.5px] font-medium">Code</th>
-                <th className="p-[10px_16px] text-[11.5px] font-medium">Product</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">SAP Material Master</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">Material Description</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Lot</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Location</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">System</th>

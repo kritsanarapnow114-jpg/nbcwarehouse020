@@ -22,21 +22,21 @@ export async function GET(req: NextRequest) {
   switch (type) {
     case "issuing": {
       const csv = toCsv(
-        ["Code", "Product", "Date", "Qty", "Unit", "Lot", "Issued To", "Doc No."],
+        ["SAP Material Master", "Material Description", "Date", "Qty", "Unit", "Lot", "Issued To", "Doc No."],
         data.issuing.rows.map((r) => [r.code, r.name, fmtDateBE(new Date(r.docDate)), r.qty, r.unit, r.lotNo, r.issueTo, r.docNo])
       );
       return csvResponse("report-issuing.csv", csv);
     }
     case "loss": {
       const csv = toCsv(
-        ["Code", "Product", "Date", "Qty short", "Value", "Lot", "Location", "Reason", "Doc No."],
+        ["SAP Material Master", "Material Description", "Date", "Qty short", "Value", "Lot", "Location", "Reason", "Doc No."],
         data.loss.rows.map((r) => [r.code, r.name, fmtDateBE(new Date(r.docDate)), r.qty, Math.round(r.value), r.lotNo, r.locationCode, r.reason, r.docNo])
       );
       return csvResponse("report-loss.csv", csv);
     }
     case "production": {
       const csv = toCsv(
-        ["Code", "Product", "Date", "Qty", "Unit", "Lot", "Location", "Doc loss", "Doc No."],
+        ["SAP Material Master", "Material Description", "Date", "Qty", "Unit", "Lot", "Location", "Doc loss", "Doc No."],
         data.production.rows.map((r) => [r.code, r.name, fmtDateBE(new Date(r.docDate)), r.qty, r.unit, r.lotNo, r.locationCode, r.prodLoss, r.docNo])
       );
       return csvResponse("report-production.csv", csv);
@@ -50,21 +50,21 @@ export async function GET(req: NextRequest) {
     }
     case "po": {
       const csv = toCsv(
-        ["Code", "Product", "Date", "Ordered", "Received", "Remaining", "Vendor", "Status", "PO No."],
+        ["SAP Material Master", "Material Description", "Date", "Ordered", "Received", "Remaining", "Vendor", "Status", "PO No."],
         data.po.rows.map((r) => [r.code, r.name, fmtDateBE(new Date(r.date)), r.ordered, r.received, r.remaining, r.vendor, r.status, r.no])
       );
       return csvResponse("report-po.csv", csv);
     }
     case "transfer": {
       const csv = toCsv(
-        ["Code", "Product", "Date", "Qty", "Unit", "Lot", "From", "To", "Operator", "Doc No."],
+        ["SAP Material Master", "Material Description", "Date", "Qty", "Unit", "Lot", "From", "To", "Operator", "Doc No."],
         data.transfer.rows.map((r) => [r.code, r.name, fmtDateBE(new Date(r.docDate)), r.qty, r.unit, r.lotNo, r.fromLocationCode, r.toLocationCode, r.operator, r.docNo])
       );
       return csvResponse("report-transfer.csv", csv);
     }
     case "count": {
       const csv = toCsv(
-        ["Code", "Product", "Date", "System", "Counted", "Variance", "Lot", "Location", "Zone", "Doc No."],
+        ["SAP Material Master", "Material Description", "Date", "System", "Counted", "Variance", "Lot", "Location", "Zone", "Doc No."],
         data.count.rows.map((r) => [r.code, r.name, fmtDateBE(new Date(r.docDate)), r.sysQty, r.countedQty, r.variance, r.lotNo, r.locationCode, r.pullZone, r.docNo])
       );
       return csvResponse("report-count.csv", csv);
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
     case "receiving":
     default: {
       const csv = toCsv(
-        ["Code", "Product", "Date", "Qty", "Unit", "Lot", "Location", "Mode", "PO Ref.", "Doc No."],
+        ["SAP Material Master", "Material Description", "Date", "Qty", "Unit", "Lot", "Location", "Mode", "PO Ref.", "Doc No."],
         data.receiving.rows.map((r) => [r.code, r.name, fmtDateBE(new Date(r.docDate)), r.qty, r.unit, r.lotNo, r.locationCode, r.mode, r.poNo ?? "—", r.docNo])
       );
       return csvResponse("report-receiving.csv", csv);

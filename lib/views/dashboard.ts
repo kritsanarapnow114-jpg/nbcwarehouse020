@@ -237,7 +237,7 @@ export async function getCountProgress(asOf: Date = todayBangkok()) {
   }
 
   const monthly: { label: string; counted: number; plan: number }[] = [];
-  for (let i = 5; i >= 0; i--) {
+  for (let i = 11; i >= 0; i--) {
     const d = new Date(asOf.getFullYear(), asOf.getMonth() - i, 1);
     const key = bucketFor(d);
     const countedLots = new Set<string>();

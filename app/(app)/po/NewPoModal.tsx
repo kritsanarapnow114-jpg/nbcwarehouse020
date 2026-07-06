@@ -132,7 +132,7 @@ function NewPoModal({
           <table className="w-full border-collapse text-[12.5px]">
             <thead>
               <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
-                <th className="p-[8px_12px] font-medium">Product</th>
+                <th className="p-[8px_12px] font-medium">Material Description</th>
                 <th className="p-[8px_12px] text-right font-medium">Ordered qty</th>
                 <th className="w-8"></th>
               </tr>

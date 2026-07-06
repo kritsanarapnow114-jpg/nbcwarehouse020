@@ -85,7 +85,7 @@ export default async function ReportsPage({
         <Card>
           <CardTitle>Receiving (รับสินค้า) — log by product</CardTitle>
           <ReportTable
-            cols={["Code", "Product", "Date", "Qty", "Lot", "Location", "Mode", "PO Ref.", "Doc No."]}
+            cols={["SAP Material Master", "Material Description", "Date", "Qty", "Lot", "Location", "Mode", "PO Ref.", "Doc No."]}
             rows={data.receiving.rows.map((r) => [
               r.code,
               r.name,
@@ -105,7 +105,7 @@ export default async function ReportsPage({
         <Card>
           <CardTitle>Issuing (จ่ายสินค้า) — log by product</CardTitle>
           <ReportTable
-            cols={["Code", "Product", "Date", "Qty", "Lot", "Issued To", "Doc No."]}
+            cols={["SAP Material Master", "Material Description", "Date", "Qty", "Lot", "Issued To", "Doc No."]}
             rows={data.issuing.rows.map((r) => [
               r.code,
               r.name,
@@ -123,7 +123,7 @@ export default async function ReportsPage({
         <Card>
           <CardTitle>Loss (สูญเสีย) — negative variance from Adjustments</CardTitle>
           <ReportTable
-            cols={["Code", "Product", "Date", "Qty short", "Value", "Lot", "Location", "Reason", "Doc No."]}
+            cols={["SAP Material Master", "Material Description", "Date", "Qty short", "Value", "Lot", "Location", "Reason", "Doc No."]}
             rows={data.loss.rows.map((r) => [
               r.code,
               r.name,
@@ -143,7 +143,7 @@ export default async function ReportsPage({
         <Card>
           <CardTitle>Production (ผลิต) — finished-goods lots produced</CardTitle>
           <ReportTable
-            cols={["Code", "Product", "Date", "Qty", "Lot", "Location", "Doc loss", "Doc No."]}
+            cols={["SAP Material Master", "Material Description", "Date", "Qty", "Lot", "Location", "Doc loss", "Doc No."]}
             rows={data.production.rows.map((r) => [
               r.code,
               r.name,
@@ -179,7 +179,7 @@ export default async function ReportsPage({
         <Card>
           <CardTitle>Purchase Orders (ใบสั่งซื้อ) — log by product</CardTitle>
           <ReportTable
-            cols={["Code", "Product", "Date", "Ordered", "Received", "Remaining", "Vendor", "Status", "PO No."]}
+            cols={["SAP Material Master", "Material Description", "Date", "Ordered", "Received", "Remaining", "Vendor", "Status", "PO No."]}
             rows={data.po.rows.map((r) => [
               r.code,
               r.name,
@@ -199,7 +199,7 @@ export default async function ReportsPage({
         <Card>
           <CardTitle>Transfers (ย้ายที่เก็บ) — log by product</CardTitle>
           <ReportTable
-            cols={["Code", "Product", "Date", "Qty", "Lot", "From", "To", "Operator", "Doc No."]}
+            cols={["SAP Material Master", "Material Description", "Date", "Qty", "Lot", "From", "To", "Operator", "Doc No."]}
             rows={data.transfer.rows.map((r) => [
               r.code,
               r.name,
@@ -219,7 +219,7 @@ export default async function ReportsPage({
         <Card>
           <CardTitle>Stock Count (นับสต็อก) — log by product</CardTitle>
           <ReportTable
-            cols={["Code", "Product", "Date", "System", "Counted", "Variance", "Lot", "Location", "Zone", "Doc No."]}
+            cols={["SAP Material Master", "Material Description", "Date", "System", "Counted", "Variance", "Lot", "Location", "Zone", "Doc No."]}
             rows={data.count.rows.map((r) => [
               r.code,
               r.name,

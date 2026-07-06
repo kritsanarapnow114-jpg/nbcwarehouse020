@@ -93,7 +93,7 @@ export function IssueForm({ data }: { data: IssueFormData }) {
       </style></head><body>
       <h2>Issue Slip — ${lastConfirmed.docNo}</h2>
       <p>Issue To: ${issueTo}<br/>Date: ${docDate}</p>
-      <table><thead><tr><th>Code</th><th>Product</th><th>Lot</th><th>Qty</th></tr></thead>
+      <table><thead><tr><th>SAP Material Master</th><th>Material Description</th><th>Lot</th><th>Qty</th></tr></thead>
       <tbody>${lastConfirmed.lines
         .map(
           (l) =>
@@ -157,8 +157,8 @@ export function IssueForm({ data }: { data: IssueFormData }) {
           <table className="w-full min-w-[900px] border-collapse text-[13px]">
             <thead>
               <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
-                <th className="p-[10px_16px] text-[11.5px] font-medium">Code</th>
-                <th className="p-[10px_16px] text-[11.5px] font-medium">Product</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">SAP Material Master</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">Material Description</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Lot</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Location</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Expiry</th>

@@ -167,8 +167,8 @@ export function LocationsTable({ rows }: { rows: LocationRow[] }) {
               <table className="w-full border-collapse text-[12.5px]">
                 <thead>
                   <tr className="text-left text-[#9aa4b4]">
-                    <th className="py-2 font-medium">Product</th>
-                    <th className="py-2 font-medium">Code</th>
+                    <th className="py-2 font-medium">Material Description</th>
+                    <th className="py-2 font-medium">SAP Material Master</th>
                     <th className="py-2 font-medium">Lot</th>
                     <th className="py-2 text-right font-medium">Qty</th>
                     <th className="py-2 text-right font-medium">Area (m²)</th>
