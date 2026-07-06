@@ -62,8 +62,8 @@ function AddProductModal({
         <Field label="Name EN">
           <input name="nameEn" required className={inputClass} />
         </Field>
-        <Field label="Name TH">
-          <input name="nameTh" required className={inputClass} />
+        <Field label="Name TH (optional)">
+          <input name="nameTh" className={inputClass} />
         </Field>
         <div className="grid grid-cols-3 gap-3">
           <Field label="Unit">

@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { Range } from "./dashboard";
+import { productLabel } from "@/lib/calc/productName";
 
 export async function getReportData(range: Range) {
   const docDateInRange = { docDate: { gte: range.start, lte: range.end } };
@@ -50,7 +51,7 @@ export async function getReportData(range: Range) {
       mode: r.mode,
       poNo: r.po?.no ?? null,
       code: l.productCode,
-      name: `${l.product.nameEn} (${l.product.nameTh})`,
+      name: productLabel(l.product.nameEn, l.product.nameTh),
       lotNo: l.lotNo,
       locationCode: l.locationCode,
       qty: l.recvQty,
@@ -70,7 +71,7 @@ export async function getReportData(range: Range) {
       docDate: i.docDate.toISOString(),
       issueTo: i.issueTo,
       code: l.productCode,
-      name: `${l.product.nameEn} (${l.product.nameTh})`,
+      name: productLabel(l.product.nameEn, l.product.nameTh),
       lotNo: l.selectedLot.lotNo,
       qty: l.qty,
       unit: l.product.unit,
@@ -91,7 +92,7 @@ export async function getReportData(range: Range) {
         docDate: a.docDate.toISOString(),
         reason: a.reason,
         code: l.lot.productCode,
-        name: `${l.lot.product.nameEn} (${l.lot.product.nameTh})`,
+        name: productLabel(l.lot.product.nameEn, l.lot.product.nameTh),
         lotNo: l.lot.lotNo,
         locationCode: l.lot.locationCode,
         qty: l.sysQty - l.countedQty,
@@ -112,7 +113,7 @@ export async function getReportData(range: Range) {
       docNo: r.docNo,
       docDate: r.docDate.toISOString(),
       code: l.productCode,
-      name: `${l.product.nameEn} (${l.product.nameTh})`,
+      name: productLabel(l.product.nameEn, l.product.nameTh),
       lotNo: l.lotNo,
       locationCode: l.locationCode,
       qty: l.recvQty,
@@ -127,7 +128,7 @@ export async function getReportData(range: Range) {
       docNo: r.docNo,
       docDate: r.docDate.toISOString(),
       materialCode: bl.bomLine.materialProductCode,
-      materialName: `${bl.bomLine.materialProduct.nameEn} (${bl.bomLine.materialProduct.nameTh})`,
+      materialName: productLabel(bl.bomLine.materialProduct.nameEn, bl.bomLine.materialProduct.nameTh),
       lossQty: bl.lossQty,
       unit: bl.bomLine.unit,
       value: bl.lossQty * bl.bomLine.materialProduct.price,
@@ -151,7 +152,7 @@ export async function getReportData(range: Range) {
       date: p.date.toISOString(),
       status: p.status,
       code: l.productCode,
-      name: `${l.product.nameEn} (${l.product.nameTh})`,
+      name: productLabel(l.product.nameEn, l.product.nameTh),
       ordered: l.ordered,
       received: l.received,
       remaining: l.ordered - l.received,
@@ -171,7 +172,7 @@ export async function getReportData(range: Range) {
       docDate: t.docDate.toISOString(),
       operator: t.operator,
       code: l.lot.productCode,
-      name: `${l.lot.product.nameEn} (${l.lot.product.nameTh})`,
+      name: productLabel(l.lot.product.nameEn, l.lot.product.nameTh),
       lotNo: l.lot.lotNo,
       fromLocationCode: l.fromLocationCode,
       toLocationCode: l.toLocationCode,
@@ -192,7 +193,7 @@ export async function getReportData(range: Range) {
       docDate: c.docDate.toISOString(),
       pullZone: c.pullZone,
       code: l.lot.productCode,
-      name: `${l.lot.product.nameEn} (${l.lot.product.nameTh})`,
+      name: productLabel(l.lot.product.nameEn, l.lot.product.nameTh),
       lotNo: l.lot.lotNo,
       locationCode: l.lot.locationCode,
       sysQty: l.sysQty,
@@ -219,5 +220,5 @@ export async function getReportProductOptions() {
     where: { deletedAt: null },
     orderBy: { code: "asc" },
   });
-  return products.map((p) => ({ code: p.code, name: `${p.nameEn} (${p.nameTh})` }));
+  return products.map((p) => ({ code: p.code, name: productLabel(p.nameEn, p.nameTh) }));
 }

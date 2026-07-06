@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { nextDocNumber } from "@/lib/calc/docNumber";
+import { productLabel } from "@/lib/calc/productName";
 import { Zone } from "@prisma/client";
 
 export type CountLineInput = { lotId: string; countedQty: number };
@@ -29,7 +30,7 @@ export async function getLotsByZoneAction(pullZone: string) {
   return lots.map((l) => ({
     id: l.id,
     productCode: l.productCode,
-    name: `${l.product.nameEn} (${l.product.nameTh})`,
+    name: productLabel(l.product.nameEn, l.product.nameTh),
     lotNo: l.lotNo,
     locationCode: l.locationCode,
     sysQty: l.qty,

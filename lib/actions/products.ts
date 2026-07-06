@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { buildStockCard } from "@/lib/calc/stockCard";
 import { getProductDetail } from "@/lib/views/products";
+import { productLabel } from "@/lib/calc/productName";
 import { Category } from "@prisma/client";
 
 export async function getProductDetailAction(code: string) {
@@ -34,8 +35,8 @@ export async function createProductAction(
   const length = Number(formData.get("length") ?? 1);
   const stackLevels = Number(formData.get("stackLevels") ?? 1);
 
-  if (!code || !nameEn || !nameTh || !unit) {
-    return { error: "Fill in code, names, and unit (กรอกรหัส ชื่อ และหน่วยให้ครบ)" };
+  if (!code || !nameEn || !unit) {
+    return { error: "Fill in code, name, and unit (กรอกรหัส ชื่อ และหน่วยให้ครบ)" };
   }
   const existing = await db.product.findUnique({ where: { code } });
   if (existing) {
@@ -47,7 +48,7 @@ export async function createProductAction(
       code,
       category,
       nameEn,
-      nameTh,
+      nameTh: nameTh || null,
       unit,
       price,
       pallet,
@@ -128,13 +129,13 @@ export async function updateProductAction(
     stackLevels: number;
   }
 ) {
-  if (!data.nameEn.trim() || !data.nameTh.trim() || !data.unit.trim()) {
-    throw new Error("Fill in names and unit (กรอกชื่อและหน่วยให้ครบ)");
+  if (!data.nameEn.trim() || !data.unit.trim()) {
+    throw new Error("Fill in name and unit (กรอกชื่อและหน่วยให้ครบ)");
   }
   if (data.price < 0 || data.pallet <= 0 || data.width <= 0 || data.length <= 0 || data.stackLevels <= 0) {
     throw new Error("Price, pallet size, and storage dimensions must be greater than 0 (ราคา ขนาดพาเลท และขนาดพื้นที่ต้องมากกว่า 0)");
   }
-  await db.product.update({ where: { code }, data });
+  await db.product.update({ where: { code }, data: { ...data, nameTh: data.nameTh || null } });
   revalidateInventoryPaths();
 }
 
@@ -151,7 +152,7 @@ export async function getBomAction(finishedProductCode: string) {
     .map((l) => ({
       id: l.id,
       materialProductCode: l.materialProductCode,
-      materialName: `${l.materialProduct.nameEn} (${l.materialProduct.nameTh})`,
+      materialName: productLabel(l.materialProduct.nameEn, l.materialProduct.nameTh),
       qtyPerUnit: l.qtyPerUnit,
       unit: l.unit,
     }));

@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { productLabel } from "@/lib/calc/productName";
 
 export async function getLotOptions() {
   const lots = await db.lot.findMany({
@@ -9,7 +10,7 @@ export async function getLotOptions() {
   return lots.map((l) => ({
     id: l.id,
     productCode: l.productCode,
-    name: `${l.product.nameEn} (${l.product.nameTh})`,
+    name: productLabel(l.product.nameEn, l.product.nameTh),
     unit: l.product.unit,
     price: l.product.price,
     lotNo: l.lotNo,
@@ -40,7 +41,7 @@ export async function getRecentAdjustments(limit = 20) {
     lineCount: a.lines.length,
     lines: a.lines.map((l) => ({
       code: l.lot.productCode,
-      name: `${l.lot.product.nameEn} (${l.lot.product.nameTh})`,
+      name: productLabel(l.lot.product.nameEn, l.lot.product.nameTh),
       lotNo: l.lot.lotNo,
       locationCode: l.lot.locationCode,
       sysQty: l.sysQty,
@@ -64,7 +65,7 @@ export async function getRecentTransfers(limit = 20) {
     lineCount: t.lines.length,
     lines: t.lines.map((l) => ({
       code: l.lot.productCode,
-      name: `${l.lot.product.nameEn} (${l.lot.product.nameTh})`,
+      name: productLabel(l.lot.product.nameEn, l.lot.product.nameTh),
       lotNo: l.lot.lotNo,
       fromLocationCode: l.fromLocationCode,
       toLocationCode: l.toLocationCode,
@@ -88,7 +89,7 @@ export async function getRecentCounts(limit = 20) {
     lineCount: c.lines.length,
     lines: c.lines.map((l) => ({
       code: l.lot.productCode,
-      name: `${l.lot.product.nameEn} (${l.lot.product.nameTh})`,
+      name: productLabel(l.lot.product.nameEn, l.lot.product.nameTh),
       lotNo: l.lot.lotNo,
       locationCode: l.lot.locationCode,
       sysQty: l.sysQty,

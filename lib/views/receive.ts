@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { peekNextDocNumber } from "@/lib/calc/docNumber";
+import { productLabel } from "@/lib/calc/productName";
 
 export async function getReceiveFormData() {
   const [products, pos, locations, lots, bomsRaw, docNo] = await Promise.all([
@@ -23,7 +24,7 @@ export async function getReceiveFormData() {
     docNo,
     products: products.map((p) => ({
       code: p.code,
-      name: `${p.nameEn} (${p.nameTh})`,
+      name: productLabel(p.nameEn, p.nameTh),
       unit: p.unit,
       price: p.price,
     })),
@@ -33,7 +34,7 @@ export async function getReceiveFormData() {
       vendor: po.vendor,
       lines: po.lines.map((l) => ({
         productCode: l.productCode,
-        name: `${l.product.nameEn} (${l.product.nameTh})`,
+        name: productLabel(l.product.nameEn, l.product.nameTh),
         unit: l.product.unit,
         ordered: l.ordered,
         received: l.received,
@@ -47,7 +48,7 @@ export async function getReceiveFormData() {
       lines: b.lines.map((l) => ({
         id: l.id,
         materialCode: l.materialProductCode,
-        materialName: `${l.materialProduct.nameEn} (${l.materialProduct.nameTh})`,
+        materialName: productLabel(l.materialProduct.nameEn, l.materialProduct.nameTh),
         qtyPerUnit: l.qtyPerUnit,
         unit: l.unit,
         materialPrice: l.materialProduct.price,
@@ -79,7 +80,7 @@ export async function getRecentReceipts(limit = 20) {
     totalQty: r.lines.reduce((s, l) => s + l.recvQty, 0),
     lines: r.lines.map((l) => ({
       code: l.productCode,
-      name: `${l.product.nameEn} (${l.product.nameTh})`,
+      name: productLabel(l.product.nameEn, l.product.nameTh),
       lotNo: l.lotNo,
       locationCode: l.locationCode,
       recvQty: l.recvQty,

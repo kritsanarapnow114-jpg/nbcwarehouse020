@@ -1,11 +1,12 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { CATEGORY_LABEL } from "@/components/ui/tone";
+import { productLabel } from "@/lib/calc/productName";
 
 export type ProductRow = {
   code: string;
   nameEn: string;
-  nameTh: string;
+  nameTh: string | null;
   category: string;
   categoryLabel: string;
   unit: string;
@@ -87,7 +88,7 @@ export async function getBomMaterialOptions() {
     where: { deletedAt: null, category: { in: ["RAW_MATERIAL", "PACKAGING"] } },
     orderBy: { code: "asc" },
   });
-  return products.map((p) => ({ code: p.code, name: `${p.nameEn} (${p.nameTh})`, unit: p.unit }));
+  return products.map((p) => ({ code: p.code, name: productLabel(p.nameEn, p.nameTh), unit: p.unit }));
 }
 
 export async function getProductDetail(
@@ -106,7 +107,7 @@ export async function getProductDetail(
     code: p.code,
     nameEn: p.nameEn,
     nameTh: p.nameTh,
-    nameEnTh: `${p.nameEn} (${p.nameTh})`,
+    nameEnTh: productLabel(p.nameEn, p.nameTh),
     category: p.category,
     categoryLabel: `${CATEGORY_LABEL[p.category].en} (${CATEGORY_LABEL[p.category].th})`,
     unit: p.unit,

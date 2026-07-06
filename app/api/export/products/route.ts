@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     rows.map((r) => [
       r.code,
       r.nameEn,
-      r.nameTh,
+      r.nameTh ?? "",
       r.categoryLabel,
       r.onHand,
       r.unit,

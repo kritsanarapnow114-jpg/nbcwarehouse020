@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { eligibleLots, fefoLotFor } from "@/lib/calc/fefo";
 import { peekNextDocNumber } from "@/lib/calc/docNumber";
+import { productLabel } from "@/lib/calc/productName";
 
 export async function getIssueFormData() {
   const [products, docNo] = await Promise.all([
@@ -37,7 +38,7 @@ export async function getIssueFormData() {
       );
       return {
         code: p.code,
-        name: `${p.nameEn} (${p.nameTh})`,
+        name: productLabel(p.nameEn, p.nameTh),
         unit: p.unit,
         price: p.price,
         fefoLotId: fefo?.id ?? null,
@@ -76,7 +77,7 @@ export async function getRecentIssues(limit = 20) {
     totalQty: i.lines.reduce((s, l) => s + l.qty, 0),
     lines: i.lines.map((l) => ({
       code: l.productCode,
-      name: `${l.product.nameEn} (${l.product.nameTh})`,
+      name: productLabel(l.product.nameEn, l.product.nameTh),
       lotNo: l.selectedLot.lotNo,
       locationCode: l.selectedLot.locationCode,
       qty: l.qty,

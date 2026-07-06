@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { productLabel } from "@/lib/calc/productName";
 
 export type PoLineRow = {
   id: string;
@@ -43,7 +44,7 @@ export async function getProductPickerList() {
   });
   return products.map((p) => ({
     code: p.code,
-    name: `${p.nameEn} (${p.nameTh})`,
+    name: productLabel(p.nameEn, p.nameTh),
     unit: p.unit,
     price: p.price,
   }));

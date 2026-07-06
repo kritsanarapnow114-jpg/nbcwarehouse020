@@ -67,7 +67,7 @@ model User {
 model Product {
   code        String    @id
   nameEn      String
-  nameTh      String
+  nameTh      String?
   category    Category
   unit        String
   price       Float

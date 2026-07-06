@@ -20,7 +20,7 @@ export function EditProductModal({
   onSaved: () => void;
 }) {
   const [nameEn, setNameEn] = useState(product.nameEn);
-  const [nameTh, setNameTh] = useState(product.nameTh);
+  const [nameTh, setNameTh] = useState(product.nameTh ?? "");
   const [category, setCategory] = useState(product.category as Category);
   const [unit, setUnit] = useState(product.unit);
   const [price, setPrice] = useState(String(product.price));
@@ -80,7 +80,7 @@ export function EditProductModal({
         <Field label="Name EN">
           <input value={nameEn} onChange={(e) => setNameEn(e.target.value)} className={inputClass} />
         </Field>
-        <Field label="Name TH">
+        <Field label="Name TH (optional)">
           <input value={nameTh} onChange={(e) => setNameTh(e.target.value)} className={inputClass} />
         </Field>
         <div className="grid grid-cols-2 gap-3">

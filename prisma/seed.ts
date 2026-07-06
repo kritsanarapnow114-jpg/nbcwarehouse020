@@ -41,6 +41,51 @@ async function main() {
     },
   });
 
+  // Real product master data from the customer's SAP export — upserted
+  // unconditionally (by code) on every deploy, same as the user accounts
+  // above, so it lands in production too without touching existing stock.
+  const realProducts = [
+    { code: "20000004", nameEn: "LACTIC ACID TOTES 1200KG", category: Category.RAW_MATERIAL, unit: "kg", price: 65, pallet: 1200, width: 1.1, length: 1.2, stackLevels: 1 },
+    { code: "20000009", nameEn: "REAXIS C129 1250KG", category: Category.RAW_MATERIAL, unit: "kg", price: 18.32, pallet: 1250, width: 1.1, length: 1.2, stackLevels: 1 },
+    { code: "20000023", nameEn: "EBS - AKAWAX C ULTRA 400KG", category: Category.RAW_MATERIAL, unit: "kg", price: 188, pallet: 400, width: 1.32, length: 1.32, stackLevels: 1 },
+    { code: "20000024", nameEn: "PROPYLENE GLYCOL 1035KG", category: Category.RAW_MATERIAL, unit: "kg", price: 150, pallet: 1035, width: 1, length: 1.2, stackLevels: 1 },
+    { code: "20000111", nameEn: "MAGNESIUM SULFATE HEPTAHYDRATE BAG 25KG", category: Category.RAW_MATERIAL, unit: "kg", price: 9, pallet: 1000, width: 1.1, length: 1.2, stackLevels: 1 },
+    { code: "20000113", nameEn: "GLYCEROL 99.5% 1250KG", category: Category.RAW_MATERIAL, unit: "kg", price: 45, pallet: 1250, width: 1.1, length: 1.2, stackLevels: 1 },
+    { code: "20000115", nameEn: "ZINC SULFATE HEPTAHYDRATE 25KG", category: Category.RAW_MATERIAL, unit: "kg", price: 34.03, pallet: 1000, width: 1.1, length: 1.2, stackLevels: 1 },
+    { code: "20000117", nameEn: "FERROUS SULFATE HEPTAHYDRATE 25KG", category: Category.RAW_MATERIAL, unit: "kg", price: 20.08, pallet: 1000, width: 1.1, length: 1.2, stackLevels: 1 },
+    { code: "20000119", nameEn: "MANGANESE CHLORIDE TETRAHYDRATE 25KG", category: Category.RAW_MATERIAL, unit: "kg", price: 350, pallet: 450, width: 1.1, length: 1.2, stackLevels: 1 },
+    { code: "20000120", nameEn: "CUPRIC SULFATE PENTAHYDRATE", category: Category.RAW_MATERIAL, unit: "kg", price: 145, pallet: 1000, width: 1.1, length: 1.2, stackLevels: 1 },
+    { code: "20000123", nameEn: "D-BIOTIN 98% POWDER 25KG", category: Category.RAW_MATERIAL, unit: "kg", price: 28700, pallet: 100, width: 1, length: 1, stackLevels: 1 },
+    { code: "20000124", nameEn: "THIAMINE HYDROCHLORIDE 5KG", category: Category.RAW_MATERIAL, unit: "kg", price: 2600, pallet: 120, width: 1.1, length: 1.2, stackLevels: 1 },
+    { code: "20000125", nameEn: "STRUKTOL SB2121 1000KG", category: Category.RAW_MATERIAL, unit: "kg", price: 172.02, pallet: 1000, width: 1.1, length: 1.2, stackLevels: 1 },
+    { code: "30000000", nameEn: "LID 48X45", category: Category.PACKAGING, unit: "pcs", price: 93, pallet: 1, width: 1.145, length: 1.22, stackLevels: 1 },
+    { code: "30000001", nameEn: "PALLET 4W 5S HT 48X45X4.5 BOX", category: Category.PACKAGING, unit: "pcs", price: 870, pallet: 20, width: 1.145, length: 1.22, stackLevels: 1 },
+    { code: "30000002", nameEn: "PAD 36X36", category: Category.PACKAGING, unit: "pcs", price: 31, pallet: 20, width: 1.145, length: 1.22, stackLevels: 1 },
+    { code: "30000004", nameEn: "POUCH 25KG BAG 22.5X30", category: Category.PACKAGING, unit: "pcs", price: 463.47, pallet: 500, width: 1.145, length: 1.22, stackLevels: 1 },
+    { code: "30000008", nameEn: "LINER 44x41.25x91 0506", category: Category.PACKAGING, unit: "pcs", price: 467.59, pallet: 500, width: 1.145, length: 1.22, stackLevels: 1 },
+    { code: "30000010", nameEn: "SUPER SACK 1000KG 35X35X51 FOUR PANEL", category: Category.PACKAGING, unit: "pcs", price: 759.52, pallet: 80, width: 1.1, length: 1.1, stackLevels: 1 },
+    { code: "30000011", nameEn: "PALLET 4W 4S HT 45X45X4.5 SUPER SACK", category: Category.PACKAGING, unit: "pcs", price: 850, pallet: 20, width: 1.145, length: 1.145, stackLevels: 1 },
+    { code: "30000012", nameEn: "SUPER SACK BOX", category: Category.PACKAGING, unit: "pcs", price: 436, pallet: 30, width: 1.145, length: 1.22, stackLevels: 1 },
+    { code: "30000040", nameEn: "SHORT BOX 45.5X42.5X34.875 FOR 750KG", category: Category.PACKAGING, unit: "pcs", price: 751, pallet: 21, width: 1.145, length: 1.22, stackLevels: 1 },
+    { code: "50000031", nameEn: "INGEO BIOPOLYMER 6202D 1000Kg", category: Category.FINISHED_GOODS, unit: "kg", price: 91.93, pallet: 1000, width: 1.12, length: 1.22, stackLevels: 1 },
+    { code: "50000054", nameEn: "INGEO BIOPOLYMER 3052D 750Kg", category: Category.FINISHED_GOODS, unit: "kg", price: 60.98, pallet: 750, width: 1.12, length: 1.22, stackLevels: 1 },
+    { code: "50000067", nameEn: "INGEO BIOPOLYMER 3251D 1000Kg", category: Category.FINISHED_GOODS, unit: "kg", price: 60.98, pallet: 1000, width: 1.12, length: 1.22, stackLevels: 1 },
+    { code: "50000120", nameEn: "INGEO BIOPOLYMER 1039D 750Kg", category: Category.FINISHED_GOODS, unit: "kg", price: 60.98, pallet: 750, width: 1.12, length: 1.22, stackLevels: 1 },
+    { code: "50000121", nameEn: "INGEO BIOPOLYMER 1039D 1000Kg", category: Category.FINISHED_GOODS, unit: "kg", price: 60.98, pallet: 1000, width: 1.12, length: 1.22, stackLevels: 1 },
+    { code: "50000125", nameEn: "INGEO BIOPOLYMER 9140D 4.5% MB 953Kg", category: Category.RAW_MATERIAL, unit: "kg", price: 90.36, pallet: 953, width: 1.12, length: 1.22, stackLevels: 1 },
+    { code: "50000128", nameEn: "INGEO BIOPOLYMER 9100D 4.5% MB 953Kg", category: Category.RAW_MATERIAL, unit: "kg", price: 88.83, pallet: 953, width: 1.12, length: 1.22, stackLevels: 1 },
+    { code: "NS-A847S", nameEn: "PUROLITE A847S", category: Category.SPARE_PARTS, unit: "kg", price: 0, pallet: 1000, width: 1.1, length: 1.1, stackLevels: 1 },
+    { code: "NS-IP4", nameEn: "PUROLITE IP4", category: Category.SPARE_PARTS, unit: "kg", price: 0, pallet: 1000, width: 1.1, length: 1.1, stackLevels: 1 },
+    { code: "NS-PPA847S", nameEn: "PUROPACK PPA847S", category: Category.SPARE_PARTS, unit: "kg", price: 0, pallet: 1000, width: 1.1, length: 1.1, stackLevels: 1 },
+    { code: "NS-PPC160SH", nameEn: "PUROPACK PPC160SH", category: Category.SPARE_PARTS, unit: "kg", price: 0, pallet: 1000, width: 1.1, length: 1.1, stackLevels: 1 },
+    { code: "NS-QSAND", nameEn: "Quartz Sand - Purolite super bags", category: Category.SPARE_PARTS, unit: "kg", price: 0, pallet: 1000, width: 1.1, length: 1.1, stackLevels: 1 },
+    { code: "NS-SSTC8000E", nameEn: "SHALLOW SHELL SSTC8000E", category: Category.SPARE_PARTS, unit: "kg", price: 0, pallet: 1000, width: 1.1, length: 1.1, stackLevels: 1 },
+    { code: "20000172", nameEn: "MAGNESIUM SULFATE HEPTAHYDRATE 1000KG", category: Category.RAW_MATERIAL, unit: "kg", price: 9, pallet: 1000, width: 1.1, length: 1.2, stackLevels: 1 },
+  ];
+  for (const p of realProducts) {
+    await db.product.upsert({ where: { code: p.code }, update: {}, create: p });
+  }
+
   // Safe to run on every deploy: skip the demo business-data seed entirely if
   // this database already has data (e.g. a production DB already in real use).
   const existingLots = await db.lot.count();
