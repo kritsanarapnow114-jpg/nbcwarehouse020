@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const rows = await getAgingRows({ filter, thresholdDays });
 
   const csv = toCsv(
-    ["Code", "Product(EN)", "Lot", "Location", "OnHand", "Value", "Received", "AgeDays", "Expiry"],
+    ["SAP Material Master", "Material Description(EN)", "Lot", "Location", "OnHand", "Value", "Received", "AgeDays", "Expiry"],
     rows.map((r) => [
       r.code,
       r.nameEn,

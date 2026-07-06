@@ -23,8 +23,8 @@ export function ProductsTable({
         <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
-              <Th>Code (รหัส)</Th>
-              <Th>Product (สินค้า)</Th>
+              <Th>SAP Material Master</Th>
+              <Th>Material Description</Th>
               <Th>Category (หมวด)</Th>
               <Th align="right">On Hand (คงเหลือ)</Th>
               <Th align="right">Unit Price (ราคา)</Th>

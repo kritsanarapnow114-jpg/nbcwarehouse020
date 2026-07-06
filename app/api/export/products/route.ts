@@ -9,9 +9,9 @@ export async function GET(req: NextRequest) {
 
   const csv = toCsv(
     [
-      "Code",
-      "Product (EN)",
-      "Product (TH)",
+      "SAP Material Master",
+      "Material Description (EN)",
+      "Material Description (TH)",
       "Category",
       "OnHand",
       "Unit",

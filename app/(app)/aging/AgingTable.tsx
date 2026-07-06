@@ -25,8 +25,8 @@ export function AgingTable({ rows }: { rows: AgingRow[] }) {
         <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
-              <Th>Code (รหัส)</Th>
-              <Th>Product (สินค้า)</Th>
+              <Th>SAP Material Master</Th>
+              <Th>Material Description</Th>
               <Th>Lot</Th>
               <Th>Location (ที่เก็บ)</Th>
               <Th align="right">On Hand (คงเหลือ)</Th>

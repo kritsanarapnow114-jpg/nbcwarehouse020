@@ -47,7 +47,7 @@ function AddProductModal({
       <ModalHeader title="Add product (เพิ่มสินค้า)" onClose={onClose} />
       <form action={formAction} className="flex flex-col gap-3 px-5 py-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Code (รหัส)">
+          <Field label="SAP Material Master">
             <input name="code" required className={inputClass} />
           </Field>
           <Field label="Category (หมวด)">
