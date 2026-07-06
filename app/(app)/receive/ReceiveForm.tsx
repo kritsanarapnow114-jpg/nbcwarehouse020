@@ -451,9 +451,12 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                   <td className="font-num p-[10px_16px] text-[12px] text-[#3a4658]">{m.materialCode}</td>
                   <td className="font-num p-[10px_16px] text-right text-[#69748a]">
                     {m.qtyPerUnit} {m.unit}
+                    {m.perQty > 1 && (
+                      <span className="text-[10.5px] text-[#9aa4b4]"> / {m.perQty.toLocaleString()}</span>
+                    )}
                   </td>
                   <td className="font-num p-[10px_16px] text-right">
-                    {(m.qtyPerUnit * producedTotal).toLocaleString()}
+                    {(Math.floor(producedTotal / (m.perQty > 0 ? m.perQty : 1)) * m.qtyPerUnit).toLocaleString()}
                   </td>
                   <td className="p-[10px_16px] text-right">
                     <input

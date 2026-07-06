@@ -203,6 +203,7 @@ model BomLine {
   materialProductCode String
   materialProduct     Product @relation("MaterialProduct", fields: [materialProductCode], references: [code])
   qtyPerUnit          Float
+  perQty              Float   @default(1) // consume qtyPerUnit for every `perQty` finished units produced (e.g. 1 pallet per 750 kg)
   unit                String
 
   receiptLoss ReceiptBomLoss[]

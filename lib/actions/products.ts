@@ -139,7 +139,12 @@ export async function updateProductAction(
   revalidateInventoryPaths();
 }
 
-export type BomLineInput = { materialProductCode: string; qtyPerUnit: number; unit: string };
+export type BomLineInput = {
+  materialProductCode: string;
+  qtyPerUnit: number;
+  perQty: number;
+  unit: string;
+};
 
 export async function getBomAction(finishedProductCode: string) {
   const bom = await db.bom.findUnique({
@@ -154,6 +159,7 @@ export async function getBomAction(finishedProductCode: string) {
       materialProductCode: l.materialProductCode,
       materialName: productLabel(l.materialProduct.nameEn, l.materialProduct.nameTh),
       qtyPerUnit: l.qtyPerUnit,
+      perQty: l.perQty,
       unit: l.unit,
     }));
 }
@@ -182,7 +188,7 @@ export async function saveBomAction(finishedProductCode: string, lines: BomLineI
     if (existing) {
       await db.bomLine.update({
         where: { id: existing.id },
-        data: { qtyPerUnit: line.qtyPerUnit, unit: line.unit },
+        data: { qtyPerUnit: line.qtyPerUnit, perQty: line.perQty > 0 ? line.perQty : 1, unit: line.unit },
       });
     } else {
       await db.bomLine.create({
@@ -190,6 +196,7 @@ export async function saveBomAction(finishedProductCode: string, lines: BomLineI
           bomId: bom.id,
           materialProductCode: line.materialProductCode,
           qtyPerUnit: line.qtyPerUnit,
+          perQty: line.perQty > 0 ? line.perQty : 1,
           unit: line.unit,
         },
       });

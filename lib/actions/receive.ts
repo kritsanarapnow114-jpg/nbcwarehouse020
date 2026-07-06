@@ -150,7 +150,10 @@ export async function confirmReceiptAction(
         const lossByBomLineId = new Map((input.bomLoss ?? []).map((bl) => [bl.bomLineId, bl.lossQty]));
         for (const bomLine of bom.lines) {
           if (bomLine.qtyPerUnit <= 0) continue; // soft-removed from the BOM
-          const consumed = bomLine.qtyPerUnit * (input.producedTotal ?? 0);
+          // Consume qtyPerUnit for every full `perQty` produced (e.g. 1 pallet
+          // per 750 kg): a partial batch doesn't consume another unit.
+          const perQty = bomLine.perQty > 0 ? bomLine.perQty : 1;
+          const consumed = Math.floor((input.producedTotal ?? 0) / perQty) * bomLine.qtyPerUnit;
           const loss = lossByBomLineId.get(bomLine.id) ?? 0;
           const totalNeeded = consumed + loss;
           if (totalNeeded <= 0) continue;

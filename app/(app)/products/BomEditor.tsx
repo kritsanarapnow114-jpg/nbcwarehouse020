@@ -7,7 +7,7 @@ import { showToast } from "@/components/ui/Toast";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
 type MaterialOption = { code: string; name: string; unit: string };
-type Line = { materialProductCode: string; qtyPerUnit: string; unit: string };
+type Line = { materialProductCode: string; qtyPerUnit: string; perQty: string; unit: string };
 
 export function BomEditor({
   finishedProductCode,
@@ -23,7 +23,7 @@ export function BomEditor({
 
   useEffect(() => {
     getBomAction(finishedProductCode).then((rows) => {
-      setLines(rows.map((r) => ({ materialProductCode: r.materialProductCode, qtyPerUnit: String(r.qtyPerUnit), unit: r.unit })));
+      setLines(rows.map((r) => ({ materialProductCode: r.materialProductCode, qtyPerUnit: String(r.qtyPerUnit), perQty: String(r.perQty ?? 1), unit: r.unit })));
       setLinesFor(finishedProductCode);
     });
   }, [finishedProductCode]);
@@ -34,7 +34,7 @@ export function BomEditor({
   function addLine(code: string) {
     const m = materials.find((x) => x.code === code);
     if (!m || !shown) return;
-    setLines([...shown, { materialProductCode: m.code, qtyPerUnit: "1", unit: m.unit }]);
+    setLines([...shown, { materialProductCode: m.code, qtyPerUnit: "1", perQty: "1", unit: m.unit }]);
     setLinesFor(finishedProductCode);
   }
 
@@ -58,6 +58,7 @@ export function BomEditor({
         shown.map((l) => ({
           materialProductCode: l.materialProductCode,
           qtyPerUnit: Number(l.qtyPerUnit) || 0,
+          perQty: Number(l.perQty) || 1,
           unit: l.unit,
         }))
       );
@@ -71,8 +72,11 @@ export function BomEditor({
 
   return (
     <div className="mt-4 border-t border-[#eef1f5] pt-4">
-      <div className="mb-2 text-[12.5px] font-semibold text-[#16202e]">
+      <div className="text-[12.5px] font-semibold text-[#16202e]">
         Bill of Materials (สูตรวัตถุดิบ) — used when receiving from Production
+      </div>
+      <div className="mb-2 text-[11px] text-[#9aa4b4]">
+        ใช้ [Qty] ต่อทุกๆ [Per] หน่วยที่ผลิต · เช่น พาเลท 1 ต่อ 750 = ผลิตครบ 750 ถึงตัด 1 พาเลท (blank Per = 1)
       </div>
       {shown === null ? (
         <div className="text-[12px] text-[#9aa4b4]">Loading…</div>
@@ -82,7 +86,8 @@ export function BomEditor({
             <thead>
               <tr className="text-left text-[#9aa4b4]">
                 <th className="pb-1.5 pr-3 font-medium">Material</th>
-                <th className="pb-1.5 pr-3 text-right font-medium">Qty per unit</th>
+                <th className="pb-1.5 pr-3 text-right font-medium">Qty</th>
+                <th className="pb-1.5 pr-3 text-right font-medium">Per (ต่อผลิต)</th>
                 <th className="pb-1.5 pr-3 font-medium">Unit</th>
                 <th className="w-8"></th>
               </tr>
@@ -98,7 +103,15 @@ export function BomEditor({
                     <input
                       value={l.qtyPerUnit}
                       onChange={(e) => updateLine(i, { qtyPerUnit: e.target.value })}
-                      className="font-num w-[80px] rounded-[6px] border border-[#d7dce4] px-2 py-1 text-right text-[12.5px]"
+                      className="font-num w-[70px] rounded-[6px] border border-[#d7dce4] px-2 py-1 text-right text-[12.5px]"
+                    />
+                  </td>
+                  <td className="py-1.5 pr-3 text-right">
+                    <input
+                      value={l.perQty}
+                      onChange={(e) => updateLine(i, { perQty: e.target.value })}
+                      title="ต่อทุกๆ กี่หน่วยที่ผลิต (per how many produced units)"
+                      className="font-num w-[70px] rounded-[6px] border border-[#d7dce4] px-2 py-1 text-right text-[12.5px]"
                     />
                   </td>
                   <td className="font-num py-1.5 pr-3 text-[#69748a]">{l.unit}</td>
@@ -111,7 +124,7 @@ export function BomEditor({
               ))}
               {shown.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-3 text-center text-[#9aa4b4]">
+                  <td colSpan={5} className="py-3 text-center text-[#9aa4b4]">
                     No materials linked yet
                   </td>
                 </tr>

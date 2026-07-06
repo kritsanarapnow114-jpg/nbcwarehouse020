@@ -50,6 +50,7 @@ export async function getReceiveFormData() {
         materialCode: l.materialProductCode,
         materialName: productLabel(l.materialProduct.nameEn, l.materialProduct.nameTh),
         qtyPerUnit: l.qtyPerUnit,
+        perQty: l.perQty,
         unit: l.unit,
         materialPrice: l.materialProduct.price,
       })),
