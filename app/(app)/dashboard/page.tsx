@@ -47,16 +47,16 @@ export default async function DashboardPage({
     movementBuckets,
     actionRequired,
   ] = await Promise.all([
-    kpiBand(today),
+    kpiBand(range),
     getInventoryStats(range),
-    getStorageUtilization(),
-    getValueByCategory(),
-    getValueByExpiry(today),
+    getStorageUtilization(range.end),
+    getValueByCategory(range.end),
+    getValueByExpiry(range.end),
     getMovementDetail(range),
-    getSlowMoving(today),
-    getCountProgress(today),
+    getSlowMoving(range.end),
+    getCountProgress(range.end),
     getMovementBuckets(range),
-    getActionRequired(today),
+    getActionRequired(range.end),
   ]);
 
   const countMaxMonthly = Math.max(1, ...countProgress.monthly.map((m) => m.plan));

@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { daysBetween, fmtDateBE, todayBangkok } from "@/lib/calc/date";
+import { getLotsAsOf } from "@/lib/calc/snapshot";
 import {
   areaPerUnit,
   binCapacity,
@@ -15,16 +16,17 @@ import { Category, Zone } from "@prisma/client";
 export type Range = { start: Date; end: Date };
 
 export async function getInventoryStats(range: Range) {
-  const products = await db.product.findMany({
-    where: { deletedAt: null },
-    include: { lots: true },
-  });
-  const inventoryValue = products.reduce(
-    (s, p) => s + p.lots.reduce((ls, l) => ls + l.qty, 0) * p.price,
-    0
-  );
+  const [products, snapshot] = await Promise.all([
+    db.product.findMany({ where: { deletedAt: null } }),
+    getLotsAsOf(range.end),
+  ]);
+  const priceByCode = new Map(products.map((p) => [p.code, p.price]));
+  const activeCodes = new Set(products.map((p) => p.code));
+  const activeLots = snapshot.filter((l) => activeCodes.has(l.productCode));
+
+  const inventoryValue = activeLots.reduce((s, l) => s + l.qty * (priceByCode.get(l.productCode) ?? 0), 0);
   const skuCount = products.length;
-  const lotCount = products.reduce((s, p) => s + p.lots.length, 0);
+  const lotCount = activeLots.length;
 
   const [recvAgg, issAgg] = await Promise.all([
     db.receiptLine.findMany({
@@ -39,29 +41,27 @@ export async function getInventoryStats(range: Range) {
   const receivedUnits = recvAgg.reduce((s, r) => s + r.recvQty, 0);
   const issuedUnits = issAgg.reduce((s, r) => s + r.qty, 0);
 
-  const today = todayBangkok();
-  const lossValue = products.reduce((s, p) => {
-    const expiredQty = p.lots
-      .filter((l) => l.expDate && l.expDate < today)
-      .reduce((ls, l) => ls + l.qty, 0);
-    return s + expiredQty * p.price;
-  }, 0);
+  const lossValue = activeLots
+    .filter((l) => l.expDate && l.expDate < range.end)
+    .reduce((s, l) => s + l.qty * (priceByCode.get(l.productCode) ?? 0), 0);
 
   return { inventoryValue, skuCount, lotCount, receivedUnits, issuedUnits, lossValue };
 }
 
 /** Dashboard's Storage Utilization widget only shows zones A-D (Spare Parts / zone E omitted here, per design). */
-export async function getStorageUtilization() {
-  const [locations, lots] = await Promise.all([
+export async function getStorageUtilization(asOf: Date) {
+  const [locations, products, snapshot] = await Promise.all([
     db.location.findMany(),
-    db.lot.findMany({ include: { product: true } }),
+    db.product.findMany(),
+    getLotsAsOf(asOf),
   ]);
+  const productByCode = new Map(products.map((p) => [p.code, p]));
 
   const usedByLoc = new Map<string, number>();
-  for (const l of lots) {
-    const area =
-      l.qty *
-      areaPerUnit(l.product.width, l.product.length, l.product.stackLevels, l.product.pallet);
+  for (const l of snapshot) {
+    const p = productByCode.get(l.productCode);
+    if (!p) continue;
+    const area = l.qty * areaPerUnit(p.width, p.length, p.stackLevels, p.pallet);
     usedByLoc.set(l.locationCode, (usedByLoc.get(l.locationCode) ?? 0) + area);
   }
 
@@ -104,15 +104,18 @@ export async function getStorageUtilization() {
   };
 }
 
-export async function getValueByCategory() {
-  const products = await db.product.findMany({
-    where: { deletedAt: null },
-    include: { lots: true },
-  });
+export async function getValueByCategory(asOf: Date) {
+  const [products, snapshot] = await Promise.all([
+    db.product.findMany({ where: { deletedAt: null } }),
+    getLotsAsOf(asOf),
+  ]);
+  const productByCode = new Map(products.map((p) => [p.code, p]));
+
   const byCategory = new Map<string, number>();
-  for (const p of products) {
-    const value = p.lots.reduce((s, l) => s + l.qty, 0) * p.price;
-    byCategory.set(p.category, (byCategory.get(p.category) ?? 0) + value);
+  for (const l of snapshot) {
+    const p = productByCode.get(l.productCode);
+    if (!p) continue;
+    byCategory.set(p.category, (byCategory.get(p.category) ?? 0) + l.qty * p.price);
   }
   const rows = (Object.keys(CATEGORY_LABEL) as Category[])
     .filter((c) => byCategory.has(c))
@@ -125,13 +128,17 @@ export async function getValueByCategory() {
   return rows.map((r) => ({ ...r, pct: (r.value / max) * 100 }));
 }
 
-export async function getValueByExpiry(today: Date = todayBangkok()) {
-  const lots = await db.lot.findMany({ include: { product: true } });
+export async function getValueByExpiry(asOf: Date = todayBangkok()) {
+  const [products, snapshot] = await Promise.all([db.product.findMany(), getLotsAsOf(asOf)]);
+  const productByCode = new Map(products.map((p) => [p.code, p]));
+
   const buckets = EXPIRY_BUCKETS.map((b) => ({ ...b, value: 0, count: 0 }));
-  for (const l of lots) {
-    const daysLeft = l.expDate ? daysBetween(l.expDate, today) : null;
+  for (const l of snapshot) {
+    const p = productByCode.get(l.productCode);
+    if (!p) continue;
+    const daysLeft = l.expDate ? daysBetween(l.expDate, asOf) : null;
     const idx = expiryBucketIndex(daysLeft);
-    buckets[idx].value += l.qty * l.product.price;
+    buckets[idx].value += l.qty * p.price;
     buckets[idx].count += 1;
   }
   const max = Math.max(1, ...buckets.map((b) => b.value));
@@ -172,12 +179,18 @@ export async function getMovementDetail(range: Range, limit = 5) {
   return { received, issued };
 }
 
-export async function getSlowMoving(today: Date = todayBangkok(), thresholdDays = 60) {
-  const products = await db.product.findMany({
-    where: { deletedAt: null },
-    include: { lots: true },
-  });
+export async function getSlowMoving(asOf: Date = todayBangkok(), thresholdDays = 60) {
+  const [products, snapshot] = await Promise.all([
+    db.product.findMany({ where: { deletedAt: null } }),
+    getLotsAsOf(asOf),
+  ]);
+  const onHandByProduct = new Map<string, number>();
+  for (const l of snapshot) {
+    onHandByProduct.set(l.productCode, (onHandByProduct.get(l.productCode) ?? 0) + l.qty);
+  }
+
   const lastIssues = await db.issueLine.findMany({
+    where: { issue: { docDate: { lte: asOf } } },
     include: { issue: true },
   });
   const lastIssueByProduct = new Map<string, Date>();
@@ -188,9 +201,9 @@ export async function getSlowMoving(today: Date = todayBangkok(), thresholdDays 
 
   const rows = products
     .map((p) => {
-      const onHand = p.lots.reduce((s, l) => s + l.qty, 0);
+      const onHand = onHandByProduct.get(p.code) ?? 0;
       const last = lastIssueByProduct.get(p.code) ?? null;
-      const days = last ? daysBetween(today, last) : null;
+      const days = last ? daysBetween(asOf, last) : null;
       return {
         code: p.code,
         name: p.nameEn,
@@ -206,9 +219,12 @@ export async function getSlowMoving(today: Date = todayBangkok(), thresholdDays 
   return rows;
 }
 
-export async function getCountProgress(today: Date = todayBangkok()) {
-  const totalLots = await db.lot.count();
-  const counts = await db.stockCount.findMany({ include: { lines: true } });
+export async function getCountProgress(asOf: Date = todayBangkok()) {
+  const totalLots = (await getLotsAsOf(asOf)).length;
+  const counts = await db.stockCount.findMany({
+    where: { docDate: { lte: asOf } },
+    include: { lines: true },
+  });
 
   function bucketFor(date: Date) {
     return `${date.getFullYear()}-${date.getMonth()}`;
@@ -216,7 +232,7 @@ export async function getCountProgress(today: Date = todayBangkok()) {
 
   const monthly: { label: string; counted: number; plan: number }[] = [];
   for (let i = 5; i >= 0; i--) {
-    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const d = new Date(asOf.getFullYear(), asOf.getMonth() - i, 1);
     const key = bucketFor(d);
     const countedLots = new Set<string>();
     for (const c of counts) {
@@ -231,7 +247,7 @@ export async function getCountProgress(today: Date = todayBangkok()) {
     });
   }
 
-  const weekStart = new Date(today);
+  const weekStart = new Date(asOf);
   weekStart.setDate(1);
   const weekly: { label: string; counted: number; plan: number }[] = [];
   for (let w = 0; w < 5; w++) {
@@ -239,7 +255,7 @@ export async function getCountProgress(today: Date = todayBangkok()) {
     from.setDate(from.getDate() + w * 7);
     const to = new Date(from);
     to.setDate(to.getDate() + 6);
-    if (from.getMonth() !== today.getMonth()) break;
+    if (from.getMonth() !== asOf.getMonth()) break;
     const countedLots = new Set<string>();
     for (const c of counts) {
       if (c.docDate >= from && c.docDate <= to) {
@@ -291,17 +307,20 @@ export async function getMovementBuckets(range: Range): Promise<MovementBucket[]
   return buckets;
 }
 
-export async function getActionRequired(today: Date = todayBangkok()) {
-  const [qcCount, lots, overduePOs] = await Promise.all([
+export async function getActionRequired(asOf: Date = todayBangkok()) {
+  const [qcCount, snapshot, overduePOs] = await Promise.all([
+    // QC hold has no change history to reconstruct — always reflects current status.
     db.lot.count({ where: { status: "QC" } }),
-    db.lot.findMany({ where: { expDate: { not: null } } }),
+    getLotsAsOf(asOf),
     db.purchaseOrder.findMany({
       where: {
         status: { not: "COMPLETE" },
-        date: { lt: new Date(today.getTime() - 14 * 86400000) },
+        date: { lt: new Date(asOf.getTime() - 14 * 86400000) },
       },
     }),
   ]);
-  const expCount = lots.filter((l) => l.expDate! <= new Date(today.getTime() + 30 * 86400000)).length;
+  const expCount = snapshot.filter(
+    (l) => l.expDate && l.expDate <= new Date(asOf.getTime() + 30 * 86400000)
+  ).length;
   return { qcCount, expCount, overduePOs: overduePOs.map((p) => p.no) };
 }

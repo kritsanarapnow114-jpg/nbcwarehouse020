@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { daysBetween, startOfYear } from "./date";
+import { daysBetween } from "./date";
+import { Range } from "@/lib/views/dashboard";
 
 export type KpiTone = "ok" | "warn";
 
@@ -15,35 +16,31 @@ export type KpiResult = {
   loggable: boolean; // Safety/Cost/Delivery: user adds log entries. Quality/Accuracy: derived, read-only.
 };
 
-export async function safetyKpi(today: Date): Promise<KpiResult> {
-  const yearStart = startOfYear(today);
+export async function safetyKpi(range: Range): Promise<KpiResult> {
   const logs = await db.kpiLog.findMany({
-    where: { key: "SAFETY" },
+    where: { key: "SAFETY", date: { gte: range.start, lte: range.end } },
     orderBy: { date: "asc" },
   });
-  const incidentsYtd = logs.filter(
-    (l) => l.incident && l.date >= yearStart && l.date <= today
-  );
+  const incidents = logs.filter((l) => l.incident);
   const lastIncident = [...logs].reverse().find((l) => l.incident);
-  const sinceDate = lastIncident ? lastIncident.date : yearStart;
-  const daysSince = Math.max(0, daysBetween(today, sinceDate));
+  const sinceDate = lastIncident ? lastIncident.date : range.start;
+  const daysSince = Math.max(0, daysBetween(range.end, sinceDate));
 
   return {
     key: "safety",
     label: "Safety",
     th: "ความปลอดภัย",
-    value: String(incidentsYtd.length),
+    value: String(incidents.length),
     target: "Target 0 (เป้าหมาย 0)",
     sub: `${daysSince}d since last incident`,
-    tone: incidentsYtd.length === 0 ? "ok" : "warn",
+    tone: incidents.length === 0 ? "ok" : "warn",
     loggable: true,
   };
 }
 
-export async function costKpi(today: Date): Promise<KpiResult> {
-  const yearStart = startOfYear(today);
+export async function costKpi(range: Range): Promise<KpiResult> {
   const logs = await db.kpiLog.findMany({
-    where: { key: "COST", date: { gte: yearStart, lte: today } },
+    where: { key: "COST", date: { gte: range.start, lte: range.end } },
   });
   const total = logs.reduce((s, l) => s + (l.amount ?? 0), 0);
   return {
@@ -51,15 +48,17 @@ export async function costKpi(today: Date): Promise<KpiResult> {
     label: "Cost Saving",
     th: "ต้นทุน",
     value: "฿" + Math.round(total).toLocaleString("en-US"),
-    target: "Hard savings YTD (ประหยัดสะสม)",
+    target: "Savings this period (ประหยัดช่วงนี้)",
     sub: `${logs.length} entries`,
     tone: "ok",
     loggable: true,
   };
 }
 
-export async function deliveryKpi(_today: Date): Promise<KpiResult> {
-  const logs = await db.kpiLog.findMany({ where: { key: "DELIVERY" } });
+export async function deliveryKpi(range: Range): Promise<KpiResult> {
+  const logs = await db.kpiLog.findMany({
+    where: { key: "DELIVERY", date: { gte: range.start, lte: range.end } },
+  });
   const total = logs.length;
   const onTime = logs.filter((l) => l.onTime).length;
   const pct = total > 0 ? (onTime / total) * 100 : 100;
@@ -75,9 +74,9 @@ export async function deliveryKpi(_today: Date): Promise<KpiResult> {
   };
 }
 
-export async function qualityKpi(): Promise<KpiResult> {
+export async function qualityKpi(range: Range): Promise<KpiResult> {
   const receipts = await db.receipt.findMany({
-    where: { mode: "PRODUCTION" },
+    where: { mode: "PRODUCTION", docDate: { gte: range.start, lte: range.end } },
   });
   const produced = receipts.reduce((s, r) => s + (r.producedTotal ?? 0), 0);
   const loss = receipts.reduce((s, r) => s + (r.prodLoss ?? 0), 0);
@@ -94,8 +93,12 @@ export async function qualityKpi(): Promise<KpiResult> {
   };
 }
 
-export async function accuracyKpi(): Promise<KpiResult> {
-  const lines = await db.stockCountLine.findMany();
+export async function accuracyKpi(range: Range): Promise<KpiResult> {
+  const counts = await db.stockCount.findMany({
+    where: { docDate: { gte: range.start, lte: range.end } },
+    include: { lines: true },
+  });
+  const lines = counts.flatMap((c) => c.lines);
   const total = lines.length;
   const matched = lines.filter((l) => l.countedQty === l.sysQty).length;
   const pct = total > 0 ? (matched / total) * 100 : 100;
@@ -111,6 +114,7 @@ export async function accuracyKpi(): Promise<KpiResult> {
   };
 }
 
+/** Full-history breakdowns for the KPI drill-down modals — intentionally not period-filtered. */
 export async function qualityBreakdown() {
   const receipts = await db.receipt.findMany({
     where: { mode: "PRODUCTION" },
@@ -150,13 +154,13 @@ export async function accuracyBreakdown() {
   });
 }
 
-export async function kpiBand(today: Date): Promise<KpiResult[]> {
+export async function kpiBand(range: Range): Promise<KpiResult[]> {
   const [safety, quality, delivery, cost, accuracy] = await Promise.all([
-    safetyKpi(today),
-    qualityKpi(),
-    deliveryKpi(today),
-    costKpi(today),
-    accuracyKpi(),
+    safetyKpi(range),
+    qualityKpi(range),
+    deliveryKpi(range),
+    costKpi(range),
+    accuracyKpi(range),
   ]);
   return [safety, quality, delivery, cost, accuracy];
 }
