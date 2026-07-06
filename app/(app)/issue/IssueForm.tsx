@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IssueFormData } from "@/lib/views/issue";
 import { confirmIssueAction, IssueLineInput } from "@/lib/actions/issue";
 import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup, CuteBoxKind } from "@/components/ui/CuteBoxPopup";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { takeRedo } from "@/lib/redoTemplate";
 import { fmtDateISO, fmtDateBE } from "@/lib/calc/date";
 
 type Line = IssueFormData["products"][number] & { selectedLotId: string; qty: string };
@@ -28,6 +29,26 @@ export function IssueForm({ data }: { data: IssueFormData }) {
   const [lastConfirmed, setLastConfirmed] = useState<{ docNo: string; lines: Line[] } | null>(null);
 
   const available = data.products.filter((p) => !lines.some((l) => l.code === p.code));
+
+  // Prefill from a "Redo" of a reversed issue (one-shot, client-only storage).
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    const p = takeRedo<{ issueTo: string; lines: { productCode: string; selectedLotId: string; qty: number }[] }>(
+      "issue"
+    );
+    if (!p) return;
+    if (p.issueTo) setIssueTo(p.issueTo);
+    setLines(
+      p.lines
+        .map((pl) => {
+          const prod = data.products.find((x) => x.code === pl.productCode);
+          if (!prod) return null;
+          return { ...prod, selectedLotId: pl.selectedLotId, qty: String(pl.qty) };
+        })
+        .filter((x): x is Line => x !== null)
+    );
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [data.products]);
 
   function addLine(code: string) {
     const p = data.products.find((x) => x.code === code);

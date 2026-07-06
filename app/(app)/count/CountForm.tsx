@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getLotsByZoneAction, confirmCountAction } from "@/lib/actions/count";
 import { LotOption, ProductOption } from "@/lib/views/docCommon";
 import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup } from "@/components/ui/CuteBoxPopup";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { takeRedo } from "@/lib/redoTemplate";
 import { downloadCsv } from "@/lib/calc/csvClient";
 import { fmtDateISO } from "@/lib/calc/date";
 
@@ -48,6 +49,50 @@ export function CountForm({
   const [pulling, setPulling] = useState(false);
 
   const available = lots.filter((l) => !lines.some((x) => x.id === l.id));
+
+  // Prefill from a "Redo" of a reversed stock count (one-shot, client-only storage).
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    const p = takeRedo<{
+      pullZone: string;
+      lines: { lotId: string; counted: string }[];
+      offSystemLines: { productCode: string; lotNo: string; locationCode: string; counted: string }[];
+    }>("count");
+    if (!p) return;
+    if (p.pullZone) setPullZone(p.pullZone);
+    setLines(
+      p.lines
+        .map((pl) => {
+          const lot = lots.find((l) => l.id === pl.lotId);
+          if (!lot) return null;
+          return {
+            id: lot.id,
+            productCode: lot.productCode,
+            name: lot.name,
+            lotNo: lot.lotNo,
+            locationCode: lot.locationCode,
+            sysQty: lot.qty,
+            counted: pl.counted,
+          };
+        })
+        .filter((x): x is Row => x !== null)
+    );
+    setOffLines(
+      p.offSystemLines.map((ol) => {
+        const prod = products.find((x) => x.code === ol.productCode);
+        return {
+          key: `${ol.productCode}-${Date.now()}-${Math.random()}`,
+          productCode: ol.productCode,
+          name: prod?.name ?? ol.productCode,
+          unit: prod?.unit ?? "",
+          lotNo: ol.lotNo,
+          locationCode: ol.locationCode,
+          counted: ol.counted,
+        };
+      })
+    );
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [lots, products]);
 
   async function handlePull() {
     setPulling(true);

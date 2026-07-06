@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LotOption } from "@/lib/views/docCommon";
 import { confirmTransferAction } from "@/lib/actions/transfer";
 import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup } from "@/components/ui/CuteBoxPopup";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { takeRedo } from "@/lib/redoTemplate";
 import { downloadCsv } from "@/lib/calc/csvClient";
 import { fmtDateISO } from "@/lib/calc/date";
 
@@ -30,6 +31,22 @@ export function TransferForm({
   const [error, setError] = useState<string | null>(null);
 
   const available = lots.filter((l) => !lines.some((x) => x.id === l.id));
+
+  // Prefill from a "Redo" of a reversed transfer (one-shot, client-only storage).
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    const p = takeRedo<{ lines: { lotId: string; toLocationCode: string; moveQty: string }[] }>("transfer");
+    if (!p) return;
+    setLines(
+      p.lines
+        .map((pl) => {
+          const lot = lots.find((l) => l.id === pl.lotId);
+          return lot ? { ...lot, toLocationCode: pl.toLocationCode, moveQty: pl.moveQty } : null;
+        })
+        .filter((x): x is Line => x !== null)
+    );
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [lots]);
 
   function addLine(id: string) {
     const lot = lots.find((l) => l.id === id);

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LotOption } from "@/lib/views/docCommon";
 import { confirmAdjustAction } from "@/lib/actions/adjust";
 import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup } from "@/components/ui/CuteBoxPopup";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { takeRedo } from "@/lib/redoTemplate";
 import { downloadCsv } from "@/lib/calc/csvClient";
 import { fmtDateISO } from "@/lib/calc/date";
 import { AdjustReason } from "@prisma/client";
@@ -30,6 +31,23 @@ export function AdjustForm({ lots }: { lots: LotOption[] }) {
   const [error, setError] = useState<string | null>(null);
 
   const available = lots.filter((l) => !lines.some((x) => x.id === l.id));
+
+  // Prefill from a "Redo" of a reversed adjustment (one-shot, client-only storage).
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    const p = takeRedo<{ reason: AdjustReason; lines: { lotId: string; counted: string }[] }>("adjustment");
+    if (!p) return;
+    if (p.reason) setReason(p.reason);
+    setLines(
+      p.lines
+        .map((pl) => {
+          const lot = lots.find((l) => l.id === pl.lotId);
+          return lot ? { ...lot, counted: pl.counted } : null;
+        })
+        .filter((x): x is Line => x !== null)
+    );
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [lots]);
 
   function addLine(id: string) {
     const lot = lots.find((l) => l.id === id);

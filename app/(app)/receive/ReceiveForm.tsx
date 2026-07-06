@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ReceiveFormData } from "@/lib/views/receive";
 import { confirmReceiptAction, ReceiveLineInput } from "@/lib/actions/receive";
 import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup, CuteBoxKind } from "@/components/ui/CuteBoxPopup";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { takeRedo } from "@/lib/redoTemplate";
 import { fmtDateISO } from "@/lib/calc/date";
 
 type Line = {
@@ -35,6 +36,28 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
   const [error, setError] = useState<string | null>(null);
 
   const selectedPo = data.pos.find((p) => p.id === poId) ?? null;
+
+  // Prefill from a "Redo" of a reversed receipt (one-shot, client-only storage).
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect */
+    const p = takeRedo<{
+      mode: "PO" | "PRODUCTION";
+      poId: string | null;
+      invoiceNo: string;
+      lines: Omit<Line, "name" | "unit">[];
+    }>("receipt");
+    if (!p) return;
+    setMode(p.mode);
+    setPoId(p.poId ?? "");
+    setInvoiceNo(p.invoiceNo ?? "");
+    setLines(
+      p.lines.map((l) => {
+        const prod = data.products.find((x) => x.code === l.productCode);
+        return { ...l, name: prod?.name ?? l.productCode, unit: prod?.unit ?? "" };
+      })
+    );
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [data.products]);
 
   function selectPo(id: string) {
     setPoId(id);

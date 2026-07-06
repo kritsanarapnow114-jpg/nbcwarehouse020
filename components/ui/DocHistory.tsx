@@ -8,6 +8,8 @@ import { buttonClass } from "./Button";
 import { showToast } from "./Toast";
 import { fmtDateBE } from "@/lib/calc/date";
 import { reverseDocumentAction, ReversibleKind } from "@/lib/actions/reverse";
+import { getRedoTemplateAction } from "@/lib/actions/redo";
+import { stashRedo } from "@/lib/redoTemplate";
 
 export type DocHistoryLine = {
   code: string;
@@ -92,6 +94,21 @@ export function DocHistory({
     } finally {
       setReversing(false);
     }
+  }
+
+  async function handleRedo() {
+    if (!selected || !reverseKind) return;
+    setReversing(true);
+    setReverseError(null);
+    const res = await getRedoTemplateAction(reverseKind, selected.id);
+    setReversing(false);
+    if ("error" in res) {
+      setReverseError(res.error);
+      return;
+    }
+    stashRedo(reverseKind, res.payload);
+    closeModal();
+    router.push(res.path);
   }
 
   return (
@@ -226,6 +243,28 @@ export function DocHistory({
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {reverseKind && selected.reversedAt && (
+              <div className="border-t border-[#eef1f5] bg-[#fafbfc] px-5 py-3">
+                {reverseError && (
+                  <div className="mb-2 rounded-[8px] bg-[#fbe9e9] px-3 py-2 text-[12px] text-[#c53f3f]">
+                    {reverseError}
+                  </div>
+                )}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[12px] text-[#69748a]">
+                    ทำเอกสารนี้อีกครั้ง — เอาข้อมูลไปกรอกใหม่ (re-enter as a new document)
+                  </span>
+                  <button
+                    onClick={handleRedo}
+                    disabled={reversing}
+                    className="flex-none rounded-[8px] border border-[#bfe0cd] bg-[#eaf7f0] px-3 py-1.5 text-[12.5px] font-semibold text-[#12894f] hover:bg-[#dcf0e6] disabled:opacity-60"
+                  >
+                    {reversing ? "กำลังเตรียม…" : "↻ ทำซ้ำ (Redo)"}
+                  </button>
+                </div>
               </div>
             )}
           </>
