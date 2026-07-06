@@ -21,8 +21,8 @@ export function AgingTable({ rows }: { rows: AgingRow[] }) {
 
   return (
     <>
-      <div className="overflow-hidden rounded-[14px] border border-[#e7ebf1] bg-white shadow-[0_1px_2px_rgba(20,30,48,.04),0_6px_18px_rgba(20,30,48,.035)]">
-        <table className="w-full border-collapse text-[13px]">
+      <div className="overflow-x-auto rounded-[14px] border border-[#e7ebf1] bg-white shadow-[0_1px_2px_rgba(20,30,48,.04),0_6px_18px_rgba(20,30,48,.035)]">
+        <table className="w-full min-w-[1040px] border-collapse text-[13px]">
           <thead>
             <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
               <Th>SAP Material Master</Th>

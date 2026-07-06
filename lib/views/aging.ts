@@ -47,6 +47,7 @@ export async function getAgingRows(opts: {
 }): Promise<AgingRow[]> {
   const today = opts.today ?? todayBangkok();
   const lots = await db.lot.findMany({
+    where: { qty: { gt: 0 } }, // hide depleted lots — nothing left to age
     include: { product: true },
     orderBy: { recvDate: "asc" },
   });
