@@ -1,25 +1,19 @@
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Money } from "@/components/ui/Currency";
-import { fmtDateBE, parseISO, fmtDateISO, todayBangkok } from "@/lib/calc/date";
+import { fmtDateBE, fmtDateISO } from "@/lib/calc/date";
+import { PeriodSelector } from "@/components/ui/PeriodSelector";
+import { resolvePeriod } from "@/lib/calc/period";
 import { getReportData, getReportProductOptions } from "@/lib/views/reports";
-import { PeriodSelector } from "./PeriodSelector";
 import { ReportsStockCard } from "./ReportsStockCard";
 import { ExportBar } from "./ExportBar";
 
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ start?: string; end?: string }>;
+  searchParams: Promise<{ mode?: string; date?: string; start?: string; end?: string }>;
 }) {
-  const { start, end } = await searchParams;
-  const today = todayBangkok();
-  const defaultStart = new Date(today);
-  defaultStart.setDate(defaultStart.getDate() - 29);
-
-  const range = {
-    start: start ? parseISO(start) : defaultStart,
-    end: end ? parseISO(end) : today,
-  };
+  const params = await searchParams;
+  const { mode, range, dateStr, startStr, endStr } = resolvePeriod(params);
 
   const [data, products] = await Promise.all([
     getReportData(range),
@@ -28,7 +22,7 @@ export default async function ReportsPage({
 
   return (
     <div className="max-w-[1280px] p-[24px_26px]">
-      <PeriodSelector start={fmtDateISO(range.start)} end={fmtDateISO(range.end)} />
+      <PeriodSelector basePath="/reports" mode={mode} date={dateStr} start={startStr} end={endStr} />
 
       <ExportBar start={fmtDateISO(range.start)} end={fmtDateISO(range.end)} />
 

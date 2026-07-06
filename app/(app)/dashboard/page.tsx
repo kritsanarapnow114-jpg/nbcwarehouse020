@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Money } from "@/components/ui/Currency";
-import { fmtDateISO, parseISO, todayBangkok } from "@/lib/calc/date";
+import { PeriodSelector } from "@/components/ui/PeriodSelector";
+import { resolvePeriod } from "@/lib/calc/period";
 import { kpiBand } from "@/lib/calc/kpi";
 import {
   getInventoryStats,
@@ -15,7 +16,6 @@ import {
   getMovementBuckets,
   getActionRequired,
 } from "@/lib/views/dashboard";
-import { PeriodSelector } from "./PeriodSelector";
 import { KpiBand } from "./KpiBand";
 import { MovementChart } from "./MovementChart";
 import { SlowMovingCard } from "./SlowMovingCard";
@@ -23,17 +23,10 @@ import { SlowMovingCard } from "./SlowMovingCard";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ start?: string; end?: string }>;
+  searchParams: Promise<{ mode?: string; date?: string; start?: string; end?: string }>;
 }) {
-  const { start, end } = await searchParams;
-  const today = todayBangkok();
-  const defaultStart = new Date(today);
-  defaultStart.setDate(defaultStart.getDate() - 29);
-
-  const range = {
-    start: start ? parseISO(start) : defaultStart,
-    end: end ? parseISO(end) : today,
-  };
+  const params = await searchParams;
+  const { mode, range, dateStr, startStr, endStr } = resolvePeriod(params);
 
   const [
     kpis,
@@ -64,10 +57,7 @@ export default async function DashboardPage({
 
   return (
     <div className="max-w-[1280px] p-[24px_26px]">
-      <PeriodSelector
-        start={fmtDateISO(range.start)}
-        end={fmtDateISO(range.end)}
-      />
+      <PeriodSelector basePath="/dashboard" mode={mode} date={dateStr} start={startStr} end={endStr} />
 
       <KpiBand kpis={kpis} />
 
