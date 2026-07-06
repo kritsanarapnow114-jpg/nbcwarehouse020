@@ -5,11 +5,17 @@ export function subtitleKey(page: string) {
   return `subtitle.${page}`;
 }
 
-export const COUNT_PLAN_MONTHLY_KEY = "countPlan.monthly";
-export const COUNT_PLAN_WEEKLY_KEY = "countPlan.weekly";
+export const COUNT_PLAN_MONTHLY_KEY = "countPlan.monthly"; // legacy single value (fallback)
+export const COUNT_PLAN_WEEKLY_KEY = "countPlan.weekly"; // legacy single value (fallback)
+export const COUNT_PLAN_MONTHS_KEY = "countPlan.months"; // JSON: 12 values, index 0=Jan
+export const COUNT_PLAN_WEEKS_KEY = "countPlan.weeks"; // JSON: 5 values, index 0=W1
 
-/** Count-plan targets (lots to count per month / per week). null = not set,
- *  in which case the dashboard falls back to "count every lot". */
+export const MONTH_NAMES = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/** Legacy single count-plan targets (per month / per week). null = not set. */
 export function getCountPlan(settings: Record<string, string>): {
   monthly: number | null;
   weekly: number | null;
@@ -19,5 +25,37 @@ export function getCountPlan(settings: Record<string, string>): {
   return {
     monthly: m != null && m !== "" ? Number(m) : null,
     weekly: w != null && w !== "" ? Number(w) : null,
+  };
+}
+
+function parseNumArray(raw: string | undefined, n: number): (number | null)[] {
+  const out: (number | null)[] = Array(n).fill(null);
+  if (!raw) return out;
+  try {
+    const j = JSON.parse(raw);
+    for (let i = 0; i < n; i++) {
+      const v = j?.[i];
+      if (v != null && v !== "") out[i] = Number(v);
+    }
+  } catch {
+    // ignore malformed JSON — treat as unset
+  }
+  return out;
+}
+
+/** Per-month (0=Jan..11=Dec) and per-week (0=W1..4=W5) count-plan targets, with
+ *  the legacy single values as fallbacks. null entries mean "count every lot". */
+export function getCountPlanDetailed(settings: Record<string, string>): {
+  months: (number | null)[];
+  weeks: (number | null)[];
+  monthlyFallback: number | null;
+  weeklyFallback: number | null;
+} {
+  const single = getCountPlan(settings);
+  return {
+    months: parseNumArray(settings[COUNT_PLAN_MONTHS_KEY], 12),
+    weeks: parseNumArray(settings[COUNT_PLAN_WEEKS_KEY], 5),
+    monthlyFallback: single.monthly,
+    weeklyFallback: single.weekly,
   };
 }

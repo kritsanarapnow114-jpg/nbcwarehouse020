@@ -2,7 +2,8 @@ import "server-only";
 import { db } from "@/lib/db";
 import { daysBetween, fmtDateBE, todayBangkok } from "@/lib/calc/date";
 import { getLotsAsOf } from "@/lib/calc/snapshot";
-import { getAppSettings, getCountPlan } from "@/lib/views/settings";
+import { getAppSettings } from "@/lib/views/settings";
+import { getCountPlanDetailed } from "@/lib/settingsKeys";
 import {
   areaPerUnit,
   binCapacity,
@@ -223,10 +224,12 @@ export async function getSlowMoving(asOf: Date = todayBangkok(), thresholdDays =
 export async function getCountProgress(asOf: Date = todayBangkok()) {
   const totalLots = (await getLotsAsOf(asOf)).length;
   const settings = await getAppSettings();
-  const plan = getCountPlan(settings);
-  // User-defined targets take precedence; otherwise plan = "count every lot".
-  const monthlyPlan = plan.monthly ?? totalLots;
-  const weeklyPlan = plan.weekly ?? totalLots;
+  const plan = getCountPlanDetailed(settings);
+  // Per-month/week target wins; then the legacy single value; else "count every lot".
+  const monthPlanFor = (monthIdx: number) =>
+    plan.months[monthIdx] ?? plan.monthlyFallback ?? totalLots;
+  const weekPlanFor = (weekIdx: number) =>
+    plan.weeks[weekIdx] ?? plan.weeklyFallback ?? totalLots;
   const counts = await db.stockCount.findMany({
     where: { docDate: { lte: asOf }, reversedAt: null },
     include: { lines: true },
@@ -249,7 +252,7 @@ export async function getCountProgress(asOf: Date = todayBangkok()) {
     monthly.push({
       label: d.toLocaleDateString("en-US", { month: "short" }),
       counted: countedLots.size,
-      plan: monthlyPlan,
+      plan: monthPlanFor(d.getMonth()),
     });
   }
 
@@ -268,7 +271,7 @@ export async function getCountProgress(asOf: Date = todayBangkok()) {
         for (const l of c.lines) countedLots.add(l.lotId);
       }
     }
-    weekly.push({ label: `W${w + 1}`, counted: countedLots.size, plan: weeklyPlan });
+    weekly.push({ label: `W${w + 1}`, counted: countedLots.size, plan: weekPlanFor(w) });
   }
 
   return { monthly, weekly };

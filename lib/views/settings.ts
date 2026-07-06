@@ -7,7 +7,10 @@ export {
   subtitleKey,
   COUNT_PLAN_MONTHLY_KEY,
   COUNT_PLAN_WEEKLY_KEY,
+  COUNT_PLAN_MONTHS_KEY,
+  COUNT_PLAN_WEEKS_KEY,
   getCountPlan,
+  getCountPlanDetailed,
 } from "@/lib/settingsKeys";
 
 /** Read all app settings as a plain key→value map. */
