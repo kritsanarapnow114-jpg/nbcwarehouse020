@@ -110,11 +110,16 @@ async function main() {
     await db.seedFlag.create({ data: { key: REAL_LOCATIONS_FLAG } });
   }
 
-  // Safe to run on every deploy: skip the demo business-data seed entirely if
-  // this database already has data (e.g. a production DB already in real use).
+  // Demo business data is seeded at most once, ever — guarded by a SeedFlag
+  // rather than "does any Lot exist", so that using "Reset all data" (which
+  // wipes lots to zero) does NOT cause the demo catalog to silently come
+  // back on the next deploy.
+  const DEMO_DATA_FLAG = "demo_data_v1";
+  const demoDataFlag = await db.seedFlag.findUnique({ where: { key: DEMO_DATA_FLAG } });
   const existingLots = await db.lot.count();
-  if (existingLots > 0) {
-    console.log("Database already has data — skipping demo-data seed (users still ensured above).");
+  if (demoDataFlag || existingLots > 0) {
+    console.log("Demo data already seeded (or real data present) — skipping (users still ensured above).");
+    if (!demoDataFlag) await db.seedFlag.create({ data: { key: DEMO_DATA_FLAG } });
     return;
   }
 
@@ -499,6 +504,7 @@ async function main() {
     ],
   });
 
+  await db.seedFlag.create({ data: { key: DEMO_DATA_FLAG } });
   console.log("Seed complete.");
 }
 
