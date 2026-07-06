@@ -41,3 +41,25 @@ export async function createLocationAction(
   revalidateLocationPaths();
   return {};
 }
+
+export async function updateLocationAction(
+  code: string,
+  data: { zone: Zone; width: number; length: number }
+) {
+  if (!data.width || data.width <= 0 || !data.length || data.length <= 0) {
+    throw new Error("Width and length must be greater than 0 (ความกว้างและความยาวต้องมากกว่า 0)");
+  }
+  await db.location.update({ where: { code }, data });
+  revalidateLocationPaths();
+}
+
+export async function deleteLocationAction(code: string) {
+  const lotCount = await db.lot.count({ where: { locationCode: code } });
+  if (lotCount > 0) {
+    throw new Error(
+      `Cannot delete ${code} — it still has ${lotCount} lot(s) stored (ลบไม่ได้ ยังมีสินค้าอยู่ในที่เก็บนี้)`
+    );
+  }
+  await db.location.delete({ where: { code } });
+  revalidateLocationPaths();
+}

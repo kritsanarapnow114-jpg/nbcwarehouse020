@@ -4,6 +4,7 @@ import { fmtDateBE, parseISO, fmtDateISO, todayBangkok } from "@/lib/calc/date";
 import { getReportData, getReportProductOptions } from "@/lib/views/reports";
 import { PeriodSelector } from "./PeriodSelector";
 import { ReportsStockCard } from "./ReportsStockCard";
+import { ExportBar } from "./ExportBar";
 
 export default async function ReportsPage({
   searchParams,
@@ -28,6 +29,8 @@ export default async function ReportsPage({
   return (
     <div className="max-w-[1280px] p-[24px_26px]">
       <PeriodSelector start={fmtDateISO(range.start)} end={fmtDateISO(range.end)} />
+
+      <ExportBar start={fmtDateISO(range.start)} end={fmtDateISO(range.end)} />
 
       <div className="mb-4 grid grid-cols-4 gap-4">
         <Card>

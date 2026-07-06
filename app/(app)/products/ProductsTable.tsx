@@ -8,7 +8,13 @@ import { deleteProductAction } from "@/lib/actions/products";
 import { showToast } from "@/components/ui/Toast";
 import { ProductDrawer } from "./ProductDrawer";
 
-export function ProductsTable({ rows }: { rows: ProductRow[] }) {
+export function ProductsTable({
+  rows,
+  bomMaterials,
+}: {
+  rows: ProductRow[];
+  bomMaterials: { code: string; name: string; unit: string }[];
+}) {
   const [selected, setSelected] = useState<string | null>(null);
 
   return (
@@ -89,7 +95,7 @@ export function ProductsTable({ rows }: { rows: ProductRow[] }) {
         </table>
       </div>
 
-      <ProductDrawer code={selected} onClose={() => setSelected(null)} />
+      <ProductDrawer code={selected} onClose={() => setSelected(null)} bomMaterials={bomMaterials} />
     </>
   );
 }

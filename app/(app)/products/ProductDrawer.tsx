@@ -14,18 +14,23 @@ import {
 } from "@/lib/actions/products";
 import { ProductDetail } from "@/lib/views/products";
 import { StockCardModal } from "./StockCardModal";
+import { EditProductModal } from "./EditProductModal";
+import { BomEditor } from "./BomEditor";
 import Link from "next/link";
 
 export function ProductDrawer({
   code,
   onClose,
+  bomMaterials,
 }: {
   code: string | null;
   onClose: () => void;
+  bomMaterials: { code: string; name: string; unit: string }[];
 }) {
   const [detail, setDetail] = useState<ProductDetail | null>(null);
   const [detailCode, setDetailCode] = useState<string | null>(null);
   const [stockCardOpen, setStockCardOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
     if (!code) return;
@@ -63,6 +68,9 @@ export function ProductDrawer({
             <Badge tone={shown.status === "qc" ? "warn" : "ok"}>
               {shown.status === "qc" ? "QC Hold" : "Available"}
             </Badge>
+            <button onClick={() => setEditOpen(true)} className={buttonClass("secondary")}>
+              ✎ Edit
+            </button>
             <button
               onClick={onClose}
               className="text-[18px] text-[#9aa4b4] hover:text-[#3a4658]"
@@ -149,6 +157,10 @@ export function ProductDrawer({
                 })}
               </tbody>
             </table>
+
+            {shown.category === "FINISHED_GOODS" && (
+              <BomEditor finishedProductCode={shown.code} materials={bomMaterials} />
+            )}
           </div>
 
           <div className="flex items-center gap-2 border-t border-[#eef1f5] p-4">
@@ -179,6 +191,13 @@ export function ProductDrawer({
             name={shown.nameEnTh}
             open={stockCardOpen}
             onClose={() => setStockCardOpen(false)}
+          />
+
+          <EditProductModal
+            product={shown}
+            open={editOpen}
+            onClose={() => setEditOpen(false)}
+            onSaved={refresh}
           />
         </div>
       )}

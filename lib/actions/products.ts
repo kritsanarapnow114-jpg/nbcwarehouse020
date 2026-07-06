@@ -114,6 +114,104 @@ export async function extendLotShelfLifeAction(
   revalidateInventoryPaths();
 }
 
+export async function updateProductAction(
+  code: string,
+  data: {
+    nameEn: string;
+    nameTh: string;
+    category: Category;
+    unit: string;
+    price: number;
+    pallet: number;
+    width: number;
+    length: number;
+    stackLevels: number;
+  }
+) {
+  if (!data.nameEn.trim() || !data.nameTh.trim() || !data.unit.trim()) {
+    throw new Error("Fill in names and unit (กรอกชื่อและหน่วยให้ครบ)");
+  }
+  if (data.price < 0 || data.pallet <= 0 || data.width <= 0 || data.length <= 0 || data.stackLevels <= 0) {
+    throw new Error("Price, pallet size, and storage dimensions must be greater than 0 (ราคา ขนาดพาเลท และขนาดพื้นที่ต้องมากกว่า 0)");
+  }
+  await db.product.update({ where: { code }, data });
+  revalidateInventoryPaths();
+}
+
+export type BomLineInput = { materialProductCode: string; qtyPerUnit: number; unit: string };
+
+export async function getBomAction(finishedProductCode: string) {
+  const bom = await db.bom.findUnique({
+    where: { finishedProductCode },
+    include: { lines: { include: { materialProduct: true } } },
+  });
+  if (!bom) return [];
+  return bom.lines
+    .filter((l) => l.qtyPerUnit > 0)
+    .map((l) => ({
+      id: l.id,
+      materialProductCode: l.materialProductCode,
+      materialName: `${l.materialProduct.nameEn} (${l.materialProduct.nameTh})`,
+      qtyPerUnit: l.qtyPerUnit,
+      unit: l.unit,
+    }));
+}
+
+export async function saveBomAction(finishedProductCode: string, lines: BomLineInput[]) {
+  if (lines.some((l) => !l.materialProductCode || l.qtyPerUnit <= 0)) {
+    throw new Error(
+      "Every material line needs a product and qty > 0 (ทุกรายการต้องเลือกวัตถุดิบและใส่จำนวนมากกว่า 0)"
+    );
+  }
+  const codes = new Set(lines.map((l) => l.materialProductCode));
+  if (codes.size !== lines.length) {
+    throw new Error("Each material can only appear once in the BOM (วัตถุดิบซ้ำในสูตรไม่ได้)");
+  }
+
+  let bom = await db.bom.findUnique({ where: { finishedProductCode }, include: { lines: true } });
+  if (!bom) {
+    bom = await db.bom.create({ data: { finishedProductCode }, include: { lines: true } });
+  }
+
+  const existingByCode = new Map(bom.lines.map((l) => [l.materialProductCode, l]));
+  const keepCodes = new Set(lines.map((l) => l.materialProductCode));
+
+  for (const line of lines) {
+    const existing = existingByCode.get(line.materialProductCode);
+    if (existing) {
+      await db.bomLine.update({
+        where: { id: existing.id },
+        data: { qtyPerUnit: line.qtyPerUnit, unit: line.unit },
+      });
+    } else {
+      await db.bomLine.create({
+        data: {
+          bomId: bom.id,
+          materialProductCode: line.materialProductCode,
+          qtyPerUnit: line.qtyPerUnit,
+          unit: line.unit,
+        },
+      });
+    }
+  }
+
+  for (const existing of bom.lines) {
+    if (!keepCodes.has(existing.materialProductCode)) {
+      try {
+        await db.bomLine.delete({ where: { id: existing.id } });
+      } catch {
+        // Referenced by a past production receipt's material-loss record — can't
+        // hard-delete without breaking that record's FK, so soft-remove instead by
+        // zeroing qty (filtered out of future BOM reads/receipts above).
+        await db.bomLine.update({ where: { id: existing.id }, data: { qtyPerUnit: 0 } });
+      }
+    }
+  }
+
+  revalidatePath("/products");
+  revalidatePath("/receive");
+}
+
 export async function getStockCardAction(productCode: string) {
   const entries = await buildStockCard(productCode);
   return entries.map((e) => ({

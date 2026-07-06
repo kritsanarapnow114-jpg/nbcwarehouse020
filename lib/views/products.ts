@@ -81,6 +81,15 @@ export type ProductDetail = ProductRow & {
   }[];
 };
 
+/** Raw material / packaging products eligible to appear as BOM material lines. */
+export async function getBomMaterialOptions() {
+  const products = await db.product.findMany({
+    where: { deletedAt: null, category: { in: ["RAW_MATERIAL", "PACKAGING"] } },
+    orderBy: { code: "asc" },
+  });
+  return products.map((p) => ({ code: p.code, name: `${p.nameEn} (${p.nameTh})`, unit: p.unit }));
+}
+
 export async function getProductDetail(
   code: string
 ): Promise<ProductDetail | null> {

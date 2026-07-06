@@ -1,11 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { LocationRow } from "@/lib/views/locations";
 import { Badge } from "@/components/ui/Badge";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Modal, ModalHeader } from "@/components/ui/Modal";
 import { Tone } from "@/components/ui/tone";
+import { deleteLocationAction } from "@/lib/actions/locations";
+import { showToast } from "@/components/ui/Toast";
+import { EditLocationModal } from "./EditLocationModal";
 
 const STATUS_BADGE: Record<LocationRow["tone"], { tone: Tone; label: string }> = {
   ok: { tone: "ok", label: "OK (ปกติ)" },
@@ -23,7 +27,21 @@ function dotColor(c: LocationRow["contents"][number]): string {
 }
 
 export function LocationsTable({ rows }: { rows: LocationRow[] }) {
+  const router = useRouter();
   const [selected, setSelected] = useState<LocationRow | null>(null);
+  const [editing, setEditing] = useState<LocationRow | null>(null);
+
+  async function handleDelete(e: React.MouseEvent, row: LocationRow) {
+    e.stopPropagation();
+    if (!confirm(`Delete bin ${row.code}? (ลบที่เก็บนี้?)`)) return;
+    try {
+      await deleteLocationAction(row.code);
+      showToast("Location deleted");
+      router.refresh();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to delete location.");
+    }
+  }
 
   return (
     <>
@@ -37,6 +55,7 @@ export function LocationsTable({ rows }: { rows: LocationRow[] }) {
               <Th align="right">Used / Cap (m²)</Th>
               <Th>Utilization</Th>
               <Th>Status (สถานะ)</Th>
+              <Th></Th>
             </tr>
           </thead>
           <tbody>
@@ -97,12 +116,33 @@ export function LocationsTable({ rows }: { rows: LocationRow[] }) {
                   <Td>
                     <Badge tone={badge.tone}>{badge.label}</Badge>
                   </Td>
+                  <Td align="center">
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        title="Edit"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditing(r);
+                        }}
+                        className="cursor-pointer border-0 bg-transparent text-[14px] text-[#69748a] hover:text-[#3a4658]"
+                      >
+                        ✎
+                      </button>
+                      <button
+                        title="Delete"
+                        onClick={(e) => handleDelete(e, r)}
+                        className="cursor-pointer border-0 bg-transparent text-[15px] text-[#c2606f]"
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </Td>
                 </tr>
               );
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-6 text-center text-[#9aa4b4]">
+                <td colSpan={7} className="p-6 text-center text-[#9aa4b4]">
                   No bins found (ไม่พบที่เก็บ)
                 </td>
               </tr>
@@ -159,6 +199,10 @@ export function LocationsTable({ rows }: { rows: LocationRow[] }) {
           </>
         )}
       </Modal>
+
+      {editing && (
+        <EditLocationModal location={editing} open={!!editing} onClose={() => setEditing(null)} />
+      )}
     </>
   );
 }

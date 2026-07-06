@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getProductRows } from "@/lib/views/products";
+import { getProductRows, getBomMaterialOptions } from "@/lib/views/products";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Money } from "@/components/ui/Currency";
 import { AddProductButton } from "./AddProductModal";
@@ -19,7 +19,10 @@ export default async function ProductsPage({
   searchParams: Promise<{ q?: string; cat?: string }>;
 }) {
   const { q, cat } = await searchParams;
-  const rows = await getProductRows({ q, category: cat });
+  const [rows, bomMaterials] = await Promise.all([
+    getProductRows({ q, category: cat }),
+    getBomMaterialOptions(),
+  ]);
   const totalValue = rows.reduce((s, r) => s + r.totalValue, 0);
   const maxValue = Math.max(1, ...rows.map((r) => r.totalValue));
   const sortedByValue = [...rows].sort((a, b) => b.totalValue - a.totalValue);
@@ -96,7 +99,7 @@ export default async function ProductsPage({
         </a>
       </div>
 
-      <ProductsTable rows={rows} />
+      <ProductsTable rows={rows} bomMaterials={bomMaterials} />
     </div>
   );
 }
