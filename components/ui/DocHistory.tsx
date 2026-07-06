@@ -1,9 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardTitle } from "./Card";
 import { Modal, ModalHeader } from "./Modal";
+import { buttonClass } from "./Button";
+import { showToast } from "./Toast";
 import { fmtDateBE } from "@/lib/calc/date";
+import { reverseDocumentAction, ReversibleKind } from "@/lib/actions/reverse";
 
 export type DocHistoryLine = {
   code: string;
@@ -19,6 +23,7 @@ export type DocHistoryRow = {
   summary: string;
   lineCount: number;
   lines: DocHistoryLine[];
+  reversedAt?: string | null;
 };
 
 function escapeHtml(s: string): string {
@@ -54,12 +59,40 @@ export function DocHistory({
   title,
   rows,
   accentColor = "#3E9B6E",
+  reverseKind,
 }: {
   title: string;
   rows: DocHistoryRow[];
   accentColor?: string;
+  reverseKind?: ReversibleKind;
 }) {
+  const router = useRouter();
   const [selected, setSelected] = useState<DocHistoryRow | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [reversing, setReversing] = useState(false);
+  const [reverseError, setReverseError] = useState<string | null>(null);
+
+  function closeModal() {
+    setSelected(null);
+    setConfirming(false);
+    setReverseError(null);
+  }
+
+  async function handleReverse() {
+    if (!selected || !reverseKind) return;
+    setReversing(true);
+    setReverseError(null);
+    try {
+      await reverseDocumentAction(reverseKind, selected.id);
+      showToast(`Document ${selected.docNo} reversed (ถอยเอกสารแล้ว)`);
+      closeModal();
+      router.refresh();
+    } catch (e) {
+      setReverseError(e instanceof Error ? e.message : "Failed to reverse document.");
+    } finally {
+      setReversing(false);
+    }
+  }
 
   return (
     <Card className="mt-4">
@@ -85,7 +118,14 @@ export function DocHistory({
               <span className="font-num w-[92px] flex-none text-[#69748a]">
                 {fmtDateBE(new Date(r.docDate))}
               </span>
-              <span className="flex-1 truncate text-[#3a4658]">{r.summary}</span>
+              <span className="flex-1 truncate text-[#3a4658]">
+                {r.summary}
+                {r.reversedAt && (
+                  <span className="ml-2 rounded-[5px] bg-[#f3d2d2] px-1.5 py-0.5 text-[10px] font-semibold text-[#b13c3c]">
+                    ถอยแล้ว · Reversed
+                  </span>
+                )}
+              </span>
               <span className="font-num text-[11.5px] text-[#9aa4b4]">
                 {r.lineCount} lines
               </span>
@@ -94,7 +134,7 @@ export function DocHistory({
         </div>
       )}
 
-      <Modal open={!!selected} onClose={() => setSelected(null)} width={560}>
+      <Modal open={!!selected} onClose={closeModal} width={560}>
         {selected && (
           <>
             <ModalHeader
@@ -102,6 +142,11 @@ export function DocHistory({
                 <span>
                   <span className="font-num">{selected.docNo}</span> ·{" "}
                   {fmtDateBE(new Date(selected.docDate))}
+                  {selected.reversedAt && (
+                    <span className="ml-2 rounded-[5px] bg-[#f3d2d2] px-1.5 py-0.5 text-[10px] font-semibold text-[#b13c3c]">
+                      ถอยแล้ว · Reversed
+                    </span>
+                  )}
                 </span>
               }
               action={
@@ -112,7 +157,7 @@ export function DocHistory({
                   ⎙ Print
                 </button>
               }
-              onClose={() => setSelected(null)}
+              onClose={closeModal}
             />
             <div className="max-h-[420px] overflow-auto px-5 py-4">
               <table className="w-full border-collapse text-[12.5px]">
@@ -138,6 +183,51 @@ export function DocHistory({
                 </tbody>
               </table>
             </div>
+
+            {reverseKind && !selected.reversedAt && (
+              <div className="border-t border-[#eef1f5] bg-[#fafbfc] px-5 py-3">
+                {reverseError && (
+                  <div className="mb-2 rounded-[8px] bg-[#fbe9e9] px-3 py-2 text-[12px] text-[#c53f3f]">
+                    {reverseError}
+                  </div>
+                )}
+                {!confirming ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[12px] text-[#69748a]">
+                      ถอยเอกสารนี้ = คืนสต็อกกลับ (undo this document&apos;s stock effect)
+                    </span>
+                    <button
+                      onClick={() => setConfirming(true)}
+                      className="flex-none rounded-[8px] border border-[#e2b4b4] bg-white px-3 py-1.5 text-[12.5px] font-semibold text-[#c0453f] hover:bg-[#fbe9e9]"
+                    >
+                      ↩ ถอยเอกสาร (Reverse)
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[12.5px] font-medium text-[#3a4658]">
+                      ยืนยันถอยเอกสาร {selected.docNo}? สต็อกจะถูกคืนกลับ
+                    </span>
+                    <div className="flex flex-none gap-2">
+                      <button
+                        onClick={() => setConfirming(false)}
+                        disabled={reversing}
+                        className={buttonClass("secondary")}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleReverse}
+                        disabled={reversing}
+                        className="rounded-[8px] bg-[#c0453f] px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-[#a83b36] disabled:opacity-60"
+                      >
+                        {reversing ? "กำลังถอย…" : "ยืนยันถอย"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
       </Modal>

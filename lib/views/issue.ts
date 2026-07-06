@@ -73,6 +73,7 @@ export async function getRecentIssues(limit = 20) {
     docNo: i.docNo,
     issueTo: i.issueTo,
     docDate: i.docDate.toISOString(),
+    reversedAt: i.reversedAt ? i.reversedAt.toISOString() : null,
     lineCount: i.lines.length,
     totalQty: i.lines.reduce((s, l) => s + l.qty, 0),
     lines: i.lines.map((l) => ({

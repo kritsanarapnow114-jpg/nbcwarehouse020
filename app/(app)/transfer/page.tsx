@@ -18,6 +18,7 @@ export default async function TransferPage() {
     docNo: t.docNo,
     docDate: t.docDate,
     summary: `Operator: ${t.operator}`,
+    reversedAt: t.reversedAt,
     lineCount: t.lineCount,
     lines: t.lines.map((l) => ({
       code: l.code,
@@ -30,7 +31,7 @@ export default async function TransferPage() {
   return (
     <div className="max-w-[1240px] p-[22px_26px]">
       <TransferForm lots={lots} locations={locations} operators={operators} />
-      <DocHistory title="Recent Transfers (ประวัติการย้ายที่เก็บ)" rows={rows} accentColor="#12a08d" />
+      <DocHistory title="Recent Transfers (ประวัติการย้ายที่เก็บ)" rows={rows} accentColor="#12a08d" reverseKind="transfer" />
     </div>
   );
 }

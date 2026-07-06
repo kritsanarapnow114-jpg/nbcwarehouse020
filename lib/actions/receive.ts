@@ -178,6 +178,11 @@ export async function confirmReceiptAction(input: ConfirmReceiptInput) {
             if (remaining <= 0) break;
             const take = Math.min(lot.qty, remaining);
             await tx.lot.update({ where: { id: lot.id }, data: { qty: lot.qty - take } });
+            // Record exactly how much came off each lot so a later reversal can
+            // add the same quantities back to the same lots.
+            await tx.receiptMaterialConsumption.create({
+              data: { receiptId: receipt.id, lotId: lot.id, qty: take },
+            });
             remaining -= take;
           }
         }

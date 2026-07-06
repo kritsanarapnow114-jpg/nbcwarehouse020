@@ -51,6 +51,7 @@ export async function getRecentAdjustments(limit = 20) {
     id: a.id,
     docNo: a.docNo,
     docDate: a.docDate.toISOString(),
+    reversedAt: a.reversedAt ? a.reversedAt.toISOString() : null,
     reason: a.reason,
     lineCount: a.lines.length,
     lines: a.lines.map((l) => ({
@@ -75,6 +76,7 @@ export async function getRecentTransfers(limit = 20) {
     id: t.id,
     docNo: t.docNo,
     docDate: t.docDate.toISOString(),
+    reversedAt: t.reversedAt ? t.reversedAt.toISOString() : null,
     operator: t.operator,
     lineCount: t.lines.length,
     lines: t.lines.map((l) => ({

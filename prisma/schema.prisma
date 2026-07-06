@@ -115,12 +115,13 @@ model Lot {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  receiptLines     ReceiptLine[]
-  issueLinesFefo   IssueLine[]      @relation("FefoLot")
-  issueLinesSel    IssueLine[]      @relation("SelectedLot")
-  adjustmentLines  AdjustmentLine[]
-  transferLinesOut TransferLine[]
-  stockCountLines  StockCountLine[]
+  receiptLines         ReceiptLine[]
+  issueLinesFefo       IssueLine[]                  @relation("FefoLot")
+  issueLinesSel        IssueLine[]                  @relation("SelectedLot")
+  adjustmentLines      AdjustmentLine[]
+  transferLinesOut     TransferLine[]
+  stockCountLines      StockCountLine[]
+  materialConsumptions ReceiptMaterialConsumption[]
 
   @@index([productCode])
   @@index([locationCode])
@@ -161,10 +162,12 @@ model Receipt {
   docDate       DateTime
   producedTotal Float? // mode = PRODUCTION
   prodLoss      Float? // mode = PRODUCTION, finished-goods loss qty
+  reversedAt    DateTime? // set when the document is reversed/voided
   createdAt     DateTime       @default(now())
 
-  lines   ReceiptLine[]
-  bomLoss ReceiptBomLoss[]
+  lines               ReceiptLine[]
+  bomLoss             ReceiptBomLoss[]
+  materialConsumption ReceiptMaterialConsumption[]
 
   @@index([mode])
   @@index([docDate])
@@ -214,12 +217,24 @@ model ReceiptBomLoss {
   lossQty   Float
 }
 
+/** Per-lot record of raw material actually deducted by a production receipt,
+ *  so reversing the receipt can add the exact quantities back to the same lots. */
+model ReceiptMaterialConsumption {
+  id        String  @id @default(cuid())
+  receiptId String
+  receipt   Receipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  lotId     String
+  lot       Lot     @relation(fields: [lotId], references: [id])
+  qty       Float
+}
+
 model Issue {
   id          String    @id @default(cuid())
   docNo       String    @unique
   issueTo     String // "Production - Line A" | "Production - Line B" | "Wholesale - Customer" | "Write-off"
   docDate     DateTime
   shippedDate DateTime? // actual ship date, drives Delivery on-time KPI
+  reversedAt  DateTime? // set when the document is reversed/voided
   createdAt   DateTime  @default(now())
 
   lines IssueLine[]
@@ -241,10 +256,11 @@ model IssueLine {
 }
 
 model Adjustment {
-  id      String       @id @default(cuid())
-  docNo   String       @unique
-  reason  AdjustReason @default(COUNT_VARIANCE)
-  docDate DateTime
+  id         String       @id @default(cuid())
+  docNo      String       @unique
+  reason     AdjustReason @default(COUNT_VARIANCE)
+  docDate    DateTime
+  reversedAt DateTime? // set when the document is reversed/voided
 
   lines AdjustmentLine[]
 }
@@ -260,10 +276,11 @@ model AdjustmentLine {
 }
 
 model Transfer {
-  id       String   @id @default(cuid())
-  docNo    String   @unique
-  operator String
-  docDate  DateTime
+  id         String    @id @default(cuid())
+  docNo      String    @unique
+  operator   String
+  docDate    DateTime
+  reversedAt DateTime? // set when the document is reversed/voided
 
   lines TransferLine[]
 }
