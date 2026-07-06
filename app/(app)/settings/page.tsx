@@ -1,5 +1,6 @@
 import { getUsers } from "@/lib/views/users";
 import { ResetDataCard } from "./ResetDataCard";
+import { ClearDemoDataCard } from "./ClearDemoDataCard";
 import { UsersCard } from "./UsersCard";
 
 export default async function SettingsPage() {
@@ -7,7 +8,12 @@ export default async function SettingsPage() {
   return (
     <div className="max-w-[720px] p-[22px_26px]">
       <UsersCard users={users} />
-      <ResetDataCard />
+      <div className="mt-4">
+        <ClearDemoDataCard />
+      </div>
+      <div className="mt-4">
+        <ResetDataCard />
+      </div>
     </div>
   );
 }
