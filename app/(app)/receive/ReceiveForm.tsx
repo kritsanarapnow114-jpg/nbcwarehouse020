@@ -441,6 +441,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                 <th className="p-[10px_16px] text-[11.5px] font-medium">SAP Material Master</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Per unit (ต่อหน่วย)</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Consumed (ใช้ไป)</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">Lot ที่จะตัด (FIFO)</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Loss / scrap (เสีย)</th>
               </tr>
             </thead>
@@ -457,6 +458,35 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                   </td>
                   <td className="font-num p-[10px_16px] text-right">
                     {(Math.floor(producedTotal / (m.perQty > 0 ? m.perQty : 1)) * m.qtyPerUnit).toLocaleString()}
+                  </td>
+                  <td className="p-[10px_16px] text-[11.5px]">
+                    {(() => {
+                      const need =
+                        Math.floor(producedTotal / (m.perQty > 0 ? m.perQty : 1)) * m.qtyPerUnit +
+                        (Number(bomLossByLine[m.id] ?? 0) || 0);
+                      if (need <= 0) return <span className="text-[#9aa4b4]">—</span>;
+                      let rem = need;
+                      const picks: { lotNo: string; take: number; loc: string }[] = [];
+                      for (const lot of m.lots) {
+                        if (rem <= 0) break;
+                        const take = Math.min(lot.qty, rem);
+                        picks.push({ lotNo: lot.lotNo, take, loc: lot.locationCode });
+                        rem -= take;
+                      }
+                      return (
+                        <div className="flex flex-col gap-0.5">
+                          {picks.map((p, idx) => (
+                            <span key={idx} className="font-num text-[#3a4658]">
+                              <span className="text-[#12894f]">{p.lotNo || "-"}</span>
+                              <span className="text-[#9aa4b4]"> ·{p.loc}</span> ×{p.take.toLocaleString()}
+                            </span>
+                          ))}
+                          {rem > 0 && (
+                            <span className="font-num text-[#c53f3f]">ขาด {rem.toLocaleString()} (สต็อกไม่พอ)</span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="p-[10px_16px] text-right">
                     <input

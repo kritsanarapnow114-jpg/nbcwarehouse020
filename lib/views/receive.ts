@@ -20,6 +20,22 @@ export async function getReceiveFormData() {
     peekNextDocNumber("RC"),
   ]);
 
+  // FIFO-ordered eligible lots for each BOM material, so the production screen
+  // can preview which lots will be deducted.
+  const materialCodes = [
+    ...new Set(bomsRaw.flatMap((b) => b.lines.map((l) => l.materialProductCode))),
+  ];
+  const materialLots = await db.lot.findMany({
+    where: { productCode: { in: materialCodes }, status: "OK", qty: { gt: 0 } },
+    orderBy: [{ recvDate: "asc" }, { lotNo: "asc" }],
+  });
+  const lotsByCode = new Map<string, { lotNo: string; qty: number; locationCode: string }[]>();
+  for (const l of materialLots) {
+    const arr = lotsByCode.get(l.productCode) ?? [];
+    arr.push({ lotNo: l.lotNo, qty: l.qty, locationCode: l.locationCode });
+    lotsByCode.set(l.productCode, arr);
+  }
+
   return {
     docNo,
     products: products.map((p) => ({
@@ -53,6 +69,7 @@ export async function getReceiveFormData() {
         perQty: l.perQty,
         unit: l.unit,
         materialPrice: l.materialProduct.price,
+        lots: lotsByCode.get(l.materialProductCode) ?? [],
       })),
     })),
   };
