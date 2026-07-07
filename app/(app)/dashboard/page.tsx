@@ -138,6 +138,64 @@ export default async function DashboardPage({
         </Link>
       </div>
 
+      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
+        <Card>
+          <MovementChart
+            buckets={movementBuckets}
+            totalRecv={stats.receivedUnits}
+            totalIssue={stats.issuedUnits}
+          />
+        </Card>
+        <Card>
+          <CardTitle>Action Required (ต้องดำเนินการ)</CardTitle>
+          <div className="flex flex-col gap-2.5">
+            {actionRequired.belowMin > 0 && (
+              <ActionRow
+                icon="↓"
+                bg="#fbe9e9"
+                border="#f3d2d2"
+                text={`${actionRequired.belowMin} สินค้าต่ำกว่า Min (ควรสั่งซื้อ)`}
+                sub="Below reorder point"
+                subColor="#a34141"
+                href="/products"
+                cta="Products"
+              />
+            )}
+            <ActionRow
+              icon="⚠"
+              bg="#fbf1df"
+              border="#f2e2c2"
+              text={`${actionRequired.qcCount} lots on QC hold (ติด QC)`}
+              sub="Unusable until released"
+              subColor="#8a7333"
+              href="/products"
+              cta="Review"
+            />
+            <ActionRow
+              icon="◔"
+              bg="#fbe9e9"
+              border="#f3d2d2"
+              text={`${actionRequired.expCount} lots expiring/expired (หมดอายุ)`}
+              sub="Issue or write off soon"
+              subColor="#a34141"
+              href="/aging"
+              cta="Aging"
+            />
+            <ActionRow
+              icon="◷"
+              bg="#f1f3f7"
+              border="#e2e6ec"
+              text={`${actionRequired.overduePOs.length} PO overdue (ค้างรับ)`}
+              sub={actionRequired.overduePOs.join(", ") || "—"}
+              subColor="#69748a"
+              href="/receive"
+              cta="Receive"
+              mono
+            />
+          </div>
+        </Card>
+      </div>
+
       <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.55fr_1fr]">
         <Card>
           <div className="mb-1 flex items-baseline">
@@ -251,41 +309,6 @@ export default async function DashboardPage({
 
       <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
-          <CardTitle>Received in period (รับเข้าอะไรบ้าง)</CardTitle>
-          <div className="flex flex-col gap-2.5">
-            {movementDetail.received.map((d) => (
-              <div key={d.code} className="flex items-center gap-2.5 text-[13px]">
-                <span className="font-num w-16 text-[11px] text-[#9aa4b4]">{d.code}</span>
-                <span className="flex-1">{d.name}</span>
-                <span className="font-num font-semibold text-[#0e8ba1]">+{d.qty.toLocaleString()}</span>
-              </div>
-            ))}
-            {movementDetail.received.length === 0 && (
-              <div className="text-[12.5px] text-[#9aa4b4]">No receipts this period</div>
-            )}
-          </div>
-        </Card>
-        <Card>
-          <CardTitle>Issued in period (จ่ายออกอะไรบ้าง)</CardTitle>
-          <div className="flex flex-col gap-2.5">
-            {movementDetail.issued.map((d) => (
-              <div key={d.code} className="flex items-center gap-2.5 text-[13px]">
-                <span className="font-num w-16 text-[11px] text-[#9aa4b4]">{d.code}</span>
-                <span className="flex-1">{d.name}</span>
-                <span className="font-num font-semibold text-[#c9821f]">−{d.qty.toLocaleString()}</span>
-              </div>
-            ))}
-            {movementDetail.issued.length === 0 && (
-              <div className="text-[12.5px] text-[#9aa4b4]">No issues this period</div>
-            )}
-          </div>
-        </Card>
-      </div>
-
-      <SlowMovingCard rows={slowMoving} />
-
-      <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Card>
           <div className="mb-1 text-[14px] font-semibold">
             Monthly Count Progress (แผน vs นับจริง รายเดือน)
           </div>
@@ -363,65 +386,42 @@ export default async function DashboardPage({
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
+      <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
-          <MovementChart
-            buckets={movementBuckets}
-            totalRecv={stats.receivedUnits}
-            totalIssue={stats.issuedUnits}
-          />
+          <CardTitle>Received in period (รับเข้าอะไรบ้าง)</CardTitle>
+          <div className="flex flex-col gap-2.5">
+            {movementDetail.received.map((d) => (
+              <div key={d.code} className="flex items-center gap-2.5 text-[13px]">
+                <span className="font-num w-16 text-[11px] text-[#9aa4b4]">{d.code}</span>
+                <span className="flex-1">{d.name}</span>
+                <span className="font-num font-semibold text-[#0e8ba1]">+{d.qty.toLocaleString()}</span>
+              </div>
+            ))}
+            {movementDetail.received.length === 0 && (
+              <div className="text-[12.5px] text-[#9aa4b4]">No receipts this period</div>
+            )}
+          </div>
         </Card>
         <Card>
-          <CardTitle>Action Required (ต้องดำเนินการ)</CardTitle>
+          <CardTitle>Issued in period (จ่ายออกอะไรบ้าง)</CardTitle>
           <div className="flex flex-col gap-2.5">
-            {actionRequired.belowMin > 0 && (
-              <ActionRow
-                icon="↓"
-                bg="#fbe9e9"
-                border="#f3d2d2"
-                text={`${actionRequired.belowMin} สินค้าต่ำกว่า Min (ควรสั่งซื้อ)`}
-                sub="Below reorder point"
-                subColor="#a34141"
-                href="/products"
-                cta="Products"
-              />
+            {movementDetail.issued.map((d) => (
+              <div key={d.code} className="flex items-center gap-2.5 text-[13px]">
+                <span className="font-num w-16 text-[11px] text-[#9aa4b4]">{d.code}</span>
+                <span className="flex-1">{d.name}</span>
+                <span className="font-num font-semibold text-[#c9821f]">−{d.qty.toLocaleString()}</span>
+              </div>
+            ))}
+            {movementDetail.issued.length === 0 && (
+              <div className="text-[12.5px] text-[#9aa4b4]">No issues this period</div>
             )}
-            <ActionRow
-              icon="⚠"
-              bg="#fbf1df"
-              border="#f2e2c2"
-              text={`${actionRequired.qcCount} lots on QC hold (ติด QC)`}
-              sub="Unusable until released"
-              subColor="#8a7333"
-              href="/products"
-              cta="Review"
-            />
-            <ActionRow
-              icon="◔"
-              bg="#fbe9e9"
-              border="#f3d2d2"
-              text={`${actionRequired.expCount} lots expiring/expired (หมดอายุ)`}
-              sub="Issue or write off soon"
-              subColor="#a34141"
-              href="/aging"
-              cta="Aging"
-            />
-            <ActionRow
-              icon="◷"
-              bg="#f1f3f7"
-              border="#e2e6ec"
-              text={`${actionRequired.overduePOs.length} PO overdue (ค้างรับ)`}
-              sub={actionRequired.overduePOs.join(", ") || "—"}
-              subColor="#69748a"
-              href="/receive"
-              cta="Receive"
-              mono
-            />
           </div>
         </Card>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <SlowMovingCard rows={slowMoving} />
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
           <CardTitle>Top 10 สินค้า · มูลค่าสูงสุด (Products by value)</CardTitle>
           <RankList
