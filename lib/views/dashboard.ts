@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { productLabel } from "@/lib/calc/productName";
 import { daysBetween, fmtDateBE, todayBangkok } from "@/lib/calc/date";
 import { getLotsAsOf } from "@/lib/calc/snapshot";
 import { getAppSettings } from "@/lib/views/settings";
@@ -179,6 +180,64 @@ export async function getMovementDetail(range: Range, limit = 5) {
     .slice(0, limit);
 
   return { received, issued };
+}
+
+/** Top products by on-hand inventory value, as of a date. */
+export async function getTopProductsByValue(asOf: Date, limit = 10) {
+  const [products, snapshot] = await Promise.all([
+    db.product.findMany({ where: { deletedAt: null } }),
+    getLotsAsOf(asOf),
+  ]);
+  const pByCode = new Map(products.map((p) => [p.code, p]));
+  const valByCode = new Map<string, number>();
+  for (const l of snapshot) {
+    const p = pByCode.get(l.productCode);
+    if (!p) continue;
+    valByCode.set(l.productCode, (valByCode.get(l.productCode) ?? 0) + l.qty * p.price);
+  }
+  const grand = [...valByCode.values()].reduce((s, v) => s + v, 0);
+  const rows = [...valByCode.entries()]
+    .filter(([, v]) => v > 0)
+    .map(([code, value]) => {
+      const p = pByCode.get(code)!;
+      return { code, name: productLabel(p.nameEn, p.nameTh), value };
+    })
+    .sort((a, b) => b.value - a.value)
+    .slice(0, limit);
+  const max = Math.max(1, ...rows.map((r) => r.value));
+  return rows.map((r) => ({
+    ...r,
+    barPct: (r.value / max) * 100,
+    share: grand > 0 ? (r.value / grand) * 100 : 0,
+  }));
+}
+
+/** Top vendors (partners) by received PO value within the period. */
+export async function getTopVendors(range: Range, limit = 10) {
+  const pos = await db.purchaseOrder.findMany({
+    where: { date: { gte: range.start, lte: range.end } },
+    include: { lines: { include: { product: true } } },
+  });
+  const byVendor = new Map<string, { value: number; docs: number }>();
+  for (const po of pos) {
+    const value = po.lines.reduce((s, l) => s + l.received * l.product.price, 0);
+    const g = byVendor.get(po.vendor) ?? { value: 0, docs: 0 };
+    g.value += value;
+    g.docs += 1;
+    byVendor.set(po.vendor, g);
+  }
+  const grand = [...byVendor.values()].reduce((s, g) => s + g.value, 0);
+  const rows = [...byVendor.entries()]
+    .map(([name, g]) => ({ name, value: g.value, docs: g.docs }))
+    .filter((r) => r.value > 0)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, limit);
+  const max = Math.max(1, ...rows.map((r) => r.value));
+  return rows.map((r) => ({
+    ...r,
+    barPct: (r.value / max) * 100,
+    share: grand > 0 ? (r.value / grand) * 100 : 0,
+  }));
 }
 
 export async function getSlowMoving(asOf: Date = todayBangkok(), thresholdDays = 60) {

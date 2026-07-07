@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Money } from "@/components/ui/Currency";
+import { DonutChart } from "@/components/ui/DonutChart";
+import { RankList } from "@/components/ui/RankList";
 import { PeriodSelector } from "@/components/ui/PeriodSelector";
 import { resolvePeriod } from "@/lib/calc/period";
 import { kpiBand } from "@/lib/calc/kpi";
@@ -15,6 +17,8 @@ import {
   getCountProgress,
   getMovementBuckets,
   getActionRequired,
+  getTopProductsByValue,
+  getTopVendors,
 } from "@/lib/views/dashboard";
 import { KpiBand } from "./KpiBand";
 import { MovementChart } from "./MovementChart";
@@ -39,6 +43,8 @@ export default async function DashboardPage({
     countProgress,
     movementBuckets,
     actionRequired,
+    topProducts,
+    topVendors,
   ] = await Promise.all([
     kpiBand(range),
     getInventoryStats(range),
@@ -50,7 +56,10 @@ export default async function DashboardPage({
     getCountProgress(range.end),
     getMovementBuckets(range),
     getActionRequired(range.end),
+    getTopProductsByValue(range.end),
+    getTopVendors(range),
   ]);
+  const categoryTotal = valueByCategory.reduce((s, c) => s + c.value, 0);
 
   return (
     <div className="max-w-[1280px] p-[24px_26px]">
@@ -142,18 +151,27 @@ export default async function DashboardPage({
         </Card>
         <Card>
           <CardTitle>Value by Category (มูลค่าตามหมวด)</CardTitle>
-          <div className="flex flex-col gap-3.5">
-            {valueByCategory.map((c) => (
-              <div key={c.name}>
-                <div className="mb-1.5 flex justify-between text-[12px]">
-                  <span>{c.name}</span>
-                  <span className="font-num text-[#69748a]">
+          <div className="flex items-center gap-5">
+            <div className="relative flex-none">
+              <DonutChart data={valueByCategory.map((c) => ({ name: c.name, value: c.value, color: c.color }))} />
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                <div className="font-num text-[15px] font-bold text-[#16202e]">
+                  <Money value={categoryTotal} />
+                </div>
+                <div className="text-[10px] text-[#9aa4b4]">มูลค่ารวม</div>
+              </div>
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col gap-2.5">
+              {valueByCategory.map((c) => (
+                <div key={c.name} className="flex items-center gap-2 text-[12px]">
+                  <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: c.color }} />
+                  <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                  <span className="font-num flex-none font-semibold text-[#3a4658]">
                     <Money value={c.value} />
                   </span>
                 </div>
-                <ProgressBar pct={c.pct} color={c.color} height={8} />
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </Card>
       </div>
@@ -193,6 +211,31 @@ export default async function DashboardPage({
           ))}
         </div>
       </Card>
+
+      <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Card>
+          <CardTitle>Top 10 สินค้า · มูลค่าสูงสุด (Products by value)</CardTitle>
+          <RankList
+            items={topProducts.map((p) => ({
+              label: p.name,
+              sub: `${p.code} · ${p.share.toFixed(1)}%`,
+              value: p.value,
+              barPct: p.barPct,
+            }))}
+          />
+        </Card>
+        <Card>
+          <CardTitle>Top 10 คู่ค้า · Vendors (มูลค่ารับเข้า)</CardTitle>
+          <RankList
+            items={topVendors.map((v) => ({
+              label: v.name,
+              sub: `${v.docs} PO · ${v.share.toFixed(1)}%`,
+              value: v.value,
+              barPct: v.barPct,
+            }))}
+          />
+        </Card>
+      </div>
 
       <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
