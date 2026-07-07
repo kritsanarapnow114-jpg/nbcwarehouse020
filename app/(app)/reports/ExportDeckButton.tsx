@@ -116,7 +116,7 @@ export function ExportDeckButton({
         s.addShape("rect", { x, y: y + 0.06, w, h: 0.08, fill: { color: accent } });
         s.addText(label, { x: x + 0.15, y: y + 0.2, w: w - 0.3, h: 0.4, fontSize: 11, bold: true, color: SLATE, align: "center", valign: "middle" });
         s.addText(value, { x: x + 0.1, y: y + 0.56, w: w - 0.2, h: h - (sub ? 0.86 : 0.66), fontSize: valueSize, bold: true, color: valueColor, align: "center", valign: "middle", fit: "shrink" });
-        if (sub) s.addText(sub, { x: x + 0.12, y: y + h - 0.3, w: w - 0.24, h: 0.26, fontSize: 8, color: MUTE, align: "center" });
+        if (sub) s.addText(sub, { x: x + 0.12, y: y + h - 0.34, w: w - 0.24, h: 0.3, fontSize: 10, color: MUTE, align: "center" });
       };
 
       const panel = (s: PptxGenJSLib.Slide, x: number, y: number, w: number, h: number, title?: string) => {
@@ -135,7 +135,7 @@ export function ExportDeckButton({
           [{ name: "g", labels: ["value", "rest"], values: [p, 100 - p] }],
           { x: cx, y: cy, w: size, h: size, holeSize: 74, chartColors: [color, TRACK], showLegend: false, showTitle: false, ...cf, showValue: false, showPercent: false, dataBorder: { pt: 0, color: PANEL } }
         );
-        s.addText(`${Math.round(p)}%`, { x: cx, y: cy, w: size, h: size, align: "center", valign: "middle", fontSize: 20, bold: true, color: SLATE });
+        s.addText(`${Math.round(p)}%`, { x: cx, y: cy, w: size, h: size, align: "center", valign: "middle", fontSize: 26, bold: true, color: SLATE });
         s.addText(label, { x: x + 0.1, y: y + h - 0.54, w: w - 0.2, h: 0.44, fontSize: 12, bold: true, color: SLATE, align: "center", valign: "middle" });
       };
 
@@ -187,10 +187,10 @@ export function ExportDeckButton({
       const cardW = (CW - 0.18) / 2;
       panel(g, CX, TY[0], cardW, 2.4, "Value by Category (หมวด)");
       if (summary.categories.length)
-        g.addChart(CT.bar, [{ name: "Value", labels: summary.categories.map((c) => c.name), values: summary.categories.map((c) => c.value) }], {
+        g.addChart(CT.bar, [{ name: "Value", labels: summary.categories.map((c) => c.name.replace(/\s*\(.*\)/, "")), values: summary.categories.map((c) => c.value) }], {
           x: CX + 0.1, y: TY[0] + 0.5, w: cardW - 0.2, h: 1.8, barDir: "col", chartColors: CATS,
           showValue: false, showLegend: false, showTitle: false, ...cf,
-          catAxisLabelColor: SLATE, catAxisLabelFontSize: 7, valAxisLabelColor: MUTE, valAxisLabelFontSize: 7, valGridLine: { style: "dash", color: TRACK, size: 1 }, barGapWidthPct: 40,
+          catAxisLabelColor: SLATE, catAxisLabelFontSize: 11, valAxisHidden: true, valGridLine: { style: "dash", color: TRACK, size: 1 }, barGapWidthPct: 40,
         });
       const bx = CX + cardW + 0.18;
       panel(g, bx, TY[0], cardW, 2.4, "Time-to-Expiry (อายุคงเหลือ)");
@@ -199,7 +199,7 @@ export function ExportDeckButton({
         g.addChart(CT.bar, [{ name: "Value", labels: summary.expiry.buckets.map((b) => b.label), values: summary.expiry.buckets.map((b) => b.value) }], {
           x: bx + 0.1, y: TY[0] + 0.5, w: cardW - 0.2, h: 1.8, barDir: "col", chartColors: bColors,
           showValue: false, showLegend: false, showTitle: false, ...cf,
-          catAxisLabelColor: SLATE, catAxisLabelFontSize: 7, valAxisLabelColor: MUTE, valAxisLabelFontSize: 7, valGridLine: { style: "dash", color: TRACK, size: 1 }, barGapWidthPct: 40,
+          catAxisLabelColor: SLATE, catAxisLabelFontSize: 11, valAxisHidden: true, valGridLine: { style: "dash", color: TRACK, size: 1 }, barGapWidthPct: 40,
         });
       }
       const R2Y = 3.82, R2H = 3.16;
@@ -209,8 +209,8 @@ export function ExportDeckButton({
       if (summary.storage.zones.length)
         g.addChart(CT.bar, [{ name: "Utilization %", labels: summary.storage.zones.map((z) => `Zone ${z.name}`), values: summary.storage.zones.map((z) => z.pct) }], {
           x: CX + 0.12, y: R2Y + 0.5, w: stW - 0.24, h: R2H - 0.65, barDir: "bar", chartColors: [BLUE],
-          showValue: true, dataLabelColor: SLATE, dataLabelFontSize: 8, dataLabelFontBold: true,
-          valAxisMinVal: 0, valAxisMaxVal: 100, valAxisLabelColor: MUTE, valAxisLabelFontSize: 7, catAxisLabelColor: SLATE, catAxisLabelFontSize: 8,
+          showValue: true, dataLabelColor: SLATE, dataLabelFontSize: 13, dataLabelFontBold: true,
+          valAxisMinVal: 0, valAxisMaxVal: 100, valAxisHidden: true, catAxisLabelColor: SLATE, catAxisLabelFontSize: 12,
           showLegend: false, showTitle: false, ...cf, valGridLine: { style: "dash", color: TRACK, size: 1 }, barGapWidthPct: 45,
         });
       gauge(g, CX + stW + 0.18, R2Y, gaugeW, R2H, "Production Yield (ผลิต)", d.production.yieldPct, TEAL);
