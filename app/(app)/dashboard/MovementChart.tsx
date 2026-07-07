@@ -4,25 +4,50 @@ import { useState } from "react";
 import { MovementBucket } from "@/lib/views/dashboard";
 import { Modal, ModalHeader } from "@/components/ui/Modal";
 
+const W = 720, H = 240, PADL = 12, PADR = 12, PADT = 16, PADB = 28;
+
+// Smooth path through points using a Catmull-Rom → cubic-bezier conversion.
+function smoothPath(pts: { x: number; y: number }[]): string {
+  if (pts.length === 0) return "";
+  if (pts.length === 1) return `M ${pts[0].x},${pts[0].y}`;
+  let d = `M ${pts[0].x},${pts[0].y}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] ?? p2;
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+  }
+  return d;
+}
+
 function buildGeometry(buckets: MovementBucket[]) {
   const max = Math.max(1, ...buckets.map((b) => Math.max(b.recv, b.issue)));
   const n = buckets.length;
-  const xStep = n > 1 ? (650 - 40) / (n - 1) : 0;
-  const points = buckets.map((b, i) => {
-    const x = 40 + i * xStep;
-    return {
-      x,
-      yRecv: 175 - (b.recv / max) * 160,
-      yIssue: 175 - (b.issue / max) * 160,
-      label: b.label,
-      vRecv: b.recv,
-      vIssue: b.issue,
-    };
-  });
-  const recvLine = points.map((p) => `${p.x},${p.yRecv}`).join(" ");
-  const issueLine = points.map((p) => `${p.x},${p.yIssue}`).join(" ");
-  const recvArea = `40,175 ${recvLine} 650,175`;
-  return { points, recvLine, issueLine, recvArea };
+  const baseY = H - PADB;
+  const plotH = baseY - PADT;
+  const plotW = W - PADL - PADR;
+  const xAt = (i: number) => (n > 1 ? PADL + (i / (n - 1)) * plotW : PADL + plotW / 2);
+  const yAt = (v: number) => baseY - (v / max) * plotH;
+
+  const recvPts = buckets.map((b, i) => ({ x: xAt(i), y: yAt(b.recv) }));
+  const issuePts = buckets.map((b, i) => ({ x: xAt(i), y: yAt(b.issue) }));
+  const recvLine = smoothPath(recvPts);
+  const issueLine = smoothPath(issuePts);
+  const recvArea = `${recvLine} L ${xAt(n - 1).toFixed(1)},${baseY} L ${xAt(0).toFixed(1)},${baseY} Z`;
+
+  const step = Math.max(1, Math.ceil(n / 12));
+  const labels = buckets.map((b, i) => ({
+    x: xAt(i),
+    text: b.label,
+    show: i % step === 0 || i === n - 1,
+  }));
+  const grid = [0, 0.25, 0.5, 0.75, 1].map((f) => baseY - f * plotH);
+  return { recvLine, issueLine, recvArea, labels, grid, baseY, recvEnd: recvPts[n - 1], issueEnd: issuePts[n - 1] };
 }
 
 export function MovementChart({
@@ -35,7 +60,8 @@ export function MovementChart({
   totalIssue: number;
 }) {
   const [open, setOpen] = useState(false);
-  const { points, recvLine, issueLine, recvArea } = buildGeometry(buckets);
+  const { recvLine, issueLine, recvArea, labels, grid, baseY, recvEnd, issueEnd } =
+    buildGeometry(buckets);
 
   return (
     <>
@@ -55,39 +81,28 @@ export function MovementChart({
             Received (รับเข้า)
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-[3px] bg-[#e59a2b]" />
+            <span className="h-2.5 w-2.5 rounded-[3px] bg-[#5b53d6]" />
             Issued (จ่ายออก)
           </span>
         </div>
       </div>
-      <svg viewBox="0 0 660 210" className="block h-[210px] w-full">
-        <line x1="40" y1="175" x2="650" y2="175" stroke="#e2e6ec" />
-        <line x1="40" y1="120" x2="650" y2="120" stroke="#f1f3f7" />
-        <line x1="40" y1="65" x2="650" y2="65" stroke="#f1f3f7" />
-        <line x1="40" y1="15" x2="650" y2="15" stroke="#f1f3f7" />
-        <polygon points={recvArea} fill="#12a2bb" opacity="0.09" />
-        <polyline points={recvLine} fill="none" stroke="#12a2bb" strokeWidth="2.5" strokeLinejoin="round" />
-        <polyline points={issueLine} fill="none" stroke="#e59a2b" strokeWidth="2.5" strokeLinejoin="round" />
-        <g fontSize="9" fill="#12a2bb" fontFamily="IBM Plex Mono" textAnchor="middle" fontWeight="600">
-          {points.map((p, i) => (
-            <text key={i} x={p.x} y={p.yRecv - 6}>
-              {p.vRecv}
-            </text>
-          ))}
-        </g>
-        <g fontSize="9" fill="#e59a2b" fontFamily="IBM Plex Mono" textAnchor="middle" fontWeight="600">
-          {points.map((p, i) => (
-            <text key={i} x={p.x} y={p.yIssue + 12}>
-              {p.vIssue}
-            </text>
-          ))}
-        </g>
+      <svg viewBox={`0 0 ${W} ${H}`} className="block w-full">
+        <defs>
+          <linearGradient id="recvGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#12a2bb" stopOpacity="0.30" />
+            <stop offset="100%" stopColor="#12a2bb" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {grid.map((y, i) => (
+          <line key={i} x1={PADL} y1={y} x2={W - PADR} y2={y} stroke={i === grid.length - 1 ? "#e2e6ec" : "#f1f3f7"} strokeWidth="1" />
+        ))}
+        <path d={recvArea} fill="url(#recvGrad)" />
+        <path d={issueLine} fill="none" stroke="#5b53d6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={recvLine} fill="none" stroke="#12a2bb" strokeWidth="2.75" strokeLinecap="round" strokeLinejoin="round" />
+        {recvEnd && <circle cx={recvEnd.x} cy={recvEnd.y} r="3.5" fill="#12a2bb" stroke="#fff" strokeWidth="1.5" />}
+        {issueEnd && <circle cx={issueEnd.x} cy={issueEnd.y} r="3.5" fill="#5b53d6" stroke="#fff" strokeWidth="1.5" />}
         <g fontSize="10" fill="#9aa4b4" fontFamily="IBM Plex Mono" textAnchor="middle">
-          {points.map((p, i) => (
-            <text key={i} x={p.x} y="205">
-              {p.label}
-            </text>
-          ))}
+          {labels.map((l, i) => (l.show ? <text key={i} x={l.x} y={baseY + 18}>{l.text}</text> : null))}
         </g>
       </svg>
 
