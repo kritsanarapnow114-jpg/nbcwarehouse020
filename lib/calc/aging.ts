@@ -20,8 +20,8 @@ export const EXPIRY_BUCKETS = [
   { label: "Expired", color: "#d24141" },
   { label: "≤30d", color: "#e08a2b" },
   { label: "31–90d", color: "#e5b93a" },
-  { label: "91–180d", color: "#5bb98b" },
-  { label: ">180d / none", color: "#3fa06a" },
+  { label: "91–180d", color: "#2fc98d" },
+  { label: ">180d / none", color: "#16b37e" },
 ] as const;
 
 export function expiryBucketIndex(daysToExpiry: number | null): number {

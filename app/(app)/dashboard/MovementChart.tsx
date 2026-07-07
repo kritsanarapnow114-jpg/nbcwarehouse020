@@ -69,7 +69,7 @@ export function MovementChart({
         <div className="flex-1 text-[14px] font-semibold">
           Stock Movement (ความเคลื่อนไหว)
         </div>
-        <button onClick={() => setOpen(true)} className="text-[12px] text-[#12a2bb]">
+        <button onClick={() => setOpen(true)} className="text-[12px] text-[#12b5d4]">
           Detail →
         </button>
         <div className="text-[11.5px] text-[#9aa4b4]">
@@ -77,11 +77,11 @@ export function MovementChart({
         </div>
         <div className="flex w-full gap-3.5 text-[11.5px]">
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-[3px] bg-[#12a2bb]" />
+            <span className="h-2.5 w-2.5 rounded-[3px] bg-[#12b5d4]" />
             Received (รับเข้า)
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-[3px] bg-[#5b53d6]" />
+            <span className="h-2.5 w-2.5 rounded-[3px] bg-[#6c5ce7]" />
             Issued (จ่ายออก)
           </span>
         </div>
@@ -89,18 +89,18 @@ export function MovementChart({
       <svg viewBox={`0 0 ${W} ${H}`} className="block w-full">
         <defs>
           <linearGradient id="recvGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#12a2bb" stopOpacity="0.30" />
-            <stop offset="100%" stopColor="#12a2bb" stopOpacity="0" />
+            <stop offset="0%" stopColor="#12b5d4" stopOpacity="0.30" />
+            <stop offset="100%" stopColor="#12b5d4" stopOpacity="0" />
           </linearGradient>
         </defs>
         {grid.map((y, i) => (
           <line key={i} x1={PADL} y1={y} x2={W - PADR} y2={y} stroke={i === grid.length - 1 ? "#e2e6ec" : "#f1f3f7"} strokeWidth="1" />
         ))}
         <path d={recvArea} fill="url(#recvGrad)" />
-        <path d={issueLine} fill="none" stroke="#5b53d6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d={recvLine} fill="none" stroke="#12a2bb" strokeWidth="2.75" strokeLinecap="round" strokeLinejoin="round" />
-        {recvEnd && <circle cx={recvEnd.x} cy={recvEnd.y} r="3.5" fill="#12a2bb" stroke="#fff" strokeWidth="1.5" />}
-        {issueEnd && <circle cx={issueEnd.x} cy={issueEnd.y} r="3.5" fill="#5b53d6" stroke="#fff" strokeWidth="1.5" />}
+        <path d={issueLine} fill="none" stroke="#6c5ce7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={recvLine} fill="none" stroke="#12b5d4" strokeWidth="2.75" strokeLinecap="round" strokeLinejoin="round" />
+        {recvEnd && <circle cx={recvEnd.x} cy={recvEnd.y} r="3.5" fill="#12b5d4" stroke="#fff" strokeWidth="1.5" />}
+        {issueEnd && <circle cx={issueEnd.x} cy={issueEnd.y} r="3.5" fill="#6c5ce7" stroke="#fff" strokeWidth="1.5" />}
         <g fontSize="10" fill="#9aa4b4" fontFamily="IBM Plex Mono" textAnchor="middle">
           {labels.map((l, i) => (l.show ? <text key={i} x={l.x} y={baseY + 18}>{l.text}</text> : null))}
         </g>

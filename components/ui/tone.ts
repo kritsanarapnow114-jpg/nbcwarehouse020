@@ -9,12 +9,12 @@ export const TONE_COLORS: Record<Tone, { bg: string; text: string }> = {
 };
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  RAW_MATERIAL: "#4c8c4a",
-  PACKAGING: "#7ca86b",
-  FINISHED_GOODS: "#c08a3e",
-  SPARE_PARTS: "#a8917a",
+  RAW_MATERIAL: "#12b5d4",
+  PACKAGING: "#22c58e",
+  FINISHED_GOODS: "#f7a63b",
+  SPARE_PARTS: "#7b6ef0",
 };
-export const CATEGORY_COLOR_FALLBACK = "#8b93a4";
+export const CATEGORY_COLOR_FALLBACK = "#94a3b8";
 
 export const CATEGORY_LABEL: Record<string, { en: string; th: string }> = {
   RAW_MATERIAL: { en: "Raw Material", th: "วัตถุดิบ" },

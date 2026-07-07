@@ -1,8 +1,8 @@
 import { Money } from "@/components/ui/Currency";
 
 export const RANK_COLORS = [
-  "#5b53d6", "#12a2bb", "#2fae86", "#e59a2b", "#e5613a",
-  "#4b8df8", "#9b6cd5", "#e0518f", "#17a2b8", "#8a93a4",
+  "#6c5ce7", "#12b5d4", "#22c58e", "#f7a63b", "#ff6b5c",
+  "#4b8df8", "#a06bef", "#f0568f", "#0fb5a8", "#94a3b8",
 ];
 
 export type RankItem = { label: string; sub?: string; value: number; barPct: number };

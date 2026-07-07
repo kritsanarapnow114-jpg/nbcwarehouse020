@@ -79,5 +79,5 @@ export function occupancyBarTone(pct: number): BarTone {
 export const BAR_TONE_COLOR: Record<BarTone, string> = {
   red: "#d24141",
   amber: "#e59a2b",
-  green: "#12a2bb",
+  green: "#12b5d4",
 };
