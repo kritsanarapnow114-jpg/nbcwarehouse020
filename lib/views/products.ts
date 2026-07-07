@@ -42,9 +42,11 @@ export async function getProductRows(opts?: {
   });
 
   return products.map((p) => {
-    const onHand = p.lots.reduce((s, l) => s + l.qty, 0);
-    const locations = [...new Set(p.lots.map((l) => l.locationCode))];
-    const status: "ok" | "qc" = p.lots.some((l) => l.status === "QC")
+    // Depleted lots (qty 0) are ignored for on-hand, location, QC and lot count.
+    const activeLots = p.lots.filter((l) => l.qty > 0);
+    const onHand = activeLots.reduce((s, l) => s + l.qty, 0);
+    const locations = [...new Set(activeLots.map((l) => l.locationCode))];
+    const status: "ok" | "qc" = activeLots.some((l) => l.status === "QC")
       ? "qc"
       : "ok";
     return {
@@ -60,7 +62,7 @@ export async function getProductRows(opts?: {
       totalValue: onHand * p.price,
       locations,
       status,
-      lotCount: p.lots.length,
+      lotCount: activeLots.length,
     };
   });
 }
@@ -99,8 +101,10 @@ export async function getProductDetail(
     include: { lots: { orderBy: { locationCode: "asc" } } },
   });
   if (!p) return null;
-  const onHand = p.lots.reduce((s, l) => s + l.qty, 0);
-  const status: "ok" | "qc" = p.lots.some((l) => l.status === "QC")
+  // Hide depleted lots (qty 0) from the drawer's "Stored by Location / Lot" list.
+  const activeLots = p.lots.filter((l) => l.qty > 0);
+  const onHand = activeLots.reduce((s, l) => s + l.qty, 0);
+  const status: "ok" | "qc" = activeLots.some((l) => l.status === "QC")
     ? "qc"
     : "ok";
   return {
@@ -118,10 +122,10 @@ export async function getProductDetail(
     stackLevels: p.stackLevels,
     onHand,
     totalValue: onHand * p.price,
-    locations: [...new Set(p.lots.map((l) => l.locationCode))],
+    locations: [...new Set(activeLots.map((l) => l.locationCode))],
     status,
-    lotCount: p.lots.length,
-    lots: p.lots.map((l) => ({
+    lotCount: activeLots.length,
+    lots: activeLots.map((l) => ({
       id: l.id,
       locationCode: l.locationCode,
       lotNo: l.lotNo,

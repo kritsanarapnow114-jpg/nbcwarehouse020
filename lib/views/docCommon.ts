@@ -3,7 +3,10 @@ import { db } from "@/lib/db";
 import { productLabel } from "@/lib/calc/productName";
 
 export async function getLotOptions() {
+  // Only lots that still have stock — depleted (qty 0) lots are hidden from the
+  // Transfer / Adjust / Count lot pickers.
   const lots = await db.lot.findMany({
+    where: { qty: { gt: 0 } },
     include: { product: true },
     orderBy: [{ productCode: "asc" }, { locationCode: "asc" }],
   });
