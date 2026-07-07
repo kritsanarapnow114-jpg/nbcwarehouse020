@@ -2,6 +2,35 @@
 // A level of 0 means "not set".
 export type ReorderStatus = "low" | "over" | "ok" | "none";
 
+// Auto reorder levels, derived from real usage (issued) + receiving history.
+// Recomputed on every read so the numbers stay current.
+export const USAGE_WINDOW_DAYS = 90; // history window used to average usage
+export const LEAD_TIME_DAYS = 14; // assumed days to receive after ordering
+export const SAFETY_DAYS = 7; // extra buffer
+
+/** avgDailyUse = units issued/day; avgReceiptQty = typical delivery size. */
+export function autoLevels(
+  avgDailyUse: number,
+  avgReceiptQty: number
+): { autoMin: number; autoMax: number; safety: number } {
+  if (avgDailyUse <= 0) return { autoMin: 0, autoMax: 0, safety: 0 };
+  const safety = Math.ceil(avgDailyUse * SAFETY_DAYS); // buffer stock
+  const autoMin = Math.ceil(avgDailyUse * (LEAD_TIME_DAYS + SAFETY_DAYS)); // reorder point (~3 weeks cover)
+  // reorder up to one typical delivery above min, but at least ~6 weeks of cover
+  const autoMax = Math.max(autoMin + Math.ceil(avgReceiptQty), Math.ceil(avgDailyUse * 45));
+  return { autoMin, autoMax, safety };
+}
+
+/** Manual value wins when set (>0); otherwise fall back to the auto value. */
+export function effectiveLevels(manualMin: number, manualMax: number, autoMin: number, autoMax: number) {
+  return {
+    min: manualMin > 0 ? manualMin : autoMin,
+    max: manualMax > 0 ? manualMax : autoMax,
+    minAuto: !(manualMin > 0) && autoMin > 0,
+    maxAuto: !(manualMax > 0) && autoMax > 0,
+  };
+}
+
 export function reorderStatus(onHand: number, minQty: number, maxQty: number): ReorderStatus {
   if (minQty <= 0 && maxQty <= 0) return "none";
   if (minQty > 0 && onHand < minQty) return "low";

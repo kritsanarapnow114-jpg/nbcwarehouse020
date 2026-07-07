@@ -118,15 +118,21 @@ export function EditProductModal({
           </div>
         </div>
         <div className="rounded-[10px] bg-[#f7f9fb] p-3">
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#69748a]">
+          <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#69748a]">
             Reorder levels (จุดสั่งซื้อ · {unit || "unit"})
+          </div>
+          <div className="mb-2 text-[11px] text-[#9aa4b4]">
+            เว้นว่าง (0) = ใช้ค่าที่คำนวณอัตโนมัติจากการรับ/จ่ายจริง
+            {product.autoMin || product.autoMax
+              ? ` · ตอนนี้ auto = ${product.autoMin.toLocaleString()} / ${product.autoMax.toLocaleString()}`
+              : ""}
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Min (ต่ำสุด · แจ้งเตือนเมื่อต่ำกว่า)">
-              <input value={minQty} onChange={(e) => setMinQty(e.target.value)} type="number" step="1" placeholder="0 = ไม่กำหนด" className={inputClass} />
+              <input value={minQty} onChange={(e) => setMinQty(e.target.value)} type="number" step="1" placeholder={product.autoMin ? `auto ${product.autoMin}` : "0 = auto"} className={inputClass} />
             </Field>
             <Field label="Max (สูงสุด · เพดานสต็อก)">
-              <input value={maxQty} onChange={(e) => setMaxQty(e.target.value)} type="number" step="1" placeholder="0 = ไม่กำหนด" className={inputClass} />
+              <input value={maxQty} onChange={(e) => setMaxQty(e.target.value)} type="number" step="1" placeholder={product.autoMax ? `auto ${product.autoMax}` : "0 = auto"} className={inputClass} />
             </Field>
           </div>
         </div>

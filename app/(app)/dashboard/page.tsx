@@ -22,6 +22,7 @@ import {
 } from "@/lib/views/dashboard";
 import { KpiBand } from "./KpiBand";
 import { MovementChart } from "./MovementChart";
+import { DailyBars } from "./DailyBars";
 import { SlowMovingCard } from "./SlowMovingCard";
 
 export default async function DashboardPage({
@@ -219,30 +220,9 @@ export default async function DashboardPage({
         </div>
       </Card>
 
-      <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Card>
-          <CardTitle>Top 10 สินค้า · มูลค่าสูงสุด (Products by value)</CardTitle>
-          <RankList
-            items={topProducts.map((p) => ({
-              label: p.name,
-              sub: `${p.code} · ${p.share.toFixed(1)}%`,
-              value: p.value,
-              barPct: p.barPct,
-            }))}
-          />
-        </Card>
-        <Card>
-          <CardTitle>Top 10 คู่ค้า · Vendors (มูลค่ารับเข้า)</CardTitle>
-          <RankList
-            items={topVendors.map((v) => ({
-              label: v.name,
-              sub: `${v.docs} PO · ${v.share.toFixed(1)}%`,
-              value: v.value,
-              barPct: v.barPct,
-            }))}
-          />
-        </Card>
-      </div>
+      <Card className="mb-4">
+        <DailyBars buckets={movementBuckets} />
+      </Card>
 
       <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card>
@@ -413,6 +393,31 @@ export default async function DashboardPage({
               mono
             />
           </div>
+        </Card>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Card>
+          <CardTitle>Top 10 สินค้า · มูลค่าสูงสุด (Products by value)</CardTitle>
+          <RankList
+            items={topProducts.map((p) => ({
+              label: p.name,
+              sub: `${p.code} · ${p.share.toFixed(1)}%`,
+              value: p.value,
+              barPct: p.barPct,
+            }))}
+          />
+        </Card>
+        <Card>
+          <CardTitle>Top 10 คู่ค้า · Vendors (มูลค่ารับเข้า)</CardTitle>
+          <RankList
+            items={topVendors.map((v) => ({
+              label: v.name,
+              sub: `${v.docs} PO · ${v.share.toFixed(1)}%`,
+              value: v.value,
+              barPct: v.barPct,
+            }))}
+          />
         </Card>
       </div>
     </div>

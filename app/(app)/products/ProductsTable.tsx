@@ -5,7 +5,7 @@ import { ProductRow } from "@/lib/views/products";
 import { Badge } from "@/components/ui/Badge";
 import { Money } from "@/components/ui/Currency";
 import { deleteProductAction } from "@/lib/actions/products";
-import { reorderStatus, REORDER_COLOR } from "@/lib/calc/reorder";
+import { reorderStatus, REORDER_COLOR, effectiveLevels } from "@/lib/calc/reorder";
 import { showToast } from "@/components/ui/Toast";
 import { ProductDrawer } from "./ProductDrawer";
 
@@ -39,7 +39,8 @@ export function ProductsTable({
           </thead>
           <tbody>
             {rows.map((p) => {
-              const rs = reorderStatus(p.onHand, p.minQty, p.maxQty);
+              const eff = effectiveLevels(p.minQty, p.maxQty, p.autoMin, p.autoMax);
+              const rs = reorderStatus(p.onHand, eff.min, eff.max);
               return (
               <tr
                 key={p.code}
@@ -72,9 +73,23 @@ export function ProductsTable({
                   <Money value={p.totalValue} />
                 </Td>
                 <Td align="right" className="font-num text-[12px] text-[#69748a]">
-                  {p.minQty || p.maxQty
-                    ? `${p.minQty ? p.minQty.toLocaleString() : "—"} / ${p.maxQty ? p.maxQty.toLocaleString() : "—"}`
-                    : "—"}
+                  {eff.min || eff.max ? (
+                    <span
+                      className="whitespace-nowrap"
+                      title={
+                        eff.minAuto || eff.maxAuto
+                          ? "คำนวณอัตโนมัติจากการใช้จริง (auto)"
+                          : "กำหนดเอง (manual)"
+                      }
+                    >
+                      {eff.min ? eff.min.toLocaleString() : "—"} / {eff.max ? eff.max.toLocaleString() : "—"}
+                      {(eff.minAuto || eff.maxAuto) && (
+                        <span className="ml-1 rounded-[4px] bg-[#eef1f5] px-1 text-[9px] text-[#8a97a5]">auto</span>
+                      )}
+                    </span>
+                  ) : (
+                    "—"
+                  )}
                 </Td>
                 <Td align="right" className="font-num text-[12px] text-[#69748a]">
                   {p.pallet.toLocaleString()} {p.unit}/pallet

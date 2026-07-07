@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { productLabel } from "@/lib/calc/productName";
+import { getAutoLevelsMap } from "@/lib/views/products";
 import { daysBetween, fmtDateBE, todayBangkok } from "@/lib/calc/date";
 import { getLotsAsOf } from "@/lib/calc/snapshot";
 import { getAppSettings } from "@/lib/views/settings";
@@ -378,7 +379,7 @@ export async function getMovementBuckets(range: Range): Promise<MovementBucket[]
 }
 
 export async function getActionRequired(asOf: Date = todayBangkok()) {
-  const [qcCount, snapshot, overduePOs, minProducts] = await Promise.all([
+  const [qcCount, snapshot, overduePOs, allProducts, autoMap] = await Promise.all([
     // QC hold has no change history to reconstruct — always reflects current status.
     db.lot.count({ where: { status: "QC" } }),
     getLotsAsOf(asOf),
@@ -388,13 +389,18 @@ export async function getActionRequired(asOf: Date = todayBangkok()) {
         date: { lt: new Date(asOf.getTime() - 14 * 86400000) },
       },
     }),
-    db.product.findMany({ where: { deletedAt: null, minQty: { gt: 0 } }, select: { code: true, minQty: true } }),
+    db.product.findMany({ where: { deletedAt: null }, select: { code: true, minQty: true } }),
+    getAutoLevelsMap(),
   ]);
   const expCount = snapshot.filter(
     (l) => l.expDate && l.expDate <= new Date(asOf.getTime() + 30 * 86400000)
   ).length;
   const onHandByCode = new Map<string, number>();
   for (const l of snapshot) onHandByCode.set(l.productCode, (onHandByCode.get(l.productCode) ?? 0) + l.qty);
-  const belowMin = minProducts.filter((p) => (onHandByCode.get(p.code) ?? 0) < p.minQty).length;
+  // Effective min = manual override if set, else the usage-derived auto level.
+  const belowMin = allProducts.filter((p) => {
+    const effMin = p.minQty > 0 ? p.minQty : autoMap.get(p.code)?.autoMin ?? 0;
+    return effMin > 0 && (onHandByCode.get(p.code) ?? 0) < effMin;
+  }).length;
   return { qcCount, expCount, overduePOs: overduePOs.map((p) => p.no), belowMin };
 }

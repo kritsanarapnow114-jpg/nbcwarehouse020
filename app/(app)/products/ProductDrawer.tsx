@@ -13,7 +13,7 @@ import {
   updateLotExpiryAction,
 } from "@/lib/actions/products";
 import { ProductDetail } from "@/lib/views/products";
-import { reorderStatus, REORDER_COLOR, REORDER_LABEL } from "@/lib/calc/reorder";
+import { reorderStatus, REORDER_COLOR, REORDER_LABEL, effectiveLevels } from "@/lib/calc/reorder";
 import { StockCardModal } from "./StockCardModal";
 import { EditProductModal } from "./EditProductModal";
 import { BomEditor } from "./BomEditor";
@@ -103,16 +103,30 @@ export function ProductDrawer({
               {shown.stackLevels}
             </div>
             {(() => {
-              const rs = reorderStatus(shown.onHand, shown.minQty, shown.maxQty);
+              const eff = effectiveLevels(shown.minQty, shown.maxQty, shown.autoMin, shown.autoMax);
+              const rs = reorderStatus(shown.onHand, eff.min, eff.max);
               const c = REORDER_COLOR[rs];
+              const isAuto = eff.minAuto || eff.maxAuto;
               return (
                 <div className="col-span-2 flex flex-wrap items-center gap-2 rounded-[12px] border border-[#e7ebf1] p-3.5 text-[12px] text-[#69748a]">
                   <span>
-                    Min / Max (จุดสั่งซื้อ):{" "}
+                    Min / Max:{" "}
                     <b className="font-num text-[#3a4658]">
-                      {shown.minQty ? shown.minQty.toLocaleString() : "—"} /{" "}
-                      {shown.maxQty ? shown.maxQty.toLocaleString() : "—"} {shown.unit}
+                      {eff.min ? eff.min.toLocaleString() : "—"} / {eff.max ? eff.max.toLocaleString() : "—"} {shown.unit}
                     </b>
+                    {isAuto && (
+                      <span className="ml-1.5 rounded-[4px] bg-[#eef1f5] px-1 py-0.5 text-[10px] text-[#8a97a5]">
+                        auto · คำนวณจากการใช้จริง
+                      </span>
+                    )}
+                    {shown.autoSafety > 0 && (
+                      <span className="ml-1.5">
+                        · Safety stock ~{" "}
+                        <b className="font-num text-[#3a4658]">
+                          {shown.autoSafety.toLocaleString()} {shown.unit}
+                        </b>
+                      </span>
+                    )}
                   </span>
                   <span
                     className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
@@ -122,7 +136,7 @@ export function ProductDrawer({
                   </span>
                   <span className="flex-1" />
                   <button onClick={() => setEditOpen(true)} className="text-[11.5px] font-medium text-[#12a2bb]">
-                    ตั้งค่า Min/Max →
+                    กำหนดเอง →
                   </button>
                 </div>
               );
