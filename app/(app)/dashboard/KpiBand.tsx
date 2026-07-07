@@ -32,7 +32,7 @@ export function KpiBand({ kpis }: { kpis: KpiResult[] }) {
           <div className="mb-2 flex items-center gap-1.5">
             <span
               className="h-2 w-2 rounded-full"
-              style={{ background: k.tone === "ok" ? "#3E9B6E" : "#e59a2b" }}
+              style={{ background: k.tone === "ok" ? "#12a2bb" : "#e59a2b" }}
             />
             <span className="text-[11px] leading-tight text-[#69748a]">
               {k.label} ({k.th})
@@ -269,4 +269,4 @@ function AccuracyModal({ onClose }: { onClose: () => void }) {
 }
 
 const inputClass =
-  "rounded-[7px] border border-[#d7dce4] px-2.5 py-1.5 text-[12.5px] outline-none focus:border-[#3E9B6E]";
+  "rounded-[7px] border border-[#d7dce4] px-2.5 py-1.5 text-[12.5px] outline-none focus:border-[#12a2bb]";

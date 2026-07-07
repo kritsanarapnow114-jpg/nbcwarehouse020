@@ -132,7 +132,7 @@ export function EditProductModal({
 }
 
 const inputClass =
-  "w-full rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#3E9B6E]";
+  "w-full rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#12a2bb]";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

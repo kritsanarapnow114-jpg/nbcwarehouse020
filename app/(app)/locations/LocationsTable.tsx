@@ -23,7 +23,7 @@ const STATUS_BADGE: Record<LocationRow["tone"], { tone: Tone; label: string }> =
 function dotColor(c: LocationRow["contents"][number]): string {
   if (c.expired) return "#d24141";
   if (c.lotStatus === "QC") return "#e59a2b";
-  return "#3E9B6E";
+  return "#12a2bb";
 }
 
 export function LocationsTable({ rows }: { rows: LocationRow[] }) {

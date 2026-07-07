@@ -68,7 +68,7 @@ export function UsersCard({ users }: { users: UserRow[] }) {
             key={u.id}
             className="flex items-center gap-3 border-t border-[#eef1f5] py-2.5 text-[13px] first:border-t-0"
           >
-            <div className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#e7f3ec] text-[11.5px] font-semibold text-[#2C7A54]">
+            <div className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[#e4f4f8] text-[11.5px] font-semibold text-[#0e7488]">
               {u.avatarInitials}
             </div>
             <div className="flex-1">
@@ -98,4 +98,4 @@ export function UsersCard({ users }: { users: UserRow[] }) {
 }
 
 const inputClass =
-  "rounded-[7px] border border-[#d7dce4] px-2.5 py-1.5 text-[12.5px] outline-none focus:border-[#3E9B6E]";
+  "rounded-[7px] border border-[#d7dce4] px-2.5 py-1.5 text-[12.5px] outline-none focus:border-[#12a2bb]";

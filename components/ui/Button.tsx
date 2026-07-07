@@ -7,12 +7,12 @@ export type ButtonVariant =
   | "ghost";
 
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
-  primary: "bg-[#3E9B6E] text-white border-0 font-semibold",
+  primary: "bg-[#12a2bb] text-white border-0 font-semibold",
   secondary: "bg-white text-[#3a4658] border border-[#d7dce4]",
-  success: "bg-[#eaf7f0] text-[#12894f] border border-[#1e9e5e] font-semibold",
-  accent: "bg-[#e7f3ec] text-[#2C7A54] border border-[#3E9B6E] font-semibold",
+  success: "bg-[#e6f5fa] text-[#0c7f93] border border-[#16a6bf] font-semibold",
+  accent: "bg-[#e4f4f8] text-[#0e7488] border border-[#12a2bb] font-semibold",
   danger: "bg-transparent text-[#c2606f] border-0",
-  ghost: "bg-transparent text-[#3E9B6E] border-0",
+  ghost: "bg-transparent text-[#12a2bb] border-0",
 };
 
 export function buttonClass(variant: ButtonVariant = "primary", extra = "") {

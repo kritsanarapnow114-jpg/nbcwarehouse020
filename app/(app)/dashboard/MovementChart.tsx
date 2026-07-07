@@ -43,7 +43,7 @@ export function MovementChart({
         <div className="flex-1 text-[14px] font-semibold">
           Stock Movement (ความเคลื่อนไหว)
         </div>
-        <button onClick={() => setOpen(true)} className="text-[12px] text-[#3E9B6E]">
+        <button onClick={() => setOpen(true)} className="text-[12px] text-[#12a2bb]">
           Detail →
         </button>
         <div className="text-[11.5px] text-[#9aa4b4]">
@@ -51,7 +51,7 @@ export function MovementChart({
         </div>
         <div className="flex w-full gap-3.5 text-[11.5px]">
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-[3px] bg-[#3E9B6E]" />
+            <span className="h-2.5 w-2.5 rounded-[3px] bg-[#12a2bb]" />
             Received (รับเข้า)
           </span>
           <span className="flex items-center gap-1.5">
@@ -65,10 +65,10 @@ export function MovementChart({
         <line x1="40" y1="120" x2="650" y2="120" stroke="#f1f3f7" />
         <line x1="40" y1="65" x2="650" y2="65" stroke="#f1f3f7" />
         <line x1="40" y1="15" x2="650" y2="15" stroke="#f1f3f7" />
-        <polygon points={recvArea} fill="#3E9B6E" opacity="0.09" />
-        <polyline points={recvLine} fill="none" stroke="#3E9B6E" strokeWidth="2.5" strokeLinejoin="round" />
+        <polygon points={recvArea} fill="#12a2bb" opacity="0.09" />
+        <polyline points={recvLine} fill="none" stroke="#12a2bb" strokeWidth="2.5" strokeLinejoin="round" />
         <polyline points={issueLine} fill="none" stroke="#e59a2b" strokeWidth="2.5" strokeLinejoin="round" />
-        <g fontSize="9" fill="#3E9B6E" fontFamily="IBM Plex Mono" textAnchor="middle" fontWeight="600">
+        <g fontSize="9" fill="#12a2bb" fontFamily="IBM Plex Mono" textAnchor="middle" fontWeight="600">
           {points.map((p, i) => (
             <text key={i} x={p.x} y={p.yRecv - 6}>
               {p.vRecv}
@@ -107,7 +107,7 @@ export function MovementChart({
               {buckets.map((b, i) => (
                 <tr key={i} className="border-t border-[#eef1f5]">
                   <td className="font-num py-2">{b.label}</td>
-                  <td className="font-num py-2 text-right text-[#17935a]">
+                  <td className="font-num py-2 text-right text-[#0e8ba1]">
                     +{b.recv.toLocaleString()}
                   </td>
                   <td className="font-num py-2 text-right text-[#c9821f]">

@@ -88,7 +88,7 @@ export function ReportsStockCard({
                   <Badge tone={MOVEMENT_TYPE_TONE[r.type] ?? "neutral"}>{r.type}</Badge>
                 </td>
                 <td className="font-num py-2">{r.lot}</td>
-                <td className="font-num py-2 text-right text-[#17935a]">
+                <td className="font-num py-2 text-right text-[#0e8ba1]">
                   {r.in > 0 ? `+${r.in.toLocaleString()}` : ""}
                 </td>
                 <td className="font-num py-2 text-right text-[#d24141]">

@@ -1,11 +1,11 @@
 export type Tone = "ok" | "warn" | "danger" | "neutral" | "accent";
 
 export const TONE_COLORS: Record<Tone, { bg: string; text: string }> = {
-  ok: { bg: "#e5f4ec", text: "#17935a" },
+  ok: { bg: "#e4f4f8", text: "#0e8ba1" },
   warn: { bg: "#fbf1df", text: "#b5790f" },
   danger: { bg: "#fbe9e9", text: "#c53f3f" },
   neutral: { bg: "#eef1f5", text: "#69748a" },
-  accent: { bg: "#e7f3ec", text: "#3E9B6E" },
+  accent: { bg: "#e4f4f8", text: "#12a2bb" },
 };
 
 export const CATEGORY_COLORS: Record<string, string> = {

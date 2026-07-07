@@ -190,7 +190,7 @@ export function IssueForm({ data }: { data: IssueFormData }) {
           </div>
         </div>
 
-        <div className="border-b border-[#eef1f5] bg-[#f0f7f3] p-[10px_22px] text-[12px] text-[#3a4658]">
+        <div className="border-b border-[#eef1f5] bg-[#eef6f9] p-[10px_22px] text-[12px] text-[#3a4658]">
           Default lot is auto-FEFO (earliest expiry). Change the Lot dropdown to issue a specific lot instead.
         </div>
 
@@ -216,7 +216,7 @@ export function IssueForm({ data }: { data: IssueFormData }) {
                   <tr
                     key={i}
                     className="border-t border-[#eef1f5]"
-                    style={{ background: isFefo ? "#f4faf5" : "#fdf7ee" }}
+                    style={{ background: isFefo ? "#f2fafc" : "#fdf7ee" }}
                   >
                     <td className="font-num p-[11px_16px] text-[12px] text-[#3a4658]">{l.code}</td>
                     <td className="p-[11px_16px] font-medium">{l.name}</td>
@@ -236,7 +236,7 @@ export function IssueForm({ data }: { data: IssueFormData }) {
                       </select>
                       <div className="mt-0.5">
                         {isFefo ? (
-                          <span className="rounded-full bg-[#e6f5ec] px-2 py-0.5 text-[10px] font-semibold text-[#12894f]">
+                          <span className="rounded-full bg-[#e4f4f8] px-2 py-0.5 text-[10px] font-semibold text-[#0c7f93]">
                             FEFO
                           </span>
                         ) : (

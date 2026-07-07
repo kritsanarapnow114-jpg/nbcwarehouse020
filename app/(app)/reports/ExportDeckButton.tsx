@@ -390,7 +390,7 @@ export function ExportDeckButton({
     <button
       onClick={handleExport}
       disabled={busy}
-      className="flex items-center gap-1.5 rounded-[8px] border border-[#1e9e5e] bg-[#eaf7f0] px-3.5 py-2 text-[12.5px] font-semibold text-[#12894f] disabled:opacity-60"
+      className="flex items-center gap-1.5 rounded-[8px] border border-[#16a6bf] bg-[#e6f5fa] px-3.5 py-2 text-[12.5px] font-semibold text-[#0c7f93] disabled:opacity-60"
     >
       {busy ? "กำลังสร้าง…" : "⬇ Export PowerPoint (สรุปเป็นสไลด์)"}
     </button>

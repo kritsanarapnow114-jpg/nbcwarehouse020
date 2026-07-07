@@ -31,7 +31,7 @@ export default async function ReceivePage() {
   return (
     <div className="max-w-[1240px] p-[22px_26px]">
       <ReceiveForm data={data} />
-      <DocHistory title="Recent Receipts (ประวัติการรับสินค้า)" rows={rows} accentColor="#17935a" reverseKind="receipt" />
+      <DocHistory title="Recent Receipts (ประวัติการรับสินค้า)" rows={rows} accentColor="#0e8ba1" reverseKind="receipt" />
     </div>
   );
 }

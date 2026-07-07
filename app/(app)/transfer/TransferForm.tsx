@@ -154,7 +154,7 @@ export function TransferForm({
         <div className="flex flex-wrap items-center gap-4 border-b border-[#eef1f5] p-[18px_22px]">
           <div>
             <div className="mb-1 text-[11.5px] text-[#69748a]">Transfer No. · auto</div>
-            <div className="font-num text-[16px] font-semibold text-[#12a08d]">next on confirm</div>
+            <div className="font-num text-[16px] font-semibold text-[#12a2bb]">next on confirm</div>
           </div>
           <div className="h-[34px] w-px bg-[#e2e6ec]" />
           <div>
@@ -172,7 +172,7 @@ export function TransferForm({
             </select>
           </div>
           <div className="flex-1" />
-          <button onClick={handleExport} className="flex items-center gap-1.5 rounded-[8px] border border-[#1e9e5e] bg-[#eaf7f0] px-3.5 py-2 text-[12.5px] font-semibold text-[#12894f]">
+          <button onClick={handleExport} className="flex items-center gap-1.5 rounded-[8px] border border-[#16a6bf] bg-[#e6f5fa] px-3.5 py-2 text-[12.5px] font-semibold text-[#0c7f93]">
             ⤓ Export Excel
           </button>
           <div>
@@ -231,7 +231,7 @@ export function TransferForm({
                     <button
                       onClick={() => splitLine(i)}
                       title="ย้ายไปอีกที่เก็บ (split to another location)"
-                      className="mr-1 rounded-[6px] border border-[#bfe3d8] bg-[#eafaf4] px-1.5 py-1 text-[11px] font-semibold text-[#12a08d]"
+                      className="mr-1 rounded-[6px] border border-[#bfe3d8] bg-[#e9f9fc] px-1.5 py-1 text-[11px] font-semibold text-[#12a2bb]"
                     >
                       + ที่เก็บ
                     </button>
@@ -278,7 +278,7 @@ export function TransferForm({
           <button
             onClick={handleConfirm}
             disabled={saving || lines.length === 0 || !!lotError}
-            className={buttonClass("primary", "!bg-[#12a08d]")}
+            className={buttonClass("primary", "!bg-[#12a2bb]")}
           >
             {saving ? "Saving…" : "Confirm transfer (ยืนยันย้าย)"}
           </button>

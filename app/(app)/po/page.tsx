@@ -43,7 +43,7 @@ export default async function PurchaseOrderPage({
               href={`/po${qs({ status: f.value })}`}
               className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-medium ${
                 active
-                  ? "bg-[#3E9B6E] text-white"
+                  ? "bg-[#12a2bb] text-white"
                   : "border border-[#e2e6ec] bg-white text-[#3a4658]"
               }`}
             >
@@ -55,7 +55,7 @@ export default async function PurchaseOrderPage({
         <NewPoButton products={products} vendors={vendors} />
         <a
           href={`/api/export/po${qs({})}`}
-          className="flex items-center gap-1.5 rounded-[8px] border border-[#1e9e5e] bg-[#eaf7f0] px-3.5 py-2 text-[12.5px] font-semibold text-[#12894f]"
+          className="flex items-center gap-1.5 rounded-[8px] border border-[#16a6bf] bg-[#e6f5fa] px-3.5 py-2 text-[12.5px] font-semibold text-[#0c7f93]"
         >
           ⤓ Export Excel
         </a>

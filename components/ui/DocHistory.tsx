@@ -60,7 +60,7 @@ function printDoc(title: string, row: DocHistoryRow) {
 export function DocHistory({
   title,
   rows,
-  accentColor = "#3E9B6E",
+  accentColor = "#12a2bb",
   reverseKind,
 }: {
   title: string;
@@ -130,7 +130,7 @@ export function DocHistory({
           type="date"
           value={filterDate}
           onChange={(e) => setFilterDate(e.target.value)}
-          className="font-num rounded-[7px] border border-[#d7dce4] px-2 py-1 text-[12px] outline-none focus:border-[#3E9B6E]"
+          className="font-num rounded-[7px] border border-[#d7dce4] px-2 py-1 text-[12px] outline-none focus:border-[#12a2bb]"
         />
         {filterDate && (
           <button
@@ -291,7 +291,7 @@ export function DocHistory({
                   <button
                     onClick={handleRedo}
                     disabled={reversing}
-                    className="flex-none rounded-[8px] border border-[#bfe0cd] bg-[#eaf7f0] px-3 py-1.5 text-[12.5px] font-semibold text-[#12894f] hover:bg-[#dcf0e6] disabled:opacity-60"
+                    className="flex-none rounded-[8px] border border-[#bfe0cd] bg-[#e6f5fa] px-3 py-1.5 text-[12.5px] font-semibold text-[#0c7f93] hover:bg-[#d6eef4] disabled:opacity-60"
                   >
                     {reversing ? "กำลังเตรียม…" : "↻ ทำซ้ำ (Redo)"}
                   </button>

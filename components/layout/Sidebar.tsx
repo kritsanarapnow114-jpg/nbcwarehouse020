@@ -28,20 +28,20 @@ export function Sidebar({
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex h-screen w-[240px] flex-none flex-col text-[#eaf7f0] shadow-[2px_0_16px_rgba(13,20,36,.12)] transition-transform duration-200 lg:sticky lg:top-0 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex h-screen w-[240px] flex-none flex-col text-[#e6f5fa] shadow-[2px_0_16px_rgba(13,20,36,.12)] transition-transform duration-200 lg:sticky lg:top-0 lg:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
-        style={{ background: "linear-gradient(180deg,#34a877,#1f8a5b)" }}
+        style={{ background: "linear-gradient(180deg,#17a6c0,#5b53d6)" }}
       >
         <div className="flex items-center gap-2.5 border-b border-white/15 px-[18px] py-4">
-          <div className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-[9px] bg-white text-[15px] font-bold tracking-wide text-[#1f8a5b]">
+          <div className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-[9px] bg-white text-[15px] font-bold tracking-wide text-[#5b53d6]">
             NB
           </div>
           <div className="min-w-0 flex-1 leading-tight">
             <div className="whitespace-nowrap text-[14px] font-bold text-white">
               NBC Warehouse
             </div>
-            <div className="whitespace-nowrap text-[10.5px] text-[#d3efe0]">
+            <div className="whitespace-nowrap text-[10.5px] text-[#cfeaf1]">
               Warehouse Mgmt (ระบบคลังสินค้า)
             </div>
           </div>
@@ -64,7 +64,7 @@ export function Sidebar({
                 href={item.href}
                 onClick={onClose}
                 className={`flex items-center gap-2.5 rounded-[9px] px-3 py-2.5 text-[13px] ${
-                  active ? "bg-white text-[#1f8a5b]" : "bg-white/[.06] text-[#eaf7f0] hover:bg-white/[.12]"
+                  active ? "bg-white text-[#5b53d6]" : "bg-white/[.06] text-[#e6f5fa] hover:bg-white/[.12]"
                 }`}
               >
                 <span className="w-5 flex-none text-center text-[15px]">
@@ -81,7 +81,7 @@ export function Sidebar({
                 {badge !== null && (
                   <span
                     className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                      active ? "bg-[#1f8a5b]/15 text-[#1f8a5b]" : "bg-[#c53f3f] text-white"
+                      active ? "bg-[#5b53d6]/15 text-[#5b53d6]" : "bg-[#c53f3f] text-white"
                     }`}
                   >
                     {badge}
@@ -97,8 +97,8 @@ export function Sidebar({
           onClick={onClose}
           className={`mx-3 mb-1 flex items-center gap-2.5 rounded-[9px] px-3 py-2 text-[12px] ${
             pathname.startsWith("/settings")
-              ? "bg-white text-[#1f8a5b]"
-              : "bg-white/[.06] text-[#cdeadd] hover:bg-white/[.12]"
+              ? "bg-white text-[#5b53d6]"
+              : "bg-white/[.06] text-[#cfeaf1] hover:bg-white/[.12]"
           }`}
         >
           <span className="w-5 flex-none text-center text-[13px]">⚙</span>
@@ -116,12 +116,12 @@ export function Sidebar({
             <div className="text-[12.5px] font-medium text-white">
               {user.name}
             </div>
-            <div className="text-[10.5px] text-[#cdeadd]">{user.role}</div>
+            <div className="text-[10.5px] text-[#cfeaf1]">{user.role}</div>
           </div>
           <button
             type="submit"
             title="Sign out"
-            className="rounded-[7px] px-2 py-1 text-[11px] text-[#d3efe0] hover:bg-white/[.12]"
+            className="rounded-[7px] px-2 py-1 text-[11px] text-[#cfeaf1] hover:bg-white/[.12]"
           >
             Exit
           </button>

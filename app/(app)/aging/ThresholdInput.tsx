@@ -33,7 +33,7 @@ export function ThresholdInput({
           setValue(v);
           if (v > 0) go(v);
         }}
-        className="font-num w-[64px] rounded-[8px] border border-[#d7dce4] px-2 py-1.5 text-center text-[12.5px] outline-none focus:border-[#3E9B6E]"
+        className="font-num w-[64px] rounded-[8px] border border-[#d7dce4] px-2 py-1.5 text-center text-[12.5px] outline-none focus:border-[#12a2bb]"
       />
       days (เตือนล่วงหน้า)
     </label>

@@ -2,8 +2,8 @@ import { daysBetween, fmtDateBE } from "./date";
 
 /** Age-since-received buckets — final version (0-30/31-60/61-90/90+ was an earlier, superseded scheme). */
 export const AGE_BUCKETS = [
-  { label: "0–60", color: "#17935a" },
-  { label: "61–120", color: "#3E9B6E" },
+  { label: "0–60", color: "#0e8ba1" },
+  { label: "61–120", color: "#12a2bb" },
   { label: "121–180", color: "#e59a2b" },
   { label: "181–240", color: "#d24141" },
 ] as const;

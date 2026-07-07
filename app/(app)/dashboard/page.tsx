@@ -74,7 +74,7 @@ export default async function DashboardPage({
           <div className="mb-2 text-[12px] text-[#69748a]">
             Received in period (รับเข้าช่วงนี้)
           </div>
-          <div className="font-num text-[27px] font-bold tracking-tight text-[#17935a]">
+          <div className="font-num text-[27px] font-bold tracking-tight text-[#0e8ba1]">
             {stats.receivedUnits.toLocaleString()}
           </div>
           <div className="mt-1.5 text-[11.5px] text-[#9aa4b4]">units received</div>
@@ -109,7 +109,7 @@ export default async function DashboardPage({
             <div className="flex-1 text-[14px] font-semibold">
               Storage Utilization (การใช้พื้นที่)
             </div>
-            <Link href="/locations" className="text-[12px] text-[#3E9B6E]">
+            <Link href="/locations" className="text-[12px] text-[#12a2bb]">
               View all →
             </Link>
           </div>
@@ -163,7 +163,7 @@ export default async function DashboardPage({
           <div className="flex-1 text-[14px] font-semibold">
             Value by Time-to-Expiry (มูลค่าตามอายุที่เหลือ)
           </div>
-          <Link href="/aging" className="text-[12px] text-[#3E9B6E]">
+          <Link href="/aging" className="text-[12px] text-[#12a2bb]">
             View aging →
           </Link>
           <div className="text-[12px] text-[#69748a]">
@@ -202,7 +202,7 @@ export default async function DashboardPage({
               <div key={d.code} className="flex items-center gap-2.5 text-[13px]">
                 <span className="font-num w-16 text-[11px] text-[#9aa4b4]">{d.code}</span>
                 <span className="flex-1">{d.name}</span>
-                <span className="font-num font-semibold text-[#17935a]">+{d.qty.toLocaleString()}</span>
+                <span className="font-num font-semibold text-[#0e8ba1]">+{d.qty.toLocaleString()}</span>
               </div>
             ))}
             {movementDetail.received.length === 0 && (
@@ -246,7 +246,7 @@ export default async function DashboardPage({
                   <span className="w-[34px] text-[12px] text-[#69748a]">{m.label}</span>
                   <div className="h-3 flex-1 overflow-hidden rounded-[5px] bg-[#eef1f5]">
                     <div
-                      className="h-full rounded-[5px] bg-[#3E9B6E]"
+                      className="h-full rounded-[5px] bg-[#12a2bb]"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -255,7 +255,7 @@ export default async function DashboardPage({
                   </span>
                   <span
                     className="font-num w-10 text-right text-[12.5px] font-bold"
-                    style={{ color: donePct >= 100 ? "#17935a" : "#e59a2b" }}
+                    style={{ color: donePct >= 100 ? "#0e8ba1" : "#e59a2b" }}
                   >
                     {donePct.toFixed(0)}%
                   </span>
@@ -280,7 +280,7 @@ export default async function DashboardPage({
                   <span className="w-[34px] text-[12px] text-[#69748a]">{m.label}</span>
                   <div className="h-3 flex-1 overflow-hidden rounded-[5px] bg-[#eef1f5]">
                     <div
-                      className="h-full rounded-[5px] bg-[#3E9B6E]"
+                      className="h-full rounded-[5px] bg-[#12a2bb]"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -289,7 +289,7 @@ export default async function DashboardPage({
                   </span>
                   <span
                     className="font-num w-10 text-right text-[12.5px] font-bold"
-                    style={{ color: donePct >= 100 ? "#17935a" : "#e59a2b" }}
+                    style={{ color: donePct >= 100 ? "#0e8ba1" : "#e59a2b" }}
                   >
                     {donePct.toFixed(0)}%
                   </span>

@@ -50,7 +50,7 @@ export default async function ProductsPage({
               href={`/products${qs({ cat: f.value })}`}
               className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-medium ${
                 active
-                  ? "bg-[#3E9B6E] text-white"
+                  ? "bg-[#12a2bb] text-white"
                   : "border border-[#e2e6ec] bg-white text-[#3a4658]"
               }`}
             >
@@ -68,7 +68,7 @@ export default async function ProductsPage({
         <AddProductButton />
         <a
           href={`/api/export/products${qs({})}`}
-          className="flex items-center gap-1.5 rounded-[8px] border border-[#1e9e5e] bg-[#eaf7f0] px-3.5 py-2 text-[12.5px] font-semibold text-[#12894f]"
+          className="flex items-center gap-1.5 rounded-[8px] border border-[#16a6bf] bg-[#e6f5fa] px-3.5 py-2 text-[12.5px] font-semibold text-[#0c7f93]"
         >
           ⤓ Export Excel
         </a>
@@ -89,7 +89,7 @@ export default async function ProductsPage({
               </div>
               <div className="h-[14px] flex-1 overflow-hidden rounded-[5px] bg-[#f1f3f7]">
                 <div
-                  className="h-full rounded-[5px] bg-[#3E9B6E]"
+                  className="h-full rounded-[5px] bg-[#12a2bb]"
                   style={{ width: `${(v.totalValue / maxValue) * 100}%` }}
                 />
               </div>

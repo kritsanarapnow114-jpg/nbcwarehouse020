@@ -107,7 +107,7 @@ export function AdjustForm({ lots }: { lots: LotOption[] }) {
         <div className="flex flex-wrap items-center gap-4 border-b border-[#eef1f5] p-[18px_22px]">
           <div>
             <div className="mb-1 text-[11.5px] text-[#69748a]">Adjustment No. · auto</div>
-            <div className="font-num text-[16px] font-semibold text-[#3E9B6E]">next on confirm</div>
+            <div className="font-num text-[16px] font-semibold text-[#12a2bb]">next on confirm</div>
           </div>
           <div className="h-[34px] w-px bg-[#e2e6ec]" />
           <div>
@@ -125,7 +125,7 @@ export function AdjustForm({ lots }: { lots: LotOption[] }) {
             </select>
           </div>
           <div className="flex-1" />
-          <button onClick={handleExport} className="flex items-center gap-1.5 rounded-[8px] border border-[#1e9e5e] bg-[#eaf7f0] px-3.5 py-2 text-[12.5px] font-semibold text-[#12894f]">
+          <button onClick={handleExport} className="flex items-center gap-1.5 rounded-[8px] border border-[#16a6bf] bg-[#e6f5fa] px-3.5 py-2 text-[12.5px] font-semibold text-[#0c7f93]">
             ⤓ Export Excel
           </button>
           <div>
@@ -172,7 +172,7 @@ export function AdjustForm({ lots }: { lots: LotOption[] }) {
                     </td>
                     <td
                       className="font-num p-[11px_16px] text-right font-semibold"
-                      style={{ color: variance > 0 ? "#17935a" : variance < 0 ? "#d24141" : "#9aa4b4" }}
+                      style={{ color: variance > 0 ? "#0e8ba1" : variance < 0 ? "#d24141" : "#9aa4b4" }}
                     >
                       {variance > 0 ? `+${variance}` : variance}
                     </td>
