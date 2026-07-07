@@ -60,6 +60,42 @@ export function TransferForm({
   function removeLine(i: number) {
     setLines((ls) => ls.filter((_, idx) => idx !== i));
   }
+  // Split one lot across another destination location: duplicate the row for the
+  // same lot, pick an unused "To", and share the quantity between the two rows.
+  function splitLine(i: number) {
+    setLines((ls) => {
+      const src = ls[i];
+      const usedTo = ls.filter((l) => l.id === src.id).map((l) => l.toLocationCode);
+      const nextTo =
+        locations.find((c) => c !== src.locationCode && !usedTo.includes(c)) ??
+        locations.find((c) => c !== src.locationCode) ??
+        src.toLocationCode;
+      const cur = Number(src.moveQty) || 0;
+      const half = Math.floor(cur / 2);
+      const copy = [...ls];
+      copy[i] = { ...src, moveQty: String(cur - half) };
+      copy.splice(i + 1, 0, { ...src, toLocationCode: nextTo, moveQty: String(half) });
+      return copy;
+    });
+  }
+
+  // Validate: per source lot, the total moved must not exceed what's on hand.
+  const lotError: string | null = (() => {
+    const moved = new Map<string, { qty: number; sum: number }>();
+    for (const l of lines) {
+      const g = moved.get(l.id) ?? { qty: l.qty, sum: 0 };
+      g.sum += Number(l.moveQty) || 0;
+      moved.set(l.id, g);
+    }
+    for (const l of lines) {
+      if (l.toLocationCode === l.locationCode) return `ปลายทางต้องต่างจากต้นทาง (${l.lotNo})`;
+      if ((Number(l.moveQty) || 0) <= 0) return `จำนวนต้องมากกว่า 0 (${l.lotNo})`;
+    }
+    for (const [, g] of moved) {
+      if (g.sum > g.qty) return `ย้ายเกินจำนวนคงเหลือ — มี ${g.qty.toLocaleString()}, ย้ายรวม ${g.sum.toLocaleString()}`;
+    }
+    return null;
+  })();
 
   async function handleConfirm() {
     setSaving(true);
@@ -165,7 +201,7 @@ export function TransferForm({
             </thead>
             <tbody>
               {lines.map((l, i) => (
-                <tr key={l.id} className="border-t border-[#eef1f5]">
+                <tr key={i} className="border-t border-[#eef1f5]">
                   <td className="font-num p-[11px_16px] text-[12px] text-[#3a4658]">{l.productCode}</td>
                   <td className="p-[11px_16px] font-medium">{l.name}</td>
                   <td className="font-num p-[11px_16px] text-[12px]">{l.lotNo}</td>
@@ -191,7 +227,14 @@ export function TransferForm({
                     />{" "}
                     <span className="text-[11px] text-[#9aa4b4]">/{l.qty} {l.unit}</span>
                   </td>
-                  <td className="p-[11px_16px] text-center">
+                  <td className="whitespace-nowrap p-[11px_16px] text-center">
+                    <button
+                      onClick={() => splitLine(i)}
+                      title="ย้ายไปอีกที่เก็บ (split to another location)"
+                      className="mr-1 rounded-[6px] border border-[#bfe3d8] bg-[#eafaf4] px-1.5 py-1 text-[11px] font-semibold text-[#12a08d]"
+                    >
+                      + ที่เก็บ
+                    </button>
                     <button onClick={() => removeLine(i)} className="text-[16px] text-[#c2606f]">
                       ×
                     </button>
@@ -220,9 +263,9 @@ export function TransferForm({
           />
         </div>
 
-        {error && (
+        {(error || lotError) && (
           <div className="border-t border-[#f3d2d2] bg-[#fbe9e9] px-[22px] py-2.5 text-[12.5px] text-[#c53f3f]">
-            {error}
+            {error || lotError}
           </div>
         )}
 
@@ -234,7 +277,7 @@ export function TransferForm({
           </button>
           <button
             onClick={handleConfirm}
-            disabled={saving || lines.length === 0}
+            disabled={saving || lines.length === 0 || !!lotError}
             className={buttonClass("primary", "!bg-[#12a08d]")}
           >
             {saving ? "Saving…" : "Confirm transfer (ยืนยันย้าย)"}
