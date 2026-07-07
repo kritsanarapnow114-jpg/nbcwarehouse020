@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "./nav";
+import { NavIcon } from "./NavIcons";
 import { logoutAction } from "@/lib/actions/auth";
 
 export function Sidebar({
@@ -67,8 +68,8 @@ export function Sidebar({
                   active ? "bg-white text-[#5b53d6]" : "bg-white/[.06] text-[#e6f5fa] hover:bg-white/[.12]"
                 }`}
               >
-                <span className="w-5 flex-none text-center text-[15px]">
-                  {item.icon}
+                <span className={`flex w-[22px] flex-none items-center justify-center ${active ? "text-[#5b53d6]" : "text-white/90"}`}>
+                  <NavIcon name={item.key} />
                 </span>
                 <span className="flex-1 text-left leading-tight">
                   <span className="block">{item.en}</span>
@@ -101,7 +102,9 @@ export function Sidebar({
               : "bg-white/[.06] text-[#cfeaf1] hover:bg-white/[.12]"
           }`}
         >
-          <span className="w-5 flex-none text-center text-[13px]">⚙</span>
+          <span className="flex w-[22px] flex-none items-center justify-center">
+            <NavIcon name="settings" size={17} />
+          </span>
           Settings (ตั้งค่า)
         </Link>
 
