@@ -1,5 +1,5 @@
 import { buildStockCard } from "@/lib/calc/stockCard";
-import { toCsv, csvResponse } from "@/lib/calc/csv";
+import { toExcelHtml, excelResponse } from "@/lib/calc/csv";
 import { fmtDateBE } from "@/lib/calc/date";
 
 export async function GET(
@@ -8,7 +8,7 @@ export async function GET(
 ) {
   const { code } = await params;
   const entries = await buildStockCard(code);
-  const csv = toCsv(
+  const html = toExcelHtml("Stock Card",
     ["Date", "Doc", "Type", "Lot", "In", "Out", "Balance"],
     entries.map((e) => [
       fmtDateBE(e.date),
@@ -20,5 +20,5 @@ export async function GET(
       e.balance,
     ])
   );
-  return csvResponse(`stock-card-${code}.csv`, csv);
+  return excelResponse(`stock-card-.xls`, html);
 }

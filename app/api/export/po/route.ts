@@ -1,13 +1,13 @@
 import { NextRequest } from "next/server";
 import { getPurchaseOrders } from "@/lib/views/po";
-import { toCsv, csvResponse } from "@/lib/calc/csv";
+import { toExcelHtml, excelResponse } from "@/lib/calc/csv";
 import { fmtDateBE } from "@/lib/calc/date";
 
 export async function GET(req: NextRequest) {
   const status = req.nextUrl.searchParams.get("status") ?? undefined;
   const rows = await getPurchaseOrders({ status });
 
-  const csv = toCsv(
+  const html = toExcelHtml("Purchase Orders",
     ["PO No.", "Vendor", "Date", "Amount", "Received%", "Status"],
     rows.map((r) => [
       r.no,
@@ -19,5 +19,5 @@ export async function GET(req: NextRequest) {
     ])
   );
 
-  return csvResponse("po.csv", csv);
+  return excelResponse("po.xls", html);
 }

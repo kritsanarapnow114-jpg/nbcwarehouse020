@@ -8,7 +8,8 @@ import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup } from "@/components/ui/CuteBoxPopup";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { takeRedo } from "@/lib/redoTemplate";
-import { downloadCsv } from "@/lib/calc/csvClient";
+import { downloadExcel } from "@/lib/calc/csvClient";
+import { printTable } from "@/lib/calc/printClient";
 import { fmtDateISO } from "@/lib/calc/date";
 
 type Line = LotOption & { toLocationCode: string; moveQty: string };
@@ -121,28 +122,18 @@ export function TransferForm({
   }
 
   function handlePrint() {
-    const w = window.open("", "_blank", "width=820,height=920");
-    if (!w) return;
-    w.document.write(`
-      <html><head><title>Transfer</title>
-      <style>body{font-family:sans-serif;padding:32px}table{width:100%;border-collapse:collapse;margin-top:16px}
-      th,td{border:1px solid #ccc;padding:8px;font-size:13px;text-align:left}</style></head><body>
-      <h2>Transfer Slip</h2><p>Operator: ${operator}<br/>Date: ${docDate}</p>
-      <table><thead><tr><th>SAP Material Master</th><th>Material Description</th><th>Lot</th><th>From</th><th>To</th><th>Qty</th></tr></thead>
-      <tbody>${lines
-        .map(
-          (l) =>
-            `<tr><td>${l.productCode}</td><td>${l.name}</td><td>${l.lotNo}</td><td>${l.locationCode}</td><td>${l.toLocationCode}</td><td>${l.moveQty} ${l.unit}</td></tr>`
-        )
-        .join("")}</tbody></table></body></html>
-    `);
-    w.document.close();
-    w.print();
+    printTable({
+      title: "Transfer Slip (ใบย้ายที่เก็บ)",
+      meta: [`Operator: ${operator}`, `Date: ${docDate}`],
+      headers: ["SAP Material Master", "Material Description", "Lot", "From", "To", "Qty"],
+      rows: lines.map((l) => [l.productCode, l.name, l.lotNo, l.locationCode, l.toLocationCode, `${l.moveQty} ${l.unit}`]),
+    });
   }
 
   function handleExport() {
-    downloadCsv(
-      "transfer-draft.csv",
+    downloadExcel(
+      "transfer-draft.xls",
+      "Transfer",
       ["SAP Material Master", "Material Description", "Lot", "From", "To", "Qty"],
       lines.map((l) => [l.productCode, l.name, l.lotNo, l.locationCode, l.toLocationCode, l.moveQty])
     );

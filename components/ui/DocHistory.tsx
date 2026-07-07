@@ -10,6 +10,7 @@ import { fmtDateBE, fmtDateISO } from "@/lib/calc/date";
 import { reverseDocumentAction, ReversibleKind } from "@/lib/actions/reverse";
 import { getRedoTemplateAction } from "@/lib/actions/redo";
 import { stashRedo } from "@/lib/redoTemplate";
+import { printTable } from "@/lib/calc/printClient";
 
 export type DocHistoryLine = {
   code: string;
@@ -28,33 +29,14 @@ export type DocHistoryRow = {
   reversedAt?: string | null;
 };
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 function printDoc(title: string, row: DocHistoryRow) {
-  const w = window.open("", "_blank", "width=820,height=920");
-  if (!w) return;
-  w.document.write(`
-    <html><head><title>${escapeHtml(row.docNo)}</title>
-    <style>body{font-family:sans-serif;padding:32px}table{width:100%;border-collapse:collapse;margin-top:16px}
-    th,td{border:1px solid #ccc;padding:8px;font-size:13px;text-align:left}</style></head><body>
-    <h2>${escapeHtml(title)}</h2>
-    <p>Doc No: ${escapeHtml(row.docNo)}<br/>Date: ${escapeHtml(fmtDateBE(new Date(row.docDate)))}<br/>${escapeHtml(row.summary)}</p>
-    <table><thead><tr><th>SAP Material Master</th><th>Material Description</th><th>Qty</th><th>Lot / Location</th></tr></thead>
-    <tbody>${row.lines
-      .map(
-        (l) =>
-          `<tr><td>${escapeHtml(l.code)}</td><td>${escapeHtml(l.name)}</td><td>${escapeHtml(l.qtyText)}</td><td>${escapeHtml(l.extra ?? "")}</td></tr>`
-      )
-      .join("")}</tbody></table></body></html>
-  `);
-  w.document.close();
-  w.print();
+  printTable({
+    title: `${title} — ${row.docNo}`,
+    meta: [`Date: ${fmtDateBE(new Date(row.docDate))}`, row.summary],
+    headers: ["SAP Material Master", "Material Description", "Qty", "Lot / Location"],
+    rows: row.lines.map((l) => [l.code, l.name, l.qtyText, l.extra ?? ""]),
+  });
 }
 
 export function DocHistory({

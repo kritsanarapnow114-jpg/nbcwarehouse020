@@ -8,7 +8,7 @@ import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup } from "@/components/ui/CuteBoxPopup";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { takeRedo } from "@/lib/redoTemplate";
-import { downloadCsv } from "@/lib/calc/csvClient";
+import { downloadExcel } from "@/lib/calc/csvClient";
 import { fmtDateISO } from "@/lib/calc/date";
 import { AdjustReason } from "@prisma/client";
 
@@ -86,8 +86,9 @@ export function AdjustForm({ lots }: { lots: LotOption[] }) {
   }
 
   function handleExport() {
-    downloadCsv(
-      "adjust-draft.csv",
+    downloadExcel(
+      "adjust-draft.xls",
+      "Adjustment",
       ["SAP Material Master", "Material Description", "Lot", "Location", "SysQty", "CountedQty", "Variance"],
       lines.map((l) => [
         l.productCode,

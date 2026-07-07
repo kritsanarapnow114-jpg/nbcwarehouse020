@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAgingRows } from "@/lib/views/aging";
-import { toCsv, csvResponse } from "@/lib/calc/csv";
+import { toExcelHtml, excelResponse } from "@/lib/calc/csv";
 import { fmtDateBE } from "@/lib/calc/date";
 
 export async function GET(req: NextRequest) {
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   const rows = await getAgingRows({ filter, thresholdDays });
 
-  const csv = toCsv(
+  const html = toExcelHtml("Aging",
     ["SAP Material Master", "Material Description(EN)", "Lot", "Location", "OnHand", "Value", "Received", "AgeDays", "Expiry"],
     rows.map((r) => [
       r.code,
@@ -27,5 +27,5 @@ export async function GET(req: NextRequest) {
     ])
   );
 
-  return csvResponse("aging.csv", csv);
+  return excelResponse("aging.xls", html);
 }

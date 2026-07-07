@@ -1,12 +1,12 @@
 import { NextRequest } from "next/server";
 import { getLocationRows } from "@/lib/views/locations";
-import { toCsv, csvResponse } from "@/lib/calc/csv";
+import { toExcelHtml, excelResponse } from "@/lib/calc/csv";
 
 export async function GET(req: NextRequest) {
   const zone = req.nextUrl.searchParams.get("zone") ?? undefined;
   const rows = await getLocationRows({ zone });
 
-  const csv = toCsv(
+  const html = toExcelHtml("Locations",
     ["Bin", "Zone", "CapacityArea", "UsedArea", "Occupancy%", "Contents"],
     rows.map((r) => [
       r.code,
@@ -18,5 +18,5 @@ export async function GET(req: NextRequest) {
     ])
   );
 
-  return csvResponse("locations.csv", csv);
+  return excelResponse("locations.xls", html);
 }

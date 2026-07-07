@@ -22,10 +22,7 @@ import {
 } from "@/lib/views/dashboard";
 import { KpiBand } from "./KpiBand";
 import { MovementChart } from "./MovementChart";
-import { OverstockCard } from "./OverstockCard";
 import { SlowMovingCard } from "./SlowMovingCard";
-import { getProductRows } from "@/lib/views/products";
-import { effectiveLevels, reorderStatus } from "@/lib/calc/reorder";
 
 export default async function DashboardPage({
   searchParams,
@@ -63,29 +60,6 @@ export default async function DashboardPage({
     getTopVendors(range),
   ]);
   const categoryTotal = valueByCategory.reduce((s, c) => s + c.value, 0);
-
-  // Stock health / overstock (current on-hand vs effective Min/Max).
-  const health = (await getProductRows()).map((p) => {
-    const eff = effectiveLevels(p.minQty, p.maxQty, p.autoMin, p.autoMax);
-    return { p, eff, status: reorderStatus(p.onHand, eff.min, eff.max) };
-  });
-  const stockCounts = {
-    over: health.filter((h) => h.status === "over").length,
-    low: health.filter((h) => h.status === "low").length,
-    ok: health.filter((h) => h.status === "ok").length,
-  };
-  const overstockItems = health
-    .filter((h) => h.status === "over")
-    .map((h) => ({
-      code: h.p.code,
-      name: h.p.nameEn,
-      onHand: h.p.onHand,
-      max: h.eff.max,
-      excess: h.p.onHand - h.eff.max,
-      unit: h.p.unit,
-    }))
-    .sort((a, b) => b.excess - a.excess)
-    .slice(0, 12);
 
   return (
     <div className="max-w-[1280px] p-[24px_26px]">
@@ -301,10 +275,6 @@ export default async function DashboardPage({
             </div>
           ))}
         </div>
-      </Card>
-
-      <Card className="mb-4">
-        <OverstockCard counts={stockCounts} items={overstockItems} />
       </Card>
 
       <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">

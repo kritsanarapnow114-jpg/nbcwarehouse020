@@ -8,6 +8,7 @@ import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup, CuteBoxKind } from "@/components/ui/CuteBoxPopup";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { takeRedo } from "@/lib/redoTemplate";
+import { printTable } from "@/lib/calc/printClient";
 import { fmtDateISO, fmtDateBE } from "@/lib/calc/date";
 
 type Line = IssueFormData["products"][number] & { selectedLotId: string; qty: string };
@@ -122,32 +123,18 @@ export function IssueForm({ data }: { data: IssueFormData }) {
 
   function handlePrint() {
     if (!lastConfirmed) return;
-    const w = window.open("", "_blank", "width=820,height=920");
-    if (!w) return;
-    w.document.write(`
-      <html><head><title>${lastConfirmed.docNo}</title>
-      <style>body{font-family:sans-serif;padding:32px;color:#16202e}
-      table{width:100%;border-collapse:collapse;margin-top:16px}
-      th,td{border:1px solid #ccc;padding:8px;font-size:13px;text-align:left}
-      .sig{margin-top:60px;display:flex;justify-content:space-between}
-      .sig div{width:40%;border-top:1px solid #333;padding-top:6px;text-align:center}
-      </style></head><body>
-      <h2>Issue Slip — ${lastConfirmed.docNo}</h2>
-      <p>Issue To: ${issueTo}<br/>Date: ${docDate}</p>
-      <table><thead><tr><th>SAP Material Master</th><th>Material Description</th><th>Lot</th><th>Qty</th></tr></thead>
-      <tbody>${lastConfirmed.lines
-        .map(
-          (l) =>
-            `<tr><td>${l.code}</td><td>${l.name}</td><td>${
-              l.lots.find((x) => x.id === l.selectedLotId)?.lotNo ?? ""
-            }</td><td>${l.qty} ${l.unit}</td></tr>`
-        )
-        .join("")}</tbody></table>
-      <div class="sig"><div>Issued by</div><div>Received by</div></div>
-      </body></html>
-    `);
-    w.document.close();
-    w.print();
+    printTable({
+      title: `Issue Slip — ${lastConfirmed.docNo}`,
+      meta: [`Issue To: ${issueTo}`, `Date: ${docDate}`],
+      headers: ["SAP Material Master", "Material Description", "Lot", "Qty"],
+      rows: lastConfirmed.lines.map((l) => [
+        l.code,
+        l.name,
+        l.lots.find((x) => x.id === l.selectedLotId)?.lotNo ?? "",
+        `${l.qty} ${l.unit}`,
+      ]),
+      signatures: ["Issued by", "Received by"],
+    });
   }
 
   return (

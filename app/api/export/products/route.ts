@@ -1,13 +1,13 @@
 import { NextRequest } from "next/server";
 import { getProductRows } from "@/lib/views/products";
-import { toCsv, csvResponse } from "@/lib/calc/csv";
+import { toExcelHtml, excelResponse } from "@/lib/calc/csv";
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q") ?? undefined;
   const cat = req.nextUrl.searchParams.get("cat") ?? undefined;
   const rows = await getProductRows({ q, category: cat });
 
-  const csv = toCsv(
+  const html = toExcelHtml("Products",
     [
       "SAP Material Master",
       "Material Description (EN)",
@@ -34,5 +34,5 @@ export async function GET(req: NextRequest) {
     ])
   );
 
-  return csvResponse("products.csv", csv);
+  return excelResponse("products.xls", html);
 }
