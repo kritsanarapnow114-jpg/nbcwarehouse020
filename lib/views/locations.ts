@@ -41,7 +41,8 @@ export type LocationRow = {
 async function loadAllRows(): Promise<LocationRow[]> {
   const [locations, lots] = await Promise.all([
     db.location.findMany({ orderBy: { code: "asc" } }),
-    db.lot.findMany({ include: { product: true } }),
+    // Depleted lots (qty 0) don't occupy the bin — leave them out of contents.
+    db.lot.findMany({ where: { qty: { gt: 0 } }, include: { product: true } }),
   ]);
 
   const today = todayBangkok();
