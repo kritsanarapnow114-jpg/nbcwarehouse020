@@ -137,7 +137,7 @@ export default async function DashboardPage({
               </div>
             </div>
             {storage.zones.map((z) => (
-              <div key={z.name}>
+              <div key={z.name} title={`Zone ${z.name} · ${z.desc}: ${z.pct}% · ${Math.round(z.used).toLocaleString()}/${Math.round(z.cap).toLocaleString()} m²`}>
                 <div className="mb-1.5 flex justify-between text-[12px]">
                   <span>
                     Zone {z.name} · {z.desc}
@@ -152,15 +152,18 @@ export default async function DashboardPage({
         <Card>
           <CardTitle>Value by Category (มูลค่าตามหมวด)</CardTitle>
           <div className="flex items-center gap-5">
-            <div className="relative flex-none">
-              <DonutChart data={valueByCategory.map((c) => ({ name: c.name, value: c.value, color: c.color }))} />
-              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <div className="font-num text-[15px] font-bold text-[#16202e]">
-                  <Money value={categoryTotal} />
-                </div>
-                <div className="text-[10px] text-[#9aa4b4]">มูลค่ารวม</div>
-              </div>
-            </div>
+            <DonutChart
+              data={valueByCategory.map((c) => ({ name: c.name, value: c.value, color: c.color }))}
+              prefix="฿"
+              center={
+                <>
+                  <div className="font-num text-[15px] font-bold text-[#16202e]">
+                    <Money value={categoryTotal} />
+                  </div>
+                  <div className="text-[10px] text-[#9aa4b4]">มูลค่ารวม</div>
+                </>
+              }
+            />
             <div className="flex min-w-0 flex-1 flex-col gap-2.5">
               {valueByCategory.map((c) => (
                 <div key={c.name} className="flex items-center gap-2 text-[12px]">

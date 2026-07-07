@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { MovementBucket } from "@/lib/views/dashboard";
 import { Modal, ModalHeader } from "@/components/ui/Modal";
 
@@ -46,8 +46,16 @@ function buildGeometry(buckets: MovementBucket[]) {
     text: b.label,
     show: i % step === 0 || i === n - 1,
   }));
+  const pts = buckets.map((b, i) => ({
+    x: xAt(i),
+    yRecv: yAt(b.recv),
+    yIssue: yAt(b.issue),
+    label: b.label,
+    recv: b.recv,
+    issue: b.issue,
+  }));
   const grid = [0, 0.25, 0.5, 0.75, 1].map((f) => baseY - f * plotH);
-  return { recvLine, issueLine, recvArea, labels, grid, baseY, recvEnd: recvPts[n - 1], issueEnd: issuePts[n - 1] };
+  return { recvLine, issueLine, recvArea, labels, grid, baseY, pts, plotW };
 }
 
 export function MovementChart({
@@ -60,8 +68,25 @@ export function MovementChart({
   totalIssue: number;
 }) {
   const [open, setOpen] = useState(false);
-  const { recvLine, issueLine, recvArea, labels, grid, baseY, recvEnd, issueEnd } =
+  const [hover, setHover] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const { recvLine, issueLine, recvArea, labels, grid, baseY, pts, plotW } =
     buildGeometry(buckets);
+  const last = pts[pts.length - 1];
+
+  function onMove(e: React.MouseEvent) {
+    const svg = svgRef.current;
+    if (!svg || pts.length === 0) return;
+    const rect = svg.getBoundingClientRect();
+    const svgX = ((e.clientX - rect.left) / rect.width) * W;
+    const rel = (svgX - PADL) / plotW;
+    const i = Math.round(rel * (pts.length - 1));
+    setHover(Math.max(0, Math.min(pts.length - 1, i)));
+  }
+
+  const hp = hover !== null ? pts[hover] : null;
+  const TW = 122, TH = 60;
+  const tx = hp ? Math.max(PADL, Math.min(W - PADR - TW, hp.x - TW / 2)) : 0;
 
   return (
     <>
@@ -86,7 +111,7 @@ export function MovementChart({
           </span>
         </div>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="block w-full">
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="block w-full">
         <defs>
           <linearGradient id="recvGrad" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#12b5d4" stopOpacity="0.30" />
@@ -99,11 +124,34 @@ export function MovementChart({
         <path d={recvArea} fill="url(#recvGrad)" />
         <path d={issueLine} fill="none" stroke="#6c5ce7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
         <path d={recvLine} fill="none" stroke="#12b5d4" strokeWidth="2.75" strokeLinecap="round" strokeLinejoin="round" />
-        {recvEnd && <circle cx={recvEnd.x} cy={recvEnd.y} r="3.5" fill="#12b5d4" stroke="#fff" strokeWidth="1.5" />}
-        {issueEnd && <circle cx={issueEnd.x} cy={issueEnd.y} r="3.5" fill="#6c5ce7" stroke="#fff" strokeWidth="1.5" />}
+
+        {/* end dots when idle */}
+        {!hp && last && (
+          <>
+            <circle cx={last.x} cy={last.yRecv} r="3.5" fill="#12b5d4" stroke="#fff" strokeWidth="1.5" />
+            <circle cx={last.x} cy={last.yIssue} r="3.5" fill="#6c5ce7" stroke="#fff" strokeWidth="1.5" />
+          </>
+        )}
+
         <g fontSize="10" fill="#9aa4b4" fontFamily="IBM Plex Mono" textAnchor="middle">
           {labels.map((l, i) => (l.show ? <text key={i} x={l.x} y={baseY + 18}>{l.text}</text> : null))}
         </g>
+
+        {/* hover crosshair + tooltip */}
+        {hp && (
+          <g>
+            <line x1={hp.x} y1={PADT - 6} x2={hp.x} y2={baseY} stroke="#c4ccd8" strokeWidth="1" strokeDasharray="3 3" />
+            <circle cx={hp.x} cy={hp.yRecv} r="4" fill="#12b5d4" stroke="#fff" strokeWidth="1.5" />
+            <circle cx={hp.x} cy={hp.yIssue} r="4" fill="#6c5ce7" stroke="#fff" strokeWidth="1.5" />
+            <rect x={tx} y="4" width={TW} height={TH} rx="7" fill="#ffffff" stroke="#e2e6ec" strokeWidth="1" />
+            <text x={tx + 10} y="20" fontSize="11" fontWeight="700" fill="#16202e">{hp.label}</text>
+            <text x={tx + 10} y="37" fontSize="10.5" fill="#0e8ea6" fontFamily="IBM Plex Mono">รับเข้า +{hp.recv.toLocaleString()}</text>
+            <text x={tx + 10} y="52" fontSize="10.5" fill="#6c5ce7" fontFamily="IBM Plex Mono">จ่ายออก −{hp.issue.toLocaleString()}</text>
+          </g>
+        )}
+
+        {/* transparent overlay to capture hover across the whole plot */}
+        <rect x="0" y="0" width={W} height={H} fill="transparent" onMouseMove={onMove} onMouseLeave={() => setHover(null)} />
       </svg>
 
       <Modal open={open} onClose={() => setOpen(false)} width={520}>
