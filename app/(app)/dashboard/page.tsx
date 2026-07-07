@@ -369,6 +369,18 @@ export default async function DashboardPage({
         <Card>
           <CardTitle>Action Required (ต้องดำเนินการ)</CardTitle>
           <div className="flex flex-col gap-2.5">
+            {actionRequired.belowMin > 0 && (
+              <ActionRow
+                icon="↓"
+                bg="#fbe9e9"
+                border="#f3d2d2"
+                text={`${actionRequired.belowMin} สินค้าต่ำกว่า Min (ควรสั่งซื้อ)`}
+                sub="Below reorder point"
+                subColor="#a34141"
+                href="/products"
+                cta="Products"
+              />
+            )}
             <ActionRow
               icon="⚠"
               bg="#fbf1df"

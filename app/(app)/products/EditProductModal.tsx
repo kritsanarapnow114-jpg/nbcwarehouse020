@@ -28,6 +28,8 @@ export function EditProductModal({
   const [width, setWidth] = useState(String(product.width));
   const [length, setLength] = useState(String(product.length));
   const [stackLevels, setStackLevels] = useState(String(product.stackLevels));
+  const [minQty, setMinQty] = useState(product.minQty ? String(product.minQty) : "");
+  const [maxQty, setMaxQty] = useState(product.maxQty ? String(product.maxQty) : "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,6 +47,8 @@ export function EditProductModal({
         width: Number(width) || 0,
         length: Number(length) || 0,
         stackLevels: Number(stackLevels) || 0,
+        minQty: Number(minQty) || 0,
+        maxQty: Number(maxQty) || 0,
       });
       showToast("Product updated");
       onSaved();
@@ -110,6 +114,19 @@ export function EditProductModal({
                   </option>
                 ))}
               </select>
+            </Field>
+          </div>
+        </div>
+        <div className="rounded-[10px] bg-[#f7f9fb] p-3">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#69748a]">
+            Reorder levels (จุดสั่งซื้อ · {unit || "unit"})
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Min (ต่ำสุด · แจ้งเตือนเมื่อต่ำกว่า)">
+              <input value={minQty} onChange={(e) => setMinQty(e.target.value)} type="number" step="1" placeholder="0 = ไม่กำหนด" className={inputClass} />
+            </Field>
+            <Field label="Max (สูงสุด · เพดานสต็อก)">
+              <input value={maxQty} onChange={(e) => setMaxQty(e.target.value)} type="number" step="1" placeholder="0 = ไม่กำหนด" className={inputClass} />
             </Field>
           </div>
         </div>

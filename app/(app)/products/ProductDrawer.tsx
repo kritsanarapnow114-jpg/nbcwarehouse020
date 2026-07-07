@@ -13,6 +13,7 @@ import {
   updateLotExpiryAction,
 } from "@/lib/actions/products";
 import { ProductDetail } from "@/lib/views/products";
+import { reorderStatus, REORDER_COLOR, REORDER_LABEL } from "@/lib/calc/reorder";
 import { StockCardModal } from "./StockCardModal";
 import { EditProductModal } from "./EditProductModal";
 import { BomEditor } from "./BomEditor";
@@ -101,6 +102,31 @@ export function ProductDrawer({
               Storage {shown.width}×{shown.length} m · stack ×
               {shown.stackLevels}
             </div>
+            {(() => {
+              const rs = reorderStatus(shown.onHand, shown.minQty, shown.maxQty);
+              const c = REORDER_COLOR[rs];
+              return (
+                <div className="col-span-2 flex flex-wrap items-center gap-2 rounded-[12px] border border-[#e7ebf1] p-3.5 text-[12px] text-[#69748a]">
+                  <span>
+                    Min / Max (จุดสั่งซื้อ):{" "}
+                    <b className="font-num text-[#3a4658]">
+                      {shown.minQty ? shown.minQty.toLocaleString() : "—"} /{" "}
+                      {shown.maxQty ? shown.maxQty.toLocaleString() : "—"} {shown.unit}
+                    </b>
+                  </span>
+                  <span
+                    className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                    style={{ background: c.bg, color: c.text }}
+                  >
+                    {REORDER_LABEL[rs]}
+                  </span>
+                  <span className="flex-1" />
+                  <button onClick={() => setEditOpen(true)} className="text-[11.5px] font-medium text-[#12a2bb]">
+                    ตั้งค่า Min/Max →
+                  </button>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="flex-1 overflow-auto px-5">
@@ -142,15 +168,24 @@ export function ProductDrawer({
                         />
                       </td>
                       <td className="py-2">
-                        <button
-                          onClick={async () => {
-                            await toggleLotQcAction(l.id);
-                            refresh();
-                          }}
-                          title="Toggle QC hold for this lot"
-                        >
+                        <div className="flex items-center gap-2">
                           <Badge tone={tone}>{label}</Badge>
-                        </button>
+                          <button
+                            onClick={async () => {
+                              await toggleLotQcAction(l.id);
+                              showToast(l.status === "QC" ? `Lot ${l.lotNo} released` : `Lot ${l.lotNo} held for QC`);
+                              refresh();
+                            }}
+                            title={l.status === "QC" ? "ปลด QC ล็อตนี้" : "Hold QC เฉพาะล็อตนี้"}
+                            className={`rounded-[6px] border px-1.5 py-0.5 text-[10.5px] font-semibold ${
+                              l.status === "QC"
+                                ? "border-[#bfe0d3] bg-[#e4f4f8] text-[#0e8ea6]"
+                                : "border-[#f0cf9a] bg-[#fff2df] text-[#b5790f]"
+                            }`}
+                          >
+                            {l.status === "QC" ? "▶ Release" : "⏸ Hold"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -181,8 +216,9 @@ export function ProductDrawer({
                 refresh();
               }}
               className={buttonClass(shown.status === "qc" ? "success" : "danger")}
+              title="ทำกับทุกล็อตพร้อมกัน — ถ้าจะ Hold ทีละล็อต ใช้ปุ่ม Hold ในตารางด้านบน"
             >
-              {shown.status === "qc" ? "Release QC" : "Hold for QC"}
+              {shown.status === "qc" ? "Release ALL (คืนทั้งหมด)" : "Hold ALL lots (ทั้งหมด)"}
             </button>
           </div>
 

@@ -5,6 +5,7 @@ import { ProductRow } from "@/lib/views/products";
 import { Badge } from "@/components/ui/Badge";
 import { Money } from "@/components/ui/Currency";
 import { deleteProductAction } from "@/lib/actions/products";
+import { reorderStatus, REORDER_COLOR } from "@/lib/calc/reorder";
 import { showToast } from "@/components/ui/Toast";
 import { ProductDrawer } from "./ProductDrawer";
 
@@ -29,6 +30,7 @@ export function ProductsTable({
               <Th align="right">On Hand (คงเหลือ)</Th>
               <Th align="right">Unit Price (ราคา)</Th>
               <Th align="right">Total Value (มูลค่ารวม)</Th>
+              <Th align="right">Min / Max (จุดสั่งซื้อ)</Th>
               <Th align="right">Pallet size (ขนาดพาเลท)</Th>
               <Th>Location (ที่เก็บ)</Th>
               <Th>Status (สถานะ)</Th>
@@ -36,7 +38,9 @@ export function ProductsTable({
             </tr>
           </thead>
           <tbody>
-            {rows.map((p) => (
+            {rows.map((p) => {
+              const rs = reorderStatus(p.onHand, p.minQty, p.maxQty);
+              return (
               <tr
                 key={p.code}
                 onClick={() => setSelected(p.code)}
@@ -48,13 +52,29 @@ export function ProductsTable({
                 <Td className="font-medium">{p.nameEn}</Td>
                 <Td className="text-[#69748a]">{p.categoryLabel}</Td>
                 <Td align="right" className="font-num">
-                  {p.onHand.toLocaleString()} {p.unit}
+                  <span className="whitespace-nowrap">
+                    {p.onHand.toLocaleString()} {p.unit}
+                    {(rs === "low" || rs === "over") && (
+                      <span
+                        className="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                        style={{ background: REORDER_COLOR[rs].bg, color: REORDER_COLOR[rs].text }}
+                        title={rs === "low" ? "ต่ำกว่า Min — ควรสั่งซื้อ" : "เกิน Max"}
+                      >
+                        {rs === "low" ? "Low" : "Over"}
+                      </span>
+                    )}
+                  </span>
                 </Td>
                 <Td align="right" className="font-num">
                   <Money value={p.price} />
                 </Td>
                 <Td align="right" className="font-num font-semibold">
                   <Money value={p.totalValue} />
+                </Td>
+                <Td align="right" className="font-num text-[12px] text-[#69748a]">
+                  {p.minQty || p.maxQty
+                    ? `${p.minQty ? p.minQty.toLocaleString() : "—"} / ${p.maxQty ? p.maxQty.toLocaleString() : "—"}`
+                    : "—"}
                 </Td>
                 <Td align="right" className="font-num text-[12px] text-[#69748a]">
                   {p.pallet.toLocaleString()} {p.unit}/pallet
@@ -83,10 +103,11 @@ export function ProductsTable({
                   </button>
                 </Td>
               </tr>
-            ))}
+              );
+            })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={10} className="p-6 text-center text-[#9aa4b4]">
+                <td colSpan={11} className="p-6 text-center text-[#9aa4b4]">
                   No products found (ไม่พบสินค้า)
                 </td>
               </tr>

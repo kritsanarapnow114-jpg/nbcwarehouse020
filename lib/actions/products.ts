@@ -34,6 +34,8 @@ export async function createProductAction(
   const width = Number(formData.get("width") ?? 1);
   const length = Number(formData.get("length") ?? 1);
   const stackLevels = Number(formData.get("stackLevels") ?? 1);
+  const minQty = Number(formData.get("minQty") ?? 0);
+  const maxQty = Number(formData.get("maxQty") ?? 0);
 
   if (!code || !nameEn || !unit) {
     return { error: "Fill in code, name, and unit (กรอกรหัส ชื่อ และหน่วยให้ครบ)" };
@@ -55,6 +57,8 @@ export async function createProductAction(
       width,
       length,
       stackLevels,
+      minQty: minQty > 0 ? minQty : 0,
+      maxQty: maxQty > 0 ? maxQty : 0,
     },
   });
 
@@ -127,6 +131,8 @@ export async function updateProductAction(
     width: number;
     length: number;
     stackLevels: number;
+    minQty: number;
+    maxQty: number;
   }
 ) {
   if (!data.nameEn.trim() || !data.unit.trim()) {
@@ -135,7 +141,18 @@ export async function updateProductAction(
   if (data.price < 0 || data.pallet <= 0 || data.width <= 0 || data.length <= 0 || data.stackLevels <= 0) {
     throw new Error("Price, pallet size, and storage dimensions must be greater than 0 (ราคา ขนาดพาเลท และขนาดพื้นที่ต้องมากกว่า 0)");
   }
-  await db.product.update({ where: { code }, data: { ...data, nameTh: data.nameTh || null } });
+  if (data.maxQty > 0 && data.minQty > data.maxQty) {
+    throw new Error("Min must not exceed Max (Min ต้องไม่เกิน Max)");
+  }
+  await db.product.update({
+    where: { code },
+    data: {
+      ...data,
+      nameTh: data.nameTh || null,
+      minQty: data.minQty > 0 ? data.minQty : 0,
+      maxQty: data.maxQty > 0 ? data.maxQty : 0,
+    },
+  });
   revalidateInventoryPaths();
 }
 

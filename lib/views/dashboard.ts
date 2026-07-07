@@ -378,7 +378,7 @@ export async function getMovementBuckets(range: Range): Promise<MovementBucket[]
 }
 
 export async function getActionRequired(asOf: Date = todayBangkok()) {
-  const [qcCount, snapshot, overduePOs] = await Promise.all([
+  const [qcCount, snapshot, overduePOs, minProducts] = await Promise.all([
     // QC hold has no change history to reconstruct — always reflects current status.
     db.lot.count({ where: { status: "QC" } }),
     getLotsAsOf(asOf),
@@ -388,9 +388,13 @@ export async function getActionRequired(asOf: Date = todayBangkok()) {
         date: { lt: new Date(asOf.getTime() - 14 * 86400000) },
       },
     }),
+    db.product.findMany({ where: { deletedAt: null, minQty: { gt: 0 } }, select: { code: true, minQty: true } }),
   ]);
   const expCount = snapshot.filter(
     (l) => l.expDate && l.expDate <= new Date(asOf.getTime() + 30 * 86400000)
   ).length;
-  return { qcCount, expCount, overduePOs: overduePOs.map((p) => p.no) };
+  const onHandByCode = new Map<string, number>();
+  for (const l of snapshot) onHandByCode.set(l.productCode, (onHandByCode.get(l.productCode) ?? 0) + l.qty);
+  const belowMin = minProducts.filter((p) => (onHandByCode.get(p.code) ?? 0) < p.minQty).length;
+  return { qcCount, expCount, overduePOs: overduePOs.map((p) => p.no), belowMin };
 }

@@ -17,6 +17,8 @@ export type ProductRow = {
   locations: string[];
   status: "ok" | "qc";
   lotCount: number;
+  minQty: number;
+  maxQty: number;
 };
 
 export async function getProductRows(opts?: {
@@ -63,6 +65,8 @@ export async function getProductRows(opts?: {
       locations,
       status,
       lotCount: activeLots.length,
+      minQty: p.minQty,
+      maxQty: p.maxQty,
     };
   });
 }
@@ -125,6 +129,8 @@ export async function getProductDetail(
     locations: [...new Set(activeLots.map((l) => l.locationCode))],
     status,
     lotCount: activeLots.length,
+    minQty: p.minQty,
+    maxQty: p.maxQty,
     lots: activeLots.map((l) => ({
       id: l.id,
       locationCode: l.locationCode,

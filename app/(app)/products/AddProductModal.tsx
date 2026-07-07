@@ -98,6 +98,19 @@ function AddProductModal({
             </Field>
           </div>
         </div>
+        <div className="rounded-[10px] bg-[#f7f9fb] p-3">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#69748a]">
+            Reorder levels (จุดสั่งซื้อ · optional)
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label="Min (ต่ำสุด · แจ้งเตือน)">
+              <input name="minQty" type="number" step="1" defaultValue={0} placeholder="0 = ไม่กำหนด" className={inputClass} />
+            </Field>
+            <Field label="Max (สูงสุด · เพดาน)">
+              <input name="maxQty" type="number" step="1" defaultValue={0} placeholder="0 = ไม่กำหนด" className={inputClass} />
+            </Field>
+          </div>
+        </div>
         {state.error && (
           <div className="rounded-[8px] bg-[#fbe9e9] px-3 py-2 text-[12.5px] text-[#c53f3f]">
             {state.error}
