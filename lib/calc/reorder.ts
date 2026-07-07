@@ -5,19 +5,25 @@ export type ReorderStatus = "low" | "over" | "ok" | "none";
 // Auto reorder levels, derived from real usage (issued) + receiving history.
 // Recomputed on every read so the numbers stay current.
 export const USAGE_WINDOW_DAYS = 90; // history window used to average usage
-export const LEAD_TIME_DAYS = 14; // assumed days to receive after ordering
+export const LEAD_TIME_DAYS = 7; // assumed days to receive after ordering
 export const SAFETY_DAYS = 7; // extra buffer
 
-/** avgDailyUse = units issued/day; avgReceiptQty = typical delivery size. */
+/**
+ * avgDailyUse = units issued/day; avgReceiptQty = typical delivery size.
+ * packSize (pallet size) rounds every level UP to a whole pack — no fractional
+ * packs, so the numbers are practical to order.
+ */
 export function autoLevels(
   avgDailyUse: number,
-  avgReceiptQty: number
+  avgReceiptQty: number,
+  packSize = 0
 ): { autoMin: number; autoMax: number; safety: number } {
   if (avgDailyUse <= 0) return { autoMin: 0, autoMax: 0, safety: 0 };
-  const safety = Math.ceil(avgDailyUse * SAFETY_DAYS); // buffer stock
-  const autoMin = Math.ceil(avgDailyUse * (LEAD_TIME_DAYS + SAFETY_DAYS)); // reorder point (~3 weeks cover)
+  const r = (v: number) => (packSize > 0 ? Math.ceil(v / packSize) * packSize : Math.ceil(v));
+  const safety = r(avgDailyUse * SAFETY_DAYS); // buffer stock
+  const autoMin = r(avgDailyUse * (LEAD_TIME_DAYS + SAFETY_DAYS)); // reorder point
   // reorder up to one typical delivery above min, but at least ~6 weeks of cover
-  const autoMax = Math.max(autoMin + Math.ceil(avgReceiptQty), Math.ceil(avgDailyUse * 45));
+  const autoMax = r(Math.max(autoMin + avgReceiptQty, avgDailyUse * 45));
   return { autoMin, autoMax, safety };
 }
 
