@@ -23,6 +23,27 @@ export function areaPerUnit(
   return (width * length) / (Math.max(1, stackLevels) * Math.max(1, palletSize));
 }
 
+/**
+ * Floor footprint (m²) a SINGLE lot occupies, pallet-based:
+ *  - the lot fills whole pallets — a partial pallet still takes a full one;
+ *  - different lots never share a pallet (each lot rounds up on its own);
+ *  - stacking lets `stackLevels` pallets share one floor spot.
+ * This is the realistic warehouse view (a 25 kg remnant still needs a pallet),
+ * unlike `areaPerUnit` which spreads area continuously by quantity.
+ */
+export function lotFloorArea(
+  qty: number,
+  width: number,
+  length: number,
+  stackLevels: number,
+  palletSize: number
+): number {
+  if (qty <= 0) return 0;
+  const pallets = Math.ceil(qty / Math.max(1, palletSize));
+  const spots = Math.ceil(pallets / Math.max(1, stackLevels));
+  return spots * width * length;
+}
+
 export function binCapacity(width: number, length: number): number {
   return width * length;
 }

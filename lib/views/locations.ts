@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import {
-  areaPerUnit,
+  lotFloorArea,
   binCapacity,
   occupancyPct,
   occupancyBarTone,
@@ -47,9 +47,13 @@ async function loadAllRows(): Promise<LocationRow[]> {
   const today = todayBangkok();
   const contentsByLoc = new Map<string, BinContent[]>();
   for (const l of lots) {
-    const area =
-      l.qty *
-      areaPerUnit(l.product.width, l.product.length, l.product.stackLevels, l.product.pallet);
+    const area = lotFloorArea(
+      l.qty,
+      l.product.width,
+      l.product.length,
+      l.product.stackLevels,
+      l.product.pallet
+    );
     const entry: BinContent = {
       productCode: l.product.code,
       nameEn: l.product.nameEn,

@@ -5,7 +5,7 @@ import { getLotsAsOf } from "@/lib/calc/snapshot";
 import { getAppSettings } from "@/lib/views/settings";
 import { getCountPlanDetailed } from "@/lib/settingsKeys";
 import {
-  areaPerUnit,
+  lotFloorArea,
   binCapacity,
   occupancyPct,
   occupancyBarTone,
@@ -63,7 +63,7 @@ export async function getStorageUtilization(asOf: Date) {
   for (const l of snapshot) {
     const p = productByCode.get(l.productCode);
     if (!p) continue;
-    const area = l.qty * areaPerUnit(p.width, p.length, p.stackLevels, p.pallet);
+    const area = lotFloorArea(l.qty, p.width, p.length, p.stackLevels, p.pallet);
     usedByLoc.set(l.locationCode, (usedByLoc.get(l.locationCode) ?? 0) + area);
   }
 
