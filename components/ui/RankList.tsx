@@ -17,7 +17,11 @@ export function RankList({ items }: { items: RankItem[] }) {
       {items.map((it, i) => {
         const c = RANK_COLORS[i % RANK_COLORS.length];
         return (
-          <div key={i} className="flex items-center gap-3">
+          <div
+            key={i}
+            title={`#${i + 1} ${it.label} · ฿${Math.round(it.value).toLocaleString()}${it.sub ? " · " + it.sub : ""}`}
+            className="flex items-center gap-3"
+          >
             <span
               className="flex h-6 w-6 flex-none items-center justify-center rounded-full text-[11px] font-bold text-white"
               style={{ background: c }}

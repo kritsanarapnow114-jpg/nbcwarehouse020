@@ -196,7 +196,11 @@ export default async function DashboardPage({
         </div>
         <div className="flex flex-col gap-3">
           {valueByExpiry.buckets.map((b) => (
-            <div key={b.label} className="flex items-center gap-3">
+            <div
+              key={b.label}
+              title={`${b.label}: ${b.count} lots · ฿${Math.round(b.value).toLocaleString()}`}
+              className="flex items-center gap-3"
+            >
               <div className="flex w-[120px] flex-none items-center gap-2 text-[12.5px]">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ background: b.color }} />
                 <span>{b.label}</span>
@@ -288,7 +292,11 @@ export default async function DashboardPage({
               const donePct = m.plan > 0 ? (m.counted / m.plan) * 100 : 0;
               const pct = Math.min(100, donePct);
               return (
-                <div key={m.label} className="flex items-center gap-2.5">
+                <div
+                  key={m.label}
+                  title={`${m.label}: นับ ${m.counted}/${m.plan} · ${(m.plan > 0 ? (m.counted / m.plan) * 100 : 0).toFixed(0)}%`}
+                  className="flex items-center gap-2.5"
+                >
                   <span className="w-[34px] text-[12px] text-[#69748a]">{m.label}</span>
                   <div className="h-3 flex-1 overflow-hidden rounded-[5px] bg-[#eef1f5]">
                     <div
@@ -322,7 +330,11 @@ export default async function DashboardPage({
               const donePct = m.plan > 0 ? (m.counted / m.plan) * 100 : 0;
               const pct = Math.min(100, donePct);
               return (
-                <div key={m.label} className="flex items-center gap-2.5">
+                <div
+                  key={m.label}
+                  title={`${m.label}: นับ ${m.counted}/${m.plan} · ${(m.plan > 0 ? (m.counted / m.plan) * 100 : 0).toFixed(0)}%`}
+                  className="flex items-center gap-2.5"
+                >
                   <span className="w-[34px] text-[12px] text-[#69748a]">{m.label}</span>
                   <div className="h-3 flex-1 overflow-hidden rounded-[5px] bg-[#eef1f5]">
                     <div
