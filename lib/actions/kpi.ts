@@ -32,12 +32,15 @@ export async function addKpiLogAction(
   if (!date) return { error: "Pick a date (เลือกวันที่)" };
 
   if (key === "SAFETY") {
+    // incident = a real safety incident; a "reset" entry (incident=false) just
+    // sets the date the safe-days counter starts from, tied to no other date.
+    const isIncident = formData.get("incident") !== "false";
     await db.kpiLog.create({
       data: {
         key,
         date: new Date(date),
         detail: String(formData.get("detail") ?? ""),
-        incident: true,
+        incident: isIncident,
       },
     });
   } else if (key === "COST") {
@@ -76,11 +79,24 @@ export async function getAccuracyBreakdownAction() {
 }
 
 export async function getRecentIssueDocsAction() {
+  // Exclude issue docs already logged for Delivery so they can't be logged twice.
+  const logged = await db.kpiLog.findMany({
+    where: { key: "DELIVERY", issueDocNo: { not: null } },
+    select: { issueDocNo: true },
+  });
+  const loggedSet = new Set(logged.map((l) => l.issueDocNo));
   const issues = await db.issue.findMany({
     where: { reversedAt: null },
     orderBy: { docDate: "desc" },
-    take: 15,
+    take: 40,
     select: { docNo: true },
   });
-  return issues.map((i) => i.docNo);
+  return issues.map((i) => i.docNo).filter((d) => !loggedSet.has(d));
+}
+
+/** Delete a single KPI log entry (Safety / Cost / Delivery). */
+export async function deleteKpiLogAction(id: string) {
+  await db.kpiLog.delete({ where: { id } });
+  revalidatePath("/dashboard");
+  return { ok: true };
 }

@@ -7,6 +7,7 @@ import { buttonClass } from "@/components/ui/Button";
 import {
   getKpiLogsAction,
   addKpiLogAction,
+  deleteKpiLogAction,
   getQualityBreakdownAction,
   getAccuracyBreakdownAction,
   getRecentIssueDocsAction,
@@ -86,11 +87,20 @@ function KpiLogModal({ kpi, onClose }: { kpi: KpiResult; onClose: () => void }) 
   const [, formAction, pending] = useActionState<AddKpiLogState, FormData>(
     async (prev, fd) => {
       const res = await addKpiLogAction(prev, fd);
-      if (!res.error) getKpiLogsAction(keyUpper).then(setLogs);
+      if (!res.error) {
+        getKpiLogsAction(keyUpper).then(setLogs);
+        if (keyUpper === "DELIVERY") getRecentIssueDocsAction().then(setIssueDocs);
+      }
       return res;
     },
     {}
   );
+
+  async function del(id: string) {
+    await deleteKpiLogAction(id);
+    getKpiLogsAction(keyUpper).then(setLogs);
+    if (keyUpper === "DELIVERY") getRecentIssueDocsAction().then(setIssueDocs);
+  }
 
   return (
     <Modal open onClose={onClose} width={560}>
@@ -106,10 +116,19 @@ function KpiLogModal({ kpi, onClose }: { kpi: KpiResult; onClose: () => void }) 
             <input type="date" name="date" required className={inputClass} />
           </label>
           {keyUpper === "SAFETY" && (
-            <label className="flex flex-1 flex-col gap-1">
-              <span className="text-[11px] text-[#69748a]">Incident detail</span>
-              <input name="detail" required className={inputClass} />
-            </label>
+            <>
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] text-[#69748a]">ประเภท (Type)</span>
+                <select name="incident" defaultValue="true" className={inputClass}>
+                  <option value="true">เหตุการณ์ (Incident)</option>
+                  <option value="false">ตั้งวันเริ่มนับ (Reset / safe since)</option>
+                </select>
+              </label>
+              <label className="flex flex-1 flex-col gap-1">
+                <span className="text-[11px] text-[#69748a]">รายละเอียด (Detail)</span>
+                <input name="detail" placeholder="เช่น เริ่มนับใหม่, อุบัติเหตุ…" className={inputClass} />
+              </label>
+            </>
           )}
           {keyUpper === "COST" && (
             <>
@@ -159,7 +178,8 @@ function KpiLogModal({ kpi, onClose }: { kpi: KpiResult; onClose: () => void }) 
               <tr className="text-left text-[#9aa4b4]">
                 <th className="pb-2 font-medium">Date</th>
                 <th className="pb-2 font-medium">Detail</th>
-                <th className="pb-2 text-right font-medium">—</th>
+                <th className="pb-2 text-right font-medium">Value</th>
+                <th className="w-8 pb-2 text-right font-medium"></th>
               </tr>
             </thead>
             <tbody>
@@ -167,7 +187,16 @@ function KpiLogModal({ kpi, onClose }: { kpi: KpiResult; onClose: () => void }) 
                 <tr key={l.id} className="border-t border-[#eef1f5]">
                   <td className="font-num py-2">{fmtDateBE(new Date(l.date))}</td>
                   <td className="py-2">
-                    {keyUpper === "SAFETY" && l.detail}
+                    {keyUpper === "SAFETY" && (
+                      <>
+                        {l.incident === false && (
+                          <span className="mr-1.5 rounded-[5px] bg-[#e4f4f8] px-1.5 py-0.5 text-[10px] font-semibold text-[#0e8ba1]">
+                            เริ่มนับ
+                          </span>
+                        )}
+                        {l.detail}
+                      </>
+                    )}
                     {keyUpper === "COST" && l.detail}
                     {keyUpper === "DELIVERY" && `Issue ${l.issueDocNo}`}
                   </td>
@@ -175,11 +204,20 @@ function KpiLogModal({ kpi, onClose }: { kpi: KpiResult; onClose: () => void }) 
                     {keyUpper === "COST" && l.amount != null ? `฿${l.amount.toLocaleString()}` : ""}
                     {keyUpper === "DELIVERY" && (l.onTime ? "On-time" : "Late")}
                   </td>
+                  <td className="py-2 text-right">
+                    <button
+                      onClick={() => del(l.id)}
+                      title="ลบรายการนี้ (delete)"
+                      className="text-[15px] text-[#c2606f] hover:text-[#a83b36]"
+                    >
+                      ×
+                    </button>
+                  </td>
                 </tr>
               ))}
               {logs && logs.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="py-4 text-center text-[#9aa4b4]">
+                  <td colSpan={4} className="py-4 text-center text-[#9aa4b4]">
                     No entries yet
                   </td>
                 </tr>

@@ -22,8 +22,10 @@ export async function safetyKpi(range: Range): Promise<KpiResult> {
     orderBy: { date: "asc" },
   });
   const incidents = logs.filter((l) => l.incident);
-  const lastIncident = [...logs].reverse().find((l) => l.incident);
-  const sinceDate = lastIncident ? lastIncident.date : range.start;
+  // Counter starts from the most recent entry of EITHER kind: a real incident,
+  // or a "reset" entry that sets the safe-since date independently.
+  const lastEntry = logs.length > 0 ? logs[logs.length - 1] : null;
+  const sinceDate = lastEntry ? lastEntry.date : range.start;
   const daysSince = Math.max(0, daysBetween(range.end, sinceDate));
 
   return {
