@@ -103,6 +103,42 @@ export async function updateLotExpiryAction(lotId: string, expDate: string) {
   revalidateInventoryPaths();
 }
 
+/** Edit a lot's identity/dates from the product drawer: lot number, mfg date,
+ *  expiry date. Lot number must stay unique within its product+location bin. */
+export async function updateLotAction(
+  lotId: string,
+  data: { lotNo: string; mfgDate: string; expDate: string }
+): Promise<{ error?: string }> {
+  const lot = await db.lot.findUnique({ where: { id: lotId } });
+  if (!lot) return { error: "Lot not found" };
+  const lotNo = data.lotNo.trim() || "-";
+  if (lotNo !== lot.lotNo) {
+    const clash = await db.lot.findFirst({
+      where: {
+        id: { not: lotId },
+        productCode: lot.productCode,
+        locationCode: lot.locationCode,
+        lotNo,
+      },
+    });
+    if (clash) {
+      return {
+        error: `Lot "${lotNo}" already exists in ${lot.locationCode} for this product (เลข Lot ซ้ำในตำแหน่งเดียวกัน)`,
+      };
+    }
+  }
+  await db.lot.update({
+    where: { id: lotId },
+    data: {
+      lotNo,
+      mfgDate: data.mfgDate ? new Date(data.mfgDate) : null,
+      expDate: data.expDate ? new Date(data.expDate) : null,
+    },
+  });
+  revalidateInventoryPaths();
+  return {};
+}
+
 /** Extend a lot's shelf-life from the Aging page (updates both mfgDate and expDate). */
 export async function extendLotShelfLifeAction(
   lotId: string,

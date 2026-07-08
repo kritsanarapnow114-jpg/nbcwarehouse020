@@ -10,7 +10,7 @@ import {
   getProductDetailAction,
   toggleLotQcAction,
   toggleAllLotsQcAction,
-  updateLotExpiryAction,
+  updateLotAction,
 } from "@/lib/actions/products";
 import { ProductDetail } from "@/lib/views/products";
 import { reorderStatus, REORDER_COLOR, REORDER_LABEL, effectiveLevels } from "@/lib/calc/reorder";
@@ -153,57 +153,15 @@ export function ProductDrawer({
                   <th className="pb-2 font-medium">Loc</th>
                   <th className="pb-2 font-medium">Lot</th>
                   <th className="pb-2 text-right font-medium">Qty</th>
+                  <th className="pb-2 font-medium">Mfg</th>
                   <th className="pb-2 font-medium">Expiry</th>
                   <th className="pb-2 font-medium">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {shown.lots.map((l) => {
-                  const expired = l.expDate && new Date(l.expDate) < new Date();
-                  const tone = expired ? "danger" : l.status === "QC" ? "warn" : "ok";
-                  const label = expired ? "Expired" : l.status === "QC" ? "QC" : "OK";
-                  return (
-                    <tr key={l.id} className="border-t border-[#eef1f5]">
-                      <td className="font-num py-2">{l.locationCode}</td>
-                      <td className="font-num py-2">{l.lotNo}</td>
-                      <td className="font-num py-2 text-right">
-                        {l.qty.toLocaleString()}
-                      </td>
-                      <td className="py-2">
-                        <input
-                          type="date"
-                          defaultValue={l.expDate ? l.expDate.slice(0, 10) : ""}
-                          onBlur={async (e) => {
-                            await updateLotExpiryAction(l.id, e.target.value);
-                            showToast("Expiry updated");
-                            refresh();
-                          }}
-                          className="font-num w-[128px] rounded-[6px] border border-[#d7dce4] px-1.5 py-1 text-[11.5px]"
-                        />
-                      </td>
-                      <td className="py-2">
-                        <div className="flex items-center gap-2">
-                          <Badge tone={tone}>{label}</Badge>
-                          <button
-                            onClick={async () => {
-                              await toggleLotQcAction(l.id);
-                              showToast(l.status === "QC" ? `Lot ${l.lotNo} released` : `Lot ${l.lotNo} held for QC`);
-                              refresh();
-                            }}
-                            title={l.status === "QC" ? "ปลด QC ล็อตนี้" : "Hold QC เฉพาะล็อตนี้"}
-                            className={`rounded-[6px] border px-1.5 py-0.5 text-[10.5px] font-semibold ${
-                              l.status === "QC"
-                                ? "border-[#bfe0d3] bg-[#e4f4f8] text-[#0e8ea6]"
-                                : "border-[#f0cf9a] bg-[#fff2df] text-[#b5790f]"
-                            }`}
-                          >
-                            {l.status === "QC" ? "▶ Release" : "⏸ Hold"}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {shown.lots.map((l) => (
+                  <LotRow key={l.id} lot={l} onChanged={refresh} />
+                ))}
               </tbody>
             </table>
 
@@ -252,5 +210,90 @@ export function ProductDrawer({
         </div>
       )}
     </Drawer>
+  );
+}
+
+type LotRowData = ProductDetail["lots"][number];
+
+/** One editable lot row: lot number + mfg + expiry are editable inline; changes
+ *  are saved on blur. QC hold toggle unchanged. */
+function LotRow({ lot, onChanged }: { lot: LotRowData; onChanged: () => void }) {
+  const [lotNo, setLotNo] = useState(lot.lotNo);
+  const [mfg, setMfg] = useState(lot.mfgDate ? lot.mfgDate.slice(0, 10) : "");
+  const [exp, setExp] = useState(lot.expDate ? lot.expDate.slice(0, 10) : "");
+
+  const expired = lot.expDate && new Date(lot.expDate) < new Date();
+  const tone = expired ? "danger" : lot.status === "QC" ? "warn" : "ok";
+  const label = expired ? "Expired" : lot.status === "QC" ? "QC" : "OK";
+
+  async function save() {
+    if (
+      lotNo === lot.lotNo &&
+      mfg === (lot.mfgDate ? lot.mfgDate.slice(0, 10) : "") &&
+      exp === (lot.expDate ? lot.expDate.slice(0, 10) : "")
+    ) {
+      return; // nothing changed
+    }
+    const res = await updateLotAction(lot.id, { lotNo, mfgDate: mfg, expDate: exp });
+    if (res.error) {
+      showToast(res.error);
+      setLotNo(lot.lotNo); // revert lot number on clash
+      return;
+    }
+    showToast(`Lot ${lotNo} updated (แก้ไขล็อตแล้ว)`);
+    onChanged();
+  }
+
+  return (
+    <tr className="border-t border-[#eef1f5]">
+      <td className="font-num py-2">{lot.locationCode}</td>
+      <td className="py-2">
+        <input
+          value={lotNo}
+          onChange={(e) => setLotNo(e.target.value)}
+          onBlur={save}
+          className="font-num w-[104px] rounded-[6px] border border-[#d7dce4] px-1.5 py-1 text-[11.5px]"
+        />
+      </td>
+      <td className="font-num py-2 text-right">{lot.qty.toLocaleString()}</td>
+      <td className="py-2">
+        <input
+          type="date"
+          value={mfg}
+          onChange={(e) => setMfg(e.target.value)}
+          onBlur={save}
+          className="font-num w-[124px] rounded-[6px] border border-[#d7dce4] px-1.5 py-1 text-[11.5px]"
+        />
+      </td>
+      <td className="py-2">
+        <input
+          type="date"
+          value={exp}
+          onChange={(e) => setExp(e.target.value)}
+          onBlur={save}
+          className="font-num w-[124px] rounded-[6px] border border-[#d7dce4] px-1.5 py-1 text-[11.5px]"
+        />
+      </td>
+      <td className="py-2">
+        <div className="flex items-center gap-2">
+          <Badge tone={tone}>{label}</Badge>
+          <button
+            onClick={async () => {
+              await toggleLotQcAction(lot.id);
+              showToast(lot.status === "QC" ? `Lot ${lot.lotNo} released` : `Lot ${lot.lotNo} held for QC`);
+              onChanged();
+            }}
+            title={lot.status === "QC" ? "ปลด QC ล็อตนี้" : "Hold QC เฉพาะล็อตนี้"}
+            className={`rounded-[6px] border px-1.5 py-0.5 text-[10.5px] font-semibold ${
+              lot.status === "QC"
+                ? "border-[#bfe0d3] bg-[#e4f4f8] text-[#0e8ea6]"
+                : "border-[#f0cf9a] bg-[#fff2df] text-[#b5790f]"
+            }`}
+          >
+            {lot.status === "QC" ? "▶ Release" : "⏸ Hold"}
+          </button>
+        </div>
+      </td>
+    </tr>
   );
 }
