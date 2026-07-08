@@ -56,6 +56,7 @@ export async function getRecentAdjustments(limit = 400) {
     docDate: a.docDate.toISOString(),
     reversedAt: a.reversedAt ? a.reversedAt.toISOString() : null,
     reason: a.reason,
+    note: a.note ?? null,
     lineCount: a.lines.length,
     lines: a.lines.map((l) => ({
       code: l.lot.productCode,

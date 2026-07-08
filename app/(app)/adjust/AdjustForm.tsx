@@ -24,6 +24,7 @@ type Line = LotOption & { counted: string };
 export function AdjustForm({ lots }: { lots: LotOption[] }) {
   const router = useRouter();
   const [reason, setReason] = useState<AdjustReason>("COUNT_VARIANCE");
+  const [note, setNote] = useState("");
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Line[]>([]);
   const [popup, setPopup] = useState<{ kind: "adjust" | "draft"; message: string } | null>(null);
@@ -73,10 +74,12 @@ export function AdjustForm({ lots }: { lots: LotOption[] }) {
       const res = await confirmAdjustAction({
         reason,
         docDate,
+        note,
         lines: lines.map((l) => ({ lotId: l.id, countedQty: Number(l.counted) || 0 })),
       });
       setPopup({ kind: "adjust", message: `Adjustment ${res.docNo} confirmed — stock updated.` });
       setLines([]);
+      setNote("");
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to confirm adjustment.");
@@ -125,7 +128,15 @@ export function AdjustForm({ lots }: { lots: LotOption[] }) {
               ))}
             </select>
           </div>
-          <div className="flex-1" />
+          <div className="min-w-[220px] flex-1">
+            <div className="mb-1 text-[11.5px] text-[#69748a]">หมายเหตุ / สาเหตุ (Note — เพราะอะไร)</div>
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="เช่น สินค้าเสียหายจากน้ำท่วม, นับผิด, ตกหล่น…"
+              className="w-full rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px] outline-none focus:border-[#12a2bb]"
+            />
+          </div>
           <button onClick={handleExport} className="flex items-center gap-1.5 rounded-[8px] border border-[#16a6bf] bg-[#e6f5fa] px-3.5 py-2 text-[12.5px] font-semibold text-[#0c7f93]">
             ⤓ Export Excel
           </button>

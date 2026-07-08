@@ -24,6 +24,9 @@ export type ConfirmReceiptInput = {
   producedTotal?: number;
   prodLoss?: number;
   bomLoss?: { bomLineId: string; lossQty: number }[];
+  // BOM lines the operator chose NOT to consume this run (e.g. reused material
+  // already on the line) — skip deducting these from stock.
+  excludeBomLineIds?: string[];
 };
 
 function revalidateAll() {
@@ -148,8 +151,10 @@ export async function confirmReceiptAction(
       });
       if (bom) {
         const lossByBomLineId = new Map((input.bomLoss ?? []).map((bl) => [bl.bomLineId, bl.lossQty]));
+        const excluded = new Set(input.excludeBomLineIds ?? []);
         for (const bomLine of bom.lines) {
           if (bomLine.qtyPerUnit <= 0) continue; // soft-removed from the BOM
+          if (excluded.has(bomLine.id)) continue; // reused material — don't deduct this run
           // Consume qtyPerUnit for every full `perQty` produced (e.g. 1 pallet
           // per 750 kg): a partial batch doesn't consume another unit.
           const perQty = bomLine.perQty > 0 ? bomLine.perQty : 1;

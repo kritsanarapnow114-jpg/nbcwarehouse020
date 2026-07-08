@@ -262,6 +262,7 @@ model Adjustment {
   id         String       @id @default(cuid())
   docNo      String       @unique
   reason     AdjustReason @default(COUNT_VARIANCE)
+  note       String? // free-text remark: why the loss/adjustment happened
   docDate    DateTime
   reversedAt DateTime? // set when the document is reversed/voided
 

@@ -16,7 +16,7 @@ export default async function AdjustPage() {
     id: a.id,
     docNo: a.docNo,
     docDate: a.docDate,
-    summary: REASON_LABEL[a.reason] ?? a.reason,
+    summary: (REASON_LABEL[a.reason] ?? a.reason) + (a.note ? ` — ${a.note}` : ""),
     reversedAt: a.reversedAt,
     lineCount: a.lineCount,
     lines: a.lines.map((l) => {

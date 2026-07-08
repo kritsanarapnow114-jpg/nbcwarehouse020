@@ -31,6 +31,8 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
   const [lines, setLines] = useState<Line[]>([]);
   const [prodLoss, setProdLoss] = useState("20");
   const [bomLossByLine, setBomLossByLine] = useState<Record<string, string>>({});
+  // BOM material lines the operator marks as "reused" — not deducted this run.
+  const [bomExclude, setBomExclude] = useState<Record<string, boolean>>({});
   const [popup, setPopup] = useState<{ kind: CuteBoxKind; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,7 +128,10 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
       : 100;
 
   const bomLossValue = bom
-    ? bom.lines.reduce((s, m) => s + (Number(bomLossByLine[m.id] ?? 0) || 0) * m.materialPrice, 0)
+    ? bom.lines.reduce(
+        (s, m) => (bomExclude[m.id] ? s : s + (Number(bomLossByLine[m.id] ?? 0) || 0) * m.materialPrice),
+        0
+      )
     : 0;
 
   async function handleConfirm() {
@@ -165,7 +170,13 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
       prodLoss: mode === "PRODUCTION" ? Number(prodLoss) || 0 : undefined,
       bomLoss:
         mode === "PRODUCTION" && bom
-          ? bom.lines.map((m) => ({ bomLineId: m.id, lossQty: Number(bomLossByLine[m.id] ?? 0) || 0 }))
+          ? bom.lines
+              .filter((m) => !bomExclude[m.id])
+              .map((m) => ({ bomLineId: m.id, lossQty: Number(bomLossByLine[m.id] ?? 0) || 0 }))
+          : undefined,
+      excludeBomLineIds:
+        mode === "PRODUCTION" && bom
+          ? bom.lines.filter((m) => bomExclude[m.id]).map((m) => m.id)
           : undefined,
     };
     try {
@@ -282,6 +293,11 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
               <option key={lo} value={lo} />
             ))}
           </datalist>
+          <datalist id="nbLocs">
+            {data.locations.map((loc) => (
+              <option key={loc} value={loc} />
+            ))}
+          </datalist>
           <table className="w-full min-w-[960px] border-collapse text-[13px]">
             <thead>
               <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
@@ -322,18 +338,13 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                     />
                   </td>
                   <td className="p-[11px_16px]">
-                    <select
+                    <input
                       value={l.loc}
                       onChange={(e) => updateLine(i, { loc: e.target.value })}
-                      className="font-num w-[84px] rounded-[7px] border border-[#d7dce4] px-1.5 py-1.5 text-[12px]"
-                    >
-                      <option value="">—</option>
-                      {data.locations.map((loc) => (
-                        <option key={loc} value={loc}>
-                          {loc}
-                        </option>
-                      ))}
-                    </select>
+                      list="nbLocs"
+                      placeholder="พิมพ์/เลือก"
+                      className="font-num w-[100px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
+                    />
                   </td>
                   <td className="p-[11px_16px]">
                     <input
@@ -446,9 +457,21 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
               </tr>
             </thead>
             <tbody>
-              {bom.lines.map((m) => (
-                <tr key={m.id} className="border-t border-[#eef1f5]">
-                  <td className="p-[10px_22px] font-medium">{m.materialName}</td>
+              {bom.lines.map((m) => {
+                const off = !!bomExclude[m.id];
+                return (
+                <tr key={m.id} className={`border-t border-[#eef1f5] ${off ? "bg-[#f4f6f9] text-[#9aa4b4]" : ""}`}>
+                  <td className="p-[10px_22px] font-medium">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={!off}
+                        onChange={(e) => setBomExclude((s) => ({ ...s, [m.id]: !e.target.checked }))}
+                        title="ติ๊กออก = ไม่ตัดสต็อกวัตถุดิบนี้ (ใช้ของ Reuse)"
+                      />
+                      <span>{m.materialName}</span>
+                    </label>
+                  </td>
                   <td className="font-num p-[10px_16px] text-[12px] text-[#3a4658]">{m.materialCode}</td>
                   <td className="font-num p-[10px_16px] text-right text-[#69748a]">
                     {m.qtyPerUnit} {m.unit}
@@ -457,10 +480,14 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                     )}
                   </td>
                   <td className="font-num p-[10px_16px] text-right">
-                    {(Math.floor(producedTotal / (m.perQty > 0 ? m.perQty : 1)) * m.qtyPerUnit).toLocaleString()}
+                    {off
+                      ? "— Reuse —"
+                      : (Math.floor(producedTotal / (m.perQty > 0 ? m.perQty : 1)) * m.qtyPerUnit).toLocaleString()}
                   </td>
                   <td className="p-[10px_16px] text-[11.5px]">
-                    {(() => {
+                    {off ? (
+                      <span className="text-[#9aa4b4]">ไม่ตัดสต็อก (Reuse)</span>
+                    ) : (() => {
                       const need =
                         Math.floor(producedTotal / (m.perQty > 0 ? m.perQty : 1)) * m.qtyPerUnit +
                         (Number(bomLossByLine[m.id] ?? 0) || 0);
@@ -498,7 +525,8 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                     <span className="text-[11px] text-[#9aa4b4]">{m.unit}</span>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           <div className="flex items-center gap-3 border-t border-[#eef1f5] bg-[#fdf6f6] p-[12px_22px]">

@@ -9,6 +9,7 @@ export type AdjustLineInput = { lotId: string; countedQty: number };
 export type ConfirmAdjustInput = {
   reason: AdjustReason;
   docDate: string;
+  note?: string;
   lines: AdjustLineInput[];
 };
 
@@ -22,7 +23,7 @@ export async function confirmAdjustAction(input: ConfirmAdjustInput) {
 
   await db.$transaction(async (tx) => {
     const adj = await tx.adjustment.create({
-      data: { docNo, reason: input.reason, docDate },
+      data: { docNo, reason: input.reason, docDate, note: input.note?.trim() || null },
     });
     for (const line of input.lines) {
       const lot = await tx.lot.findUnique({ where: { id: line.lotId } });

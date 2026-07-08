@@ -5,7 +5,8 @@ export type StockCardEntryType =
   | "Receive"
   | "Issue"
   | "Adjust"
-  | "Transfer";
+  | "Transfer"
+  | "BOM";
 
 export type StockCardEntry = {
   date: Date;
@@ -26,7 +27,7 @@ export type StockCardEntry = {
 export async function buildStockCard(
   productCode: string
 ): Promise<StockCardEntry[]> {
-  const [receiptLines, issueLines, adjustmentLines, transferLines] =
+  const [receiptLines, issueLines, adjustmentLines, transferLines, bomConsumptions] =
     await Promise.all([
       db.receiptLine.findMany({
         where: { productCode, receipt: { reversedAt: null } },
@@ -43,6 +44,12 @@ export async function buildStockCard(
       db.transferLine.findMany({
         where: { lot: { productCode }, transfer: { reversedAt: null } },
         include: { transfer: true, lot: true },
+      }),
+      // Raw material consumed by production runs (BOM). These deduct stock but
+      // aren't Issue documents, so include them explicitly.
+      db.receiptMaterialConsumption.findMany({
+        where: { lot: { productCode }, receipt: { reversedAt: null } },
+        include: { receipt: true, lot: true },
       }),
     ]);
 
@@ -90,6 +97,17 @@ export async function buildStockCard(
       lot: t.lot.lotNo,
       in: 0,
       out: 0,
+      balance: 0,
+    });
+  }
+  for (const c of bomConsumptions) {
+    entries.push({
+      date: c.receipt.docDate,
+      doc: c.receipt.docNo,
+      type: "BOM",
+      lot: c.lot.lotNo,
+      in: 0,
+      out: c.qty,
       balance: 0,
     });
   }
