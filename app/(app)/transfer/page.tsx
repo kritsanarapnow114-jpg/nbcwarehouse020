@@ -1,17 +1,22 @@
 import { getLotOptions, getLocationCodes, getRecentTransfers } from "@/lib/views/docCommon";
 import { getUsers } from "@/lib/views/users";
+import { getAppSettings } from "@/lib/views/settings";
+import { OPERATORS_KEY, parseList } from "@/lib/settingsKeys";
 import { TransferForm } from "./TransferForm";
 import { DocHistory, DocHistoryRow } from "@/components/ui/DocHistory";
 
 export default async function TransferPage() {
-  const [lots, locations, transfers, users] = await Promise.all([
+  const [lots, locations, transfers, users, settings] = await Promise.all([
     getLotOptions(),
     getLocationCodes(),
     getRecentTransfers(),
     getUsers(),
+    getAppSettings(),
   ]);
 
-  const operators = users.map((u) => u.name);
+  // Operator picklist: any custom names added on Settings, plus the app users.
+  const extraOperators = parseList(settings[OPERATORS_KEY]);
+  const operators = [...new Set([...extraOperators, ...users.map((u) => u.name)])];
 
   const rows: DocHistoryRow[] = transfers.map((t) => ({
     id: t.id,

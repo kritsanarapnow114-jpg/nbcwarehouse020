@@ -5,6 +5,26 @@ export function subtitleKey(page: string) {
   return `subtitle.${page}`;
 }
 
+// Editable pick-lists (one entry per line), managed on the Settings page.
+export const ISSUE_TO_KEY = "list.issueTo"; // Issue → "จ่ายไปที่" options
+export const OPERATORS_KEY = "list.operators"; // Transfer → "ผู้ปฏิบัติงาน" options
+
+export const ISSUE_TO_DEFAULTS = [
+  "PRODUCTION-AREA110",
+  "PRODUCTION-AREA140",
+  "LAB-AREA010",
+  "PACKING LINE-AREA020",
+];
+
+/** Split a stored newline/comma list into trimmed, non-empty entries. */
+export function parseList(raw: string | undefined | null): string[] {
+  if (!raw) return [];
+  return raw
+    .split(/[\n,]/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
 export const COUNT_PLAN_MONTHLY_KEY = "countPlan.monthly"; // legacy single value (fallback)
 export const COUNT_PLAN_WEEKLY_KEY = "countPlan.weekly"; // legacy single value (fallback)
 export const COUNT_PLAN_MONTHS_KEY = "countPlan.months"; // JSON: 12 values, index 0=Jan

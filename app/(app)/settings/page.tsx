@@ -9,6 +9,8 @@ import { ClearDemoDataCard } from "./ClearDemoDataCard";
 import { UsersCard } from "./UsersCard";
 import { CountPlanCard } from "./CountPlanCard";
 import { SubtitlesCard } from "./SubtitlesCard";
+import { ListSettingsCard } from "./ListSettingsCard";
+import { ISSUE_TO_KEY, OPERATORS_KEY } from "@/lib/settingsKeys";
 
 export default async function SettingsPage() {
   const [users, settings, totalLots] = await Promise.all([
@@ -40,6 +42,12 @@ export default async function SettingsPage() {
       <UsersCard users={users} />
       <div className="mt-4">
         <CountPlanCard months={monthsInit} weeks={weeksInit} />
+      </div>
+      <div className="mt-4">
+        <ListSettingsCard
+          issueTo={settings[ISSUE_TO_KEY] ?? ""}
+          operators={settings[OPERATORS_KEY] ?? ""}
+        />
       </div>
       <div className="mt-4">
         <SubtitlesCard overrides={subtitleOverrides} />

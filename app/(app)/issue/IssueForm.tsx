@@ -13,15 +13,9 @@ import { fmtDateISO, fmtDateBE } from "@/lib/calc/date";
 
 type Line = IssueFormData["products"][number] & { selectedLotId: string; qty: string };
 
-const ISSUE_TO_OPTIONS = [
-  "PRODUCTION-AREA110",
-  "PRODUCTION-AREA140",
-  "LAB-AREA010",
-  "PACKING LINE-AREA020",
-];
-
-export function IssueForm({ data }: { data: IssueFormData }) {
+export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issueToOptions: string[] }) {
   const router = useRouter();
+  const ISSUE_TO_OPTIONS = issueToOptions.length > 0 ? issueToOptions : ["-"];
   const [issueTo, setIssueTo] = useState(ISSUE_TO_OPTIONS[0]);
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Line[]>([]);
