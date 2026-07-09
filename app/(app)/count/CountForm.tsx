@@ -41,6 +41,7 @@ export function CountForm({
 }) {
   const router = useRouter();
   const [pullZone, setPullZone] = useState(ZONES[0]);
+  const [asOfDate, setAsOfDate] = useState(""); // empty = today's live stock
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Row[]>([]);
   const [offLines, setOffLines] = useState<OffRow[]>([]);
@@ -98,7 +99,7 @@ export function CountForm({
 
   async function handlePull() {
     setPulling(true);
-    const rows = await getLotsByZoneAction(pullZone);
+    const rows = await getLotsByZoneAction(pullZone, asOfDate || undefined);
     setLines((existing) => {
       const existingIds = new Set(existing.map((l) => l.id));
       const merged = [...existing];
@@ -107,6 +108,8 @@ export function CountForm({
       }
       return merged;
     });
+    // Counting a past snapshot → date the document to that day too.
+    if (asOfDate) setDocDate(asOfDate);
     setPulling(false);
   }
 
@@ -251,8 +254,18 @@ export function CountForm({
               ))}
             </select>
           </div>
+          <div>
+            <div className="mb-1 text-[11.5px] text-[#69748a]">ยอด ณ วันที่ (as-of date)</div>
+            <input
+              type="date"
+              value={asOfDate}
+              onChange={(e) => setAsOfDate(e.target.value)}
+              title="เว้นว่าง = ยอดปัจจุบัน · ใส่วันที่ = ดึงยอดคงเหลือ ณ สิ้นวันนั้น"
+              className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
+            />
+          </div>
           <button onClick={handlePull} disabled={pulling} className={buttonClass("accent")}>
-            {pulling ? "Pulling…" : "⤓ Pull lots"}
+            {pulling ? "Pulling…" : asOfDate ? "⤓ ดึงยอดวันนั้น" : "⤓ Pull lots"}
           </button>
           <div className="flex-1" />
           <button onClick={handleExport} className="flex items-center gap-1.5 rounded-[8px] border border-[#16a6bf] bg-[#e6f5fa] px-3.5 py-2 text-[12.5px] font-semibold text-[#0c7f93]">

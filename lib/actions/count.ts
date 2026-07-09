@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requireWrite } from "@/lib/authz";
 import { nextDocNumber } from "@/lib/calc/docNumber";
 import { productLabel } from "@/lib/calc/productName";
+import { getLotQtyAsOf } from "@/lib/views/countAsOf";
 import { Zone } from "@prisma/client";
 
 export type CountLineInput = { lotId: string; countedQty: number };
@@ -28,22 +29,29 @@ const ZONE_LABEL_MAP: Record<string, Zone | null> = {
   "Zone C — Packaging": "C",
 };
 
-export async function getLotsByZoneAction(pullZone: string) {
+export async function getLotsByZoneAction(pullZone: string, asOfDate?: string) {
   const zone = ZONE_LABEL_MAP[pullZone] ?? null;
+  // With an as-of date we must consider every lot in the zone (some empty now may
+  // have had stock then; some with stock now may not have existed yet), so we
+  // don't pre-filter on current qty — we filter on the as-of quantity instead.
+  const asOfMap = asOfDate ? await getLotQtyAsOf(asOfDate) : null;
   const lots = await db.lot.findMany({
-    // Only pull lots that still have stock — skip depleted / placeholder lots.
-    where: { qty: { gt: 0 }, ...(zone ? { location: { zone } } : {}) },
+    where: asOfMap
+      ? { ...(zone ? { location: { zone } } : {}) }
+      : { qty: { gt: 0 }, ...(zone ? { location: { zone } } : {}) },
     include: { product: true },
     orderBy: [{ locationCode: "asc" }, { productCode: "asc" }],
   });
-  return lots.map((l) => ({
-    id: l.id,
-    productCode: l.productCode,
-    name: productLabel(l.product.nameEn, l.product.nameTh),
-    lotNo: l.lotNo,
-    locationCode: l.locationCode,
-    sysQty: l.qty,
-  }));
+  return lots
+    .map((l) => ({
+      id: l.id,
+      productCode: l.productCode,
+      name: productLabel(l.product.nameEn, l.product.nameTh),
+      lotNo: l.lotNo,
+      locationCode: l.locationCode,
+      sysQty: asOfMap ? Math.round((asOfMap.get(l.id) ?? 0) * 1000) / 1000 : l.qty,
+    }))
+    .filter((r) => r.sysQty > 0);
 }
 
 export async function confirmCountAction(input: ConfirmCountInput) {
