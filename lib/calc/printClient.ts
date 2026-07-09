@@ -31,7 +31,11 @@ export function printCountSheet(opts: {
     "Count (นับจริง)",
     "Remark",
   ];
-  const head = headCells.map((h) => `<th>${esc(h)}</th>`).join("");
+  // Only the Material Description column (index 2) may wrap, so the table fits
+  // the page width; every other column stays on one line at row height 0.37cm.
+  const head = headCells
+    .map((h, i) => `<th${i === 2 ? ' class="wrap"' : ""}>${esc(h)}</th>`)
+    .join("");
   const body = opts.rows.length
     ? opts.rows
         .map((r, i) => {
@@ -46,7 +50,12 @@ export function printCountSheet(opts: {
             "", // Remark — blank to write
           ];
           return `<tr>${cells
-            .map((c, ci) => `<td class="${ci >= cells.length - 2 ? "write" : ""}">${esc(c)}</td>`)
+            .map((c, ci) => {
+              const cls = [ci === 2 ? "wrap" : "", ci >= cells.length - 2 ? "write" : ""]
+                .filter(Boolean)
+                .join(" ");
+              return `<td${cls ? ` class="${cls}"` : ""}>${esc(c)}</td>`;
+            })
             .join("")}</tr>`;
         })
         .join("")
@@ -66,10 +75,11 @@ export function printCountSheet(opts: {
   table { width:100%; border-collapse:collapse; }
   thead { display:table-header-group; }
   tr { page-break-inside:avoid; }
-  th { background:#12557e; color:#fff; border:1px solid #9fb0c3; padding:3px 5px; text-align:left; font-size:10px; }
-  td { border:1px solid #b9c2cd; padding:2px 5px; font-size:10px; }
-  td.write { min-width:70px; }
-  tbody tr { height:19px; }
+  th { background:#12557e; color:#fff; border:1px solid #9fb0c3; padding:0 5px; text-align:left; font-size:11pt; line-height:1; white-space:nowrap; }
+  td { border:1px solid #b9c2cd; padding:0 5px; font-size:11pt; line-height:1; height:0.37cm; white-space:nowrap; }
+  th.wrap, td.wrap { white-space:normal; }
+  td.write { min-width:60px; }
+  tbody tr { height:0.37cm; }
   tbody tr:nth-child(even) td { background:#f2f6f9; }
   .sig { margin-top:22px; display:flex; justify-content:space-around; gap:30px; page-break-inside:avoid; }
   .sig div { flex:1; max-width:30%; border-top:1px solid #333; padding-top:5px; text-align:center; font-size:10.5px; color:#3a4658; }
@@ -112,9 +122,9 @@ export function printTable(opts: {
   const body = opts.rows.length
     ? opts.rows.map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")
     : `<tr><td colspan="${opts.headers.length}">—</td></tr>`;
-  const thPad = compact ? "3px 6px" : "7px 9px";
-  const tdPad = compact ? "2px 6px" : "6px 9px";
-  const fs = compact ? "10.5px" : "12.5px";
+  const thPad = compact ? "1px 6px" : "3px 9px";
+  const tdPad = compact ? "0 6px" : "1px 9px";
+  const fs = "11pt"; // Aptos Narrow 11 everywhere
   const margin = compact ? "8mm" : "12mm";
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>${esc(opts.title)}</title>
 <style>
@@ -126,8 +136,9 @@ export function printTable(opts: {
   table { width:100%; border-collapse:collapse; }
   thead { display:table-header-group; } /* repeat the header on every printed page */
   tr { page-break-inside:avoid; }
-  th { background:#12557e; color:#fff; border:1px solid #9fb0c3; padding:${thPad}; text-align:left; font-size:${fs}; }
-  td { border:1px solid #d0d7de; padding:${tdPad}; font-size:${fs}; }
+  th { background:#12557e; color:#fff; border:1px solid #9fb0c3; padding:${thPad}; text-align:left; font-size:${fs}; line-height:1; white-space:nowrap; }
+  td { border:1px solid #d0d7de; padding:${tdPad}; font-size:${fs}; line-height:1; height:0.37cm; }
+  tbody tr { height:0.37cm; } /* Aptos Narrow 11 · row height 0.37cm */
   tr:nth-child(even) td { background:#eef4f8; }
   tfoot { color:#8a97a5; font-size:11px; }
   .sig { margin-top:${compact ? "28px" : "56px"}; display:flex; justify-content:space-around; gap:40px; }
