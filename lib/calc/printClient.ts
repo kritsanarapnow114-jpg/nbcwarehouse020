@@ -7,7 +7,7 @@ function esc(v: string | number): string {
 }
 
 /**
- * Print the customer's "CYCLE COUNT WEEKLY" form: FLS + NatureWorks logos, a
+ * Print the customer's "WEEKLY CYCLE COUNT" form: FLS + NatureWorks logos, a
  * titled header block (repeated on every page), a compact portrait table with
  * blank Count + Remark columns to fill in by hand, and a signature footer.
  */
@@ -52,7 +52,7 @@ export function printCountSheet(opts: {
         .join("")
     : `<tr><td colspan="${headCells.length}">—</td></tr>`;
 
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>CYCLE COUNT WEEKLY</title>
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>WEEKLY CYCLE COUNT</title>
 <style>
   @page { size: portrait; margin: 8mm; }
   * { box-sizing: border-box; }
@@ -76,7 +76,7 @@ export function printCountSheet(opts: {
 </style></head><body>
 <div class="hdr">
   <img src="${FLS_LOGO}" alt="FLS"/>
-  <div class="ttl"><h1>CYCLE COUNT WEEKLY</h1>${meta ? `<div class="m">${meta}</div>` : ""}</div>
+  <div class="ttl"><h1>WEEKLY CYCLE COUNT</h1>${meta ? `<div class="m">${meta}</div>` : ""}</div>
   <img class="nw" src="${NATUREWORKS_LOGO}" alt="NatureWorks"/>
 </div>
 <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>
