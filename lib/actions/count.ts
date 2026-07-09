@@ -8,7 +8,7 @@ import { productLabel } from "@/lib/calc/productName";
 import { getLotQtyAsOf } from "@/lib/views/countAsOf";
 import { Zone } from "@prisma/client";
 
-export type CountLineInput = { lotId: string; countedQty: number };
+export type CountLineInput = { lotId: string; countedQty: number; sysQty?: number };
 export type OffSystemLineInput = {
   productCode: string;
   lotNo: string;
@@ -70,7 +70,10 @@ export async function confirmCountAction(input: ConfirmCountInput) {
         data: {
           stockCountId: count.id,
           lotId: lot.id,
-          sysQty: lot.qty,
+          // Use the system qty the counter actually saw. For a back-dated count
+          // that's the balance as of the chosen date; for a normal count it's the
+          // current qty. Falling back to current keeps older callers working.
+          sysQty: line.sysQty ?? lot.qty,
           countedQty: line.countedQty,
         },
       });

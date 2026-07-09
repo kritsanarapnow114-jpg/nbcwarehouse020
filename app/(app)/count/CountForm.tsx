@@ -168,7 +168,11 @@ export function CountForm({
       const res = await confirmCountAction({
         pullZone,
         docDate,
-        lines: lines.map((l) => ({ lotId: l.id, countedQty: Number(l.counted) || 0 })),
+        lines: lines.map((l) => ({
+          lotId: l.id,
+          countedQty: Number(l.counted) || 0,
+          sysQty: l.sysQty, // the (as-of) system qty the counter saw
+        })),
         offSystemLines: offLines.map((l) => ({
           productCode: l.productCode,
           lotNo: l.lotNo,
