@@ -15,41 +15,79 @@ import {
 } from "@/lib/actions/kpi";
 import { fmtDateBE } from "@/lib/calc/date";
 
+// SQDCI letter + accent per KPI. The 5 KPIs literally are the SQDCI board:
+// Safety · Quality · Delivery · Cost · Inventory-accuracy.
+const SQDCI: Record<KpiResult["key"], { letter: string; hue: string }> = {
+  safety: { letter: "S", hue: "#12a2bb" },
+  quality: { letter: "Q", hue: "#7b6ef0" },
+  delivery: { letter: "D", hue: "#2aa775" },
+  cost: { letter: "C", hue: "#e59a2b" },
+  accuracy: { letter: "I", hue: "#e5679a" },
+};
+
 export function KpiBand({ kpis }: { kpis: KpiResult[] }) {
   const [openKey, setOpenKey] = useState<KpiResult["key"] | null>(null);
   const active = kpis.find((k) => k.key === openKey) ?? null;
 
   return (
-    <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-      {kpis.map((k) => (
-        <button
-          key={k.key}
-          onClick={() => setOpenKey(k.key)}
-          className="relative rounded-[14px] border border-[#e7ebf1] bg-white p-[15px_16px] text-left shadow-[0_1px_2px_rgba(20,30,48,.04),0_6px_18px_rgba(20,30,48,.045)]"
-        >
-          <span className="absolute right-3.5 top-3 text-[12px] text-[#c2ccd6]">
-            ✎
-          </span>
-          <div className="mb-2 flex items-center gap-1.5">
-            <span
-              className="h-2 w-2 rounded-full"
-              style={{ background: k.tone === "ok" ? "#12a2bb" : "#e59a2b" }}
-            />
-            <span className="text-[11px] leading-tight text-[#69748a]">
-              {k.label} ({k.th})
-            </span>
-          </div>
-          <div
-            className="font-num text-[20px] font-bold"
-            style={{ color: k.tone === "ok" ? "#16202e" : "#c9821f" }}
-          >
-            {k.value}
-          </div>
-          <div className="mt-1.5 text-[10px] text-[#9aa4b4]">
-            {k.target} · {k.sub}
-          </div>
-        </button>
-      ))}
+    <div className="mb-4">
+      <div className="mb-2.5 flex items-center gap-2">
+        <span className="text-[13px] font-bold tracking-wide text-[#16202e]">SQDCI</span>
+        <span className="text-[11.5px] text-[#9aa4b4]">
+          Safety · Quality · Delivery · Cost · Inventory (แตะเพื่อดู/บันทึก)
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        {kpis.map((k) => {
+          const meta = SQDCI[k.key];
+          const warn = k.tone !== "ok";
+          return (
+            <button
+              key={k.key}
+              onClick={() => setOpenKey(k.key)}
+              className="group relative overflow-hidden rounded-[16px] border border-[#e7ebf1] bg-white p-[16px_16px_14px] text-left shadow-[0_1px_2px_rgba(20,30,48,.04),0_8px_22px_rgba(20,30,48,.05)] transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(20,30,48,.10)]"
+              style={{ ["--hue" as string]: meta.hue }}
+            >
+              {/* top accent bar */}
+              <span
+                className="absolute inset-x-0 top-0 h-[3px]"
+                style={{ background: `linear-gradient(90deg, ${meta.hue}, ${meta.hue}55)` }}
+              />
+              {/* big watermark letter */}
+              <span
+                className="pointer-events-none absolute -right-2 -top-3 font-num text-[64px] font-black leading-none opacity-[0.06]"
+                style={{ color: meta.hue }}
+              >
+                {meta.letter}
+              </span>
+              <div className="mb-2.5 flex items-center gap-2">
+                <span
+                  className="flex h-6 w-6 flex-none items-center justify-center rounded-[8px] text-[13px] font-bold text-white"
+                  style={{ background: meta.hue }}
+                >
+                  {meta.letter}
+                </span>
+                <span className="min-w-0 truncate text-[11px] font-medium leading-tight text-[#69748a]">
+                  {k.label} ({k.th})
+                </span>
+              </div>
+              <div
+                className="font-num text-[26px] font-extrabold tracking-tight"
+                style={{ color: warn ? "#c9821f" : "#16202e" }}
+              >
+                {k.value}
+              </div>
+              <div className="mt-1.5 flex items-center gap-1.5">
+                <span
+                  className="inline-block h-1.5 w-1.5 rounded-full"
+                  style={{ background: warn ? "#e59a2b" : meta.hue }}
+                />
+                <span className="truncate text-[10px] text-[#9aa4b4]">{k.sub}</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
 
       {active && active.loggable && (
         <KpiLogModal kpi={active} onClose={() => setOpenKey(null)} />

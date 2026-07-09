@@ -68,48 +68,39 @@ export default async function DashboardPage({
       <KpiBand kpis={kpis} />
 
       <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card>
-          <div className="mb-2 text-[12px] text-[#69748a]">
-            Inventory Value (มูลค่าคงเหลือ)
-          </div>
-          <div className="font-num text-[27px] font-bold tracking-tight">
-            <Money value={stats.inventoryValue} />
-          </div>
-          <div className="mt-1.5 text-[11.5px] text-[#9aa4b4]">
-            {stats.skuCount} SKU · {stats.lotCount} lots
-          </div>
-        </Card>
-        <Card>
-          <div className="mb-2 text-[12px] text-[#69748a]">
-            Received in period (รับเข้าช่วงนี้)
-          </div>
-          <div className="font-num text-[27px] font-bold tracking-tight text-[#0e8ba1]">
-            {stats.receivedUnits.toLocaleString()}
-          </div>
-          <div className="mt-1.5 text-[11.5px] text-[#9aa4b4]">units received</div>
-        </Card>
-        <Card>
-          <div className="mb-2 text-[12px] text-[#69748a]">
-            Issued in period (จ่ายออกช่วงนี้)
-          </div>
-          <div className="font-num text-[27px] font-bold tracking-tight text-[#c9821f]">
-            {stats.issuedUnits.toLocaleString()}
-          </div>
-          <div className="mt-1.5 text-[11.5px] text-[#9aa4b4]">units issued</div>
-        </Card>
-        <Link href="/aging?filter=expired">
-          <Card>
-            <div className="mb-2 text-[12px] text-[#69748a]">
-              Loss Value (มูลค่าสูญเสีย)
-            </div>
-            <div className="font-num text-[27px] font-bold tracking-tight text-[#d24141]">
-              <Money value={stats.lossValue} />
-            </div>
-            <div className="mt-1.5 text-[11.5px] text-[#d24141]">
-              expired stock · tap to view
-            </div>
-          </Card>
-        </Link>
+        <StatCard
+          icon="◈"
+          hue="#12a2bb"
+          label="Inventory Value (มูลค่าคงเหลือ)"
+          value={<Money value={stats.inventoryValue} />}
+          sub={`${stats.skuCount} SKU · ${stats.lotCount} lots`}
+        />
+        <StatCard
+          icon="↓"
+          hue="#0e8ba1"
+          label="Received in period (รับเข้าช่วงนี้)"
+          value={stats.receivedUnits.toLocaleString()}
+          valueColor="#0e8ba1"
+          sub="units received"
+        />
+        <StatCard
+          icon="↑"
+          hue="#e59a2b"
+          label="Issued in period (จ่ายออกช่วงนี้)"
+          value={stats.issuedUnits.toLocaleString()}
+          valueColor="#c9821f"
+          sub="units issued"
+        />
+        <StatCard
+          icon="✕"
+          hue="#d24141"
+          label="Loss Value (มูลค่าสูญเสีย)"
+          value={<Money value={stats.lossValue} />}
+          valueColor="#d24141"
+          sub="expired stock · tap to view"
+          subColor="#d24141"
+          href="/aging?filter=expired"
+        />
       </div>
 
       <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
@@ -320,10 +311,28 @@ export default async function DashboardPage({
           <div className="mb-1 text-[14px] font-semibold">
             Weekly Count Progress (แผน vs นับจริง รายอาทิตย์)
           </div>
-          <div className="mb-4 text-[11.5px] text-[#9aa4b4]">
-            Current month · by week (เดือนนี้)
+          <div className="mb-3 text-[11.5px] text-[#9aa4b4]">
+            เดือนนี้ · แยกรายสัปดาห์ (current month by week)
           </div>
-          <div className="flex flex-col gap-3">
+          {(() => {
+            const totCounted = countProgress.weekly.reduce((s, m) => s + m.counted, 0);
+            const totPlan = countProgress.weekly.reduce((s, m) => s + m.plan, 0);
+            const pct = totPlan > 0 ? (totCounted / totPlan) * 100 : 0;
+            return (
+              <div className="mb-3 flex items-center gap-3 rounded-[12px] border border-[#e4eef1] bg-gradient-to-r from-[#e6f5fa] to-white p-3">
+                <div className="flex h-12 w-12 flex-none items-center justify-center rounded-full border-[3px] border-[#12a2bb] text-[13px] font-bold text-[#0c7f93]">
+                  {pct.toFixed(0)}%
+                </div>
+                <div className="leading-tight">
+                  <div className="font-num text-[18px] font-extrabold text-[#16202e]">
+                    {totCounted}/{totPlan}
+                  </div>
+                  <div className="text-[11px] text-[#69748a]">ล็อตที่นับแล้ว / แผนทั้งเดือน</div>
+                </div>
+              </div>
+            );
+          })()}
+          <div className="flex flex-col gap-2.5">
             {countProgress.weekly.map((m) => {
               const donePct = m.plan > 0 ? (m.counted / m.plan) * 100 : 0;
               const pct = Math.min(100, donePct);
@@ -336,8 +345,8 @@ export default async function DashboardPage({
                   <span className="w-[34px] text-[12px] text-[#69748a]">{m.label}</span>
                   <div className="h-3 flex-1 overflow-hidden rounded-[5px] bg-[#eef1f5]">
                     <div
-                      className="h-full rounded-[5px] bg-[#12a2bb]"
-                      style={{ width: `${pct}%` }}
+                      className="h-full rounded-[5px]"
+                      style={{ width: `${pct}%`, background: donePct >= 100 ? "#2aa775" : "#12a2bb" }}
                     />
                   </div>
                   <span className="font-num w-24 text-right text-[11.5px] text-[#9aa4b4]">
@@ -352,6 +361,10 @@ export default async function DashboardPage({
                 </div>
               );
             })}
+          </div>
+          <div className="mt-3 rounded-[9px] bg-[#f7f9fb] p-2.5 text-[11px] leading-relaxed text-[#69748a]">
+            <b className="text-[#3a4658]">วิธีอ่าน:</b> แผน = จำนวนล็อตที่ตั้งใจจะนับในสัปดาห์นั้น ·
+            นับจริง = ล็อตที่ทำเอกสาร Stock Count ไปแล้ว — ตั้งค่าแผนได้ที่หน้า Settings
           </div>
         </Card>
       </div>
@@ -417,6 +430,51 @@ export default async function DashboardPage({
       </div>
     </div>
   );
+}
+
+function StatCard({
+  icon,
+  hue,
+  label,
+  value,
+  valueColor = "#16202e",
+  sub,
+  subColor = "#9aa4b4",
+  href,
+}: {
+  icon: string;
+  hue: string;
+  label: string;
+  value: React.ReactNode;
+  valueColor?: string;
+  sub: string;
+  subColor?: string;
+  href?: string;
+}) {
+  const inner = (
+    <div className="group relative h-full overflow-hidden rounded-[16px] border border-[#e7ebf1] bg-white p-[16px_18px] shadow-[0_1px_2px_rgba(20,30,48,.04),0_8px_22px_rgba(20,30,48,.05)] transition-all hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(20,30,48,.10)]">
+      <span
+        className="absolute inset-x-0 top-0 h-[3px]"
+        style={{ background: `linear-gradient(90deg, ${hue}, ${hue}55)` }}
+      />
+      <div className="mb-2 flex items-center gap-2">
+        <span
+          className="flex h-7 w-7 flex-none items-center justify-center rounded-[9px] text-[14px] font-bold"
+          style={{ background: `${hue}1a`, color: hue }}
+        >
+          {icon}
+        </span>
+        <span className="min-w-0 text-[12px] leading-tight text-[#69748a]">{label}</span>
+      </div>
+      <div className="font-num text-[27px] font-extrabold tracking-tight" style={{ color: valueColor }}>
+        {value}
+      </div>
+      <div className="mt-1.5 text-[11.5px]" style={{ color: subColor }}>
+        {sub}
+      </div>
+    </div>
+  );
+  return href ? <Link href={href}>{inner}</Link> : inner;
 }
 
 function ActionRow({
