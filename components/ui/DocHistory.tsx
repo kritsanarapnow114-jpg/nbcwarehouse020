@@ -10,13 +10,18 @@ import { fmtDateBE, fmtDateISO } from "@/lib/calc/date";
 import { reverseDocumentAction, ReversibleKind } from "@/lib/actions/reverse";
 import { getRedoTemplateAction } from "@/lib/actions/redo";
 import { stashRedo } from "@/lib/redoTemplate";
-import { printTable } from "@/lib/calc/printClient";
+import { printTable, printCountSheet } from "@/lib/calc/printClient";
 
 export type DocHistoryLine = {
   code: string;
   name: string;
   qtyText: string;
   extra?: string;
+  // Optional structured fields — used when printing as a WEEKLY CYCLE COUNT sheet.
+  lotNo?: string;
+  location?: string;
+  sysText?: string;
+  countText?: string;
 };
 
 export type DocHistoryRow = {
@@ -30,7 +35,23 @@ export type DocHistoryRow = {
 };
 
 
-function printDoc(title: string, row: DocHistoryRow) {
+function printDoc(title: string, row: DocHistoryRow, sheet?: "count") {
+  if (sheet === "count") {
+    // Print the completed count as the WEEKLY CYCLE COUNT form (values filled in).
+    printCountSheet({
+      meta: [`${row.docNo}`, `Date: ${fmtDateBE(new Date(row.docDate))}`, row.summary],
+      showSys: true,
+      rows: row.lines.map((l) => [
+        l.code,
+        l.name,
+        l.lotNo ?? "",
+        l.location ?? "",
+        l.sysText ?? "",
+        l.countText ?? l.qtyText,
+      ]),
+    });
+    return;
+  }
   printTable({
     title: `${title} — ${row.docNo}`,
     meta: [`Date: ${fmtDateBE(new Date(row.docDate))}`, row.summary],
@@ -44,11 +65,13 @@ export function DocHistory({
   rows,
   accentColor = "#12a2bb",
   reverseKind,
+  printSheet,
 }: {
   title: string;
   rows: DocHistoryRow[];
   accentColor?: string;
   reverseKind?: ReversibleKind;
+  printSheet?: "count";
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState<DocHistoryRow | null>(null);
@@ -181,7 +204,7 @@ export function DocHistory({
               }
               action={
                 <button
-                  onClick={() => printDoc(title, selected)}
+                  onClick={() => printDoc(title, selected, printSheet)}
                   className="flex items-center gap-1.5 rounded-[8px] border border-[#d7dce4] bg-white px-2.5 py-1.5 text-[12px] font-medium text-[#3a4658] hover:bg-[#f7f9fb]"
                 >
                   ⎙ Print

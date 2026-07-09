@@ -24,6 +24,10 @@ export default async function CountPage() {
         name: l.name,
         qtyText: `${l.countedQty.toLocaleString()} ${l.unit}`,
         extra: `Lot ${l.lotNo} · ${l.locationCode} · var ${variance > 0 ? "+" : ""}${variance}`,
+        lotNo: l.lotNo,
+        location: l.locationCode,
+        sysText: l.sysQty.toLocaleString(),
+        countText: l.countedQty.toLocaleString(),
       };
     }),
   }));
@@ -31,7 +35,7 @@ export default async function CountPage() {
   return (
     <div className="max-w-[1240px] p-[22px_26px]">
       <CountForm lots={lots} products={products} locations={locations} />
-      <DocHistory title="Recent Counts (ประวัติการนับสต็อก)" rows={rows} accentColor="#12a2bb" reverseKind="count" />
+      <DocHistory title="Recent Counts (ประวัติการนับสต็อก)" rows={rows} accentColor="#12a2bb" reverseKind="count" printSheet="count" />
     </div>
   );
 }

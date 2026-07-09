@@ -14,8 +14,10 @@ function esc(v: string | number): string {
 export function printCountSheet(opts: {
   meta?: string[];
   showSys?: boolean;
-  /** rows: [sapCode, description, lot, location, sysQtyText] */
-  rows: [string, string, string, string, string][];
+  /** rows: [sapCode, description, lot, location, sysQtyText, countText?].
+   *  countText fills the Count column (for a completed/history record); omit or
+   *  "" for a blank sheet to write by hand. */
+  rows: [string, string, string, string, string, string?][];
 }) {
   const w = window.open("", "_blank", "width=1000,height=900");
   if (!w) return;
@@ -46,7 +48,7 @@ export function printCountSheet(opts: {
             r[2],
             r[3],
             ...(showSys ? [r[4]] : []),
-            "", // Count — blank to write
+            r[5] ?? "", // Count — value for a record, blank to write by hand
             "", // Remark — blank to write
           ];
           return `<tr>${cells
