@@ -152,7 +152,7 @@ export function AdjustForm({ lots }: { lots: LotOption[] }) {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] border-collapse text-[13px]">
+          <table className="w-full min-w-[980px] border-collapse text-[13px]">
             <thead>
               <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
                 <th className="p-[10px_16px] text-[11.5px] font-medium">SAP Material Master</th>
@@ -160,7 +160,8 @@ export function AdjustForm({ lots }: { lots: LotOption[] }) {
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Lot</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Location</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">System</th>
-                <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Counted</th>
+                <th className="p-[10px_16px] text-right text-[11.5px] font-medium">ตัดออก/เสีย (Loss)</th>
+                <th className="p-[10px_16px] text-right text-[11.5px] font-medium">คงเหลือ (Counted)</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Variance</th>
                 <th className="w-10 p-[10px_16px]"></th>
               </tr>
@@ -175,6 +176,25 @@ export function AdjustForm({ lots }: { lots: LotOption[] }) {
                     <td className="font-num p-[11px_16px] text-[12px]">{l.lotNo}</td>
                     <td className="font-num p-[11px_16px] text-[12px]">{l.locationCode}</td>
                     <td className="font-num p-[11px_16px] text-right">{l.qty.toLocaleString()}</td>
+                    <td className="p-[11px_16px] text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <input
+                          value={String(Math.max(0, l.qty - (Number(l.counted) || 0)))}
+                          onChange={(e) =>
+                            updateLine(i, String(Math.max(0, l.qty - (Number(e.target.value) || 0))))
+                          }
+                          className="font-num w-[70px] rounded-[7px] border border-[#e2b4b4] bg-[#fdf6f6] px-2 py-1.5 text-right text-[13px] text-[#c0453f]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => updateLine(i, "0")}
+                          title="เสียทั้งหมด → คงเหลือ 0 (ของจะหายจาก Location)"
+                          className="rounded-[6px] border border-[#e2b4b4] bg-white px-1.5 py-1 text-[10.5px] font-semibold text-[#c0453f] hover:bg-[#fbe9e9]"
+                        >
+                          ทั้งหมด
+                        </button>
+                      </div>
+                    </td>
                     <td className="p-[11px_16px] text-right">
                       <input
                         value={l.counted}
@@ -198,7 +218,7 @@ export function AdjustForm({ lots }: { lots: LotOption[] }) {
               })}
               {lines.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-[#9aa4b4]">
+                  <td colSpan={9} className="p-6 text-center text-[#9aa4b4]">
                     No lines yet — add a lot below.
                   </td>
                 </tr>
