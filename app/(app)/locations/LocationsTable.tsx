@@ -26,7 +26,13 @@ function dotColor(c: LocationRow["contents"][number]): string {
   return "#12a2bb";
 }
 
-export function LocationsTable({ rows }: { rows: LocationRow[] }) {
+export function LocationsTable({
+  rows,
+  zoneLabels = {},
+}: {
+  rows: LocationRow[];
+  zoneLabels?: Record<string, string>;
+}) {
   const router = useRouter();
   const [selected, setSelected] = useState<LocationRow | null>(null);
   const [editing, setEditing] = useState<LocationRow | null>(null);
@@ -70,7 +76,9 @@ export function LocationsTable({ rows }: { rows: LocationRow[] }) {
                   <Td className="font-num text-[12px] text-[#3a4658]">{r.code}</Td>
                   <Td className="text-[#69748a]">
                     Zone {r.zone}
-                    <div className="text-[11px] text-[#9aa4b4]">{r.zoneLabel}</div>
+                    <div className="text-[11px] text-[#9aa4b4]">
+                      {zoneLabels[r.zone] ?? r.zoneLabel}
+                    </div>
                   </Td>
                   <Td>
                     {r.contents.length === 0 ? (

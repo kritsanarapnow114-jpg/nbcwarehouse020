@@ -55,6 +55,8 @@ function AddLocationModal({
               <option value="A">Zone A</option>
               <option value="B">Zone B</option>
               <option value="C">Zone C</option>
+              <option value="D">Zone D</option>
+              <option value="E">Zone E</option>
             </select>
           </Field>
         </div>

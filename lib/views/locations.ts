@@ -104,6 +104,12 @@ export async function getLocationRows(opts?: { zone?: string }): Promise<Locatio
   return opts?.zone ? rows.filter((r) => r.zone === opts.zone) : rows;
 }
 
+/** Distinct zones that currently have at least one bin, in order. */
+export async function getZonesInUse(): Promise<string[]> {
+  const locs = await db.location.findMany({ select: { zone: true }, distinct: ["zone"] });
+  return locs.map((l) => l.zone).sort();
+}
+
 /**
  * Locations page summary card: total storage used across ALL zones A-E.
  * (Unlike the Dashboard's Storage Utilization widget, which omits zone E,

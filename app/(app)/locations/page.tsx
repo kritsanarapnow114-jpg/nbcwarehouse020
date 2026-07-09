@@ -1,16 +1,13 @@
 import Link from "next/link";
-import { getLocationRows, getLocationSummary } from "@/lib/views/locations";
+import { getLocationRows, getLocationSummary, getZonesInUse } from "@/lib/views/locations";
+import { getAppSettings } from "@/lib/views/settings";
+import { zoneLabelKey } from "@/lib/settingsKeys";
+import { ZONE_LABEL } from "@/components/ui/tone";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { AddLocationButton } from "./AddLocationModal";
 import { LocationsTable } from "./LocationsTable";
-
-const ZONE_FILTERS = [
-  { value: "", label: "All zones" },
-  { value: "A", label: "Zone A" },
-  { value: "B", label: "Zone B" },
-  { value: "C", label: "Zone C" },
-];
+import { ZoneLabelsEditor } from "./ZoneLabelsEditor";
 
 export default async function LocationsPage({
   searchParams,
@@ -18,10 +15,23 @@ export default async function LocationsPage({
   searchParams: Promise<{ zone?: string }>;
 }) {
   const { zone } = await searchParams;
-  const [rows, summary] = await Promise.all([
+  const [rows, summary, zonesInUse, settings] = await Promise.all([
     getLocationRows({ zone }),
     getLocationSummary(),
+    getZonesInUse(),
+    getAppSettings(),
   ]);
+
+  // Effective zone descriptions: user override (settings) else built-in default.
+  const zoneLabels: Record<string, string> = {};
+  for (const z of zonesInUse) {
+    zoneLabels[z] = settings[zoneLabelKey(z)] ?? ZONE_LABEL[z] ?? "";
+  }
+
+  const ZONE_FILTERS = [
+    { value: "", label: "All zones" },
+    ...zonesInUse.map((z) => ({ value: z, label: `Zone ${z}` })),
+  ];
 
   const binCount = rows.length;
   const avgOcc =
@@ -79,6 +89,7 @@ export default async function LocationsPage({
         <div className="text-[12px] text-[#69748a]">
           {binCount} bins · avg {avgOcc}% used
         </div>
+        <ZoneLabelsEditor zones={zonesInUse} labels={zoneLabels} />
         <AddLocationButton />
         <a
           href={`/api/export/locations${qs({})}`}
@@ -88,7 +99,7 @@ export default async function LocationsPage({
         </a>
       </div>
 
-      <LocationsTable rows={rows} />
+      <LocationsTable rows={rows} zoneLabels={zoneLabels} />
     </div>
   );
 }

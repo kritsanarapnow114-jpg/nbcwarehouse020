@@ -5,6 +5,13 @@ export function subtitleKey(page: string) {
   return `subtitle.${page}`;
 }
 
+/** Per-zone description override key (e.g. zone.A → "Dry raw material"). */
+export function zoneLabelKey(zone: string) {
+  return `zone.${zone}`;
+}
+
+export const ALL_ZONES = ["A", "B", "C", "D", "E"] as const;
+
 // Editable pick-lists (one entry per line), managed on the Settings page.
 export const ISSUE_TO_KEY = "list.issueTo"; // Issue → "จ่ายไปที่" options
 export const OPERATORS_KEY = "list.operators"; // Transfer → "ผู้ปฏิบัติงาน" options
