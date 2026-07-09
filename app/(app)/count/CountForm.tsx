@@ -228,6 +228,9 @@ export function CountForm({
       meta: [`Pull: ${pullZone}`, `Doc date: ${docDate}`, `${rows.length} lines`],
       headers,
       rows,
+      // Long narrow list → portrait + compact fits far more rows per page (ประหยัดกระดาษ).
+      orientation: "portrait",
+      compact: true,
     });
   }
 
