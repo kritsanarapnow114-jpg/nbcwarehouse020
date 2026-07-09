@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Drawer } from "@/components/ui/Drawer";
+import { Modal, ModalHeader } from "@/components/ui/Modal";
 import { Badge } from "@/components/ui/Badge";
 import { Money } from "@/components/ui/Currency";
 import { buttonClass } from "@/components/ui/Button";
@@ -215,85 +216,148 @@ export function ProductDrawer({
 
 type LotRowData = ProductDetail["lots"][number];
 
-/** One editable lot row: lot number + mfg + expiry are editable inline; changes
- *  are saved on blur. QC hold toggle unchanged. */
-function LotRow({ lot, onChanged }: { lot: LotRowData; onChanged: () => void }) {
-  const [lotNo, setLotNo] = useState(lot.lotNo);
-  const [mfg, setMfg] = useState(lot.mfgDate ? lot.mfgDate.slice(0, 10) : "");
-  const [exp, setExp] = useState(lot.expDate ? lot.expDate.slice(0, 10) : "");
+function fmtD(d: string | null): string {
+  return d ? d.slice(0, 10) : "—";
+}
 
+/** One lot row: shows values with an explicit "✎ แก้ไข" button that opens a
+ *  modal to edit the lot number, mfg date and expiry. QC hold toggle unchanged. */
+function LotRow({ lot, onChanged }: { lot: LotRowData; onChanged: () => void }) {
+  const [editing, setEditing] = useState(false);
   const expired = lot.expDate && new Date(lot.expDate) < new Date();
   const tone = expired ? "danger" : lot.status === "QC" ? "warn" : "ok";
   const label = expired ? "Expired" : lot.status === "QC" ? "QC" : "OK";
 
-  async function save() {
-    if (
-      lotNo === lot.lotNo &&
-      mfg === (lot.mfgDate ? lot.mfgDate.slice(0, 10) : "") &&
-      exp === (lot.expDate ? lot.expDate.slice(0, 10) : "")
-    ) {
-      return; // nothing changed
-    }
+  return (
+    <>
+      <tr className="border-t border-[#eef1f5]">
+        <td className="font-num py-2">{lot.locationCode}</td>
+        <td className="font-num py-2">
+          <span className="inline-flex items-center gap-1.5">
+            {lot.lotNo}
+            <button
+              onClick={() => setEditing(true)}
+              title="แก้ไขข้อมูลล็อต (เลข Lot / วันผลิต / วันหมดอายุ)"
+              className="rounded-[6px] border border-[#d7dce4] bg-white px-1.5 py-0.5 text-[10.5px] font-semibold text-[#3a4658] hover:bg-[#f7f9fb]"
+            >
+              ✎ แก้ไข
+            </button>
+          </span>
+        </td>
+        <td className="font-num py-2 text-right">{lot.qty.toLocaleString()}</td>
+        <td className="font-num py-2 text-[11.5px] text-[#69748a]">{fmtD(lot.mfgDate)}</td>
+        <td className="font-num py-2 text-[11.5px] text-[#69748a]">{fmtD(lot.expDate)}</td>
+        <td className="py-2">
+          <div className="flex items-center gap-2">
+            <Badge tone={tone}>{label}</Badge>
+            <button
+              onClick={async () => {
+                await toggleLotQcAction(lot.id);
+                showToast(lot.status === "QC" ? `Lot ${lot.lotNo} released` : `Lot ${lot.lotNo} held for QC`);
+                onChanged();
+              }}
+              title={lot.status === "QC" ? "ปลด QC ล็อตนี้" : "Hold QC เฉพาะล็อตนี้"}
+              className={`rounded-[6px] border px-1.5 py-0.5 text-[10.5px] font-semibold ${
+                lot.status === "QC"
+                  ? "border-[#bfe0d3] bg-[#e4f4f8] text-[#0e8ea6]"
+                  : "border-[#f0cf9a] bg-[#fff2df] text-[#b5790f]"
+              }`}
+            >
+              {lot.status === "QC" ? "▶ Release" : "⏸ Hold"}
+            </button>
+          </div>
+        </td>
+      </tr>
+      {editing && (
+        <LotEditModal
+          lot={lot}
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+            onChanged();
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+/** Modal to edit a lot's number, manufacturing date and expiry. */
+function LotEditModal({
+  lot,
+  onClose,
+  onSaved,
+}: {
+  lot: LotRowData;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [lotNo, setLotNo] = useState(lot.lotNo);
+  const [mfg, setMfg] = useState(lot.mfgDate ? lot.mfgDate.slice(0, 10) : "");
+  const [exp, setExp] = useState(lot.expDate ? lot.expDate.slice(0, 10) : "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
     const res = await updateLotAction(lot.id, { lotNo, mfgDate: mfg, expDate: exp });
+    setSaving(false);
     if (res.error) {
-      showToast(res.error);
-      setLotNo(lot.lotNo); // revert lot number on clash
+      setError(res.error);
       return;
     }
     showToast(`Lot ${lotNo} updated (แก้ไขล็อตแล้ว)`);
-    onChanged();
+    onSaved();
   }
 
   return (
-    <tr className="border-t border-[#eef1f5]">
-      <td className="font-num py-2">{lot.locationCode}</td>
-      <td className="py-2">
-        <input
-          value={lotNo}
-          onChange={(e) => setLotNo(e.target.value)}
-          onBlur={save}
-          className="font-num w-[104px] rounded-[6px] border border-[#d7dce4] px-1.5 py-1 text-[11.5px]"
-        />
-      </td>
-      <td className="font-num py-2 text-right">{lot.qty.toLocaleString()}</td>
-      <td className="py-2">
-        <input
-          type="date"
-          value={mfg}
-          onChange={(e) => setMfg(e.target.value)}
-          onBlur={save}
-          className="font-num w-[124px] rounded-[6px] border border-[#d7dce4] px-1.5 py-1 text-[11.5px]"
-        />
-      </td>
-      <td className="py-2">
-        <input
-          type="date"
-          value={exp}
-          onChange={(e) => setExp(e.target.value)}
-          onBlur={save}
-          className="font-num w-[124px] rounded-[6px] border border-[#d7dce4] px-1.5 py-1 text-[11.5px]"
-        />
-      </td>
-      <td className="py-2">
-        <div className="flex items-center gap-2">
-          <Badge tone={tone}>{label}</Badge>
-          <button
-            onClick={async () => {
-              await toggleLotQcAction(lot.id);
-              showToast(lot.status === "QC" ? `Lot ${lot.lotNo} released` : `Lot ${lot.lotNo} held for QC`);
-              onChanged();
-            }}
-            title={lot.status === "QC" ? "ปลด QC ล็อตนี้" : "Hold QC เฉพาะล็อตนี้"}
-            className={`rounded-[6px] border px-1.5 py-0.5 text-[10.5px] font-semibold ${
-              lot.status === "QC"
-                ? "border-[#bfe0d3] bg-[#e4f4f8] text-[#0e8ea6]"
-                : "border-[#f0cf9a] bg-[#fff2df] text-[#b5790f]"
-            }`}
-          >
-            {lot.status === "QC" ? "▶ Release" : "⏸ Hold"}
+    <Modal open onClose={onClose} width={420}>
+      <ModalHeader title={`แก้ไขล็อต (Edit lot) · ${lot.locationCode}`} onClose={onClose} />
+      <div className="flex flex-col gap-3 px-5 py-4">
+        <label className="flex flex-col gap-1">
+          <span className="text-[11.5px] font-medium text-[#69748a]">เลข/ชื่อ Lot (Lot number)</span>
+          <input
+            value={lotNo}
+            onChange={(e) => setLotNo(e.target.value)}
+            className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#12a2bb]"
+          />
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1">
+            <span className="text-[11.5px] font-medium text-[#69748a]">วันผลิต (Mfg)</span>
+            <input
+              type="date"
+              value={mfg}
+              onChange={(e) => setMfg(e.target.value)}
+              className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#12a2bb]"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[11.5px] font-medium text-[#69748a]">วันหมดอายุ (Expiry)</span>
+            <input
+              type="date"
+              value={exp}
+              onChange={(e) => setExp(e.target.value)}
+              className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#12a2bb]"
+            />
+          </label>
+        </div>
+        <div className="text-[11px] text-[#9aa4b4]">
+          * จำนวนคงเหลือแก้ที่หน้า Adjust (เพื่อเก็บประวัติการปรับ)
+        </div>
+        {error && (
+          <div className="rounded-[8px] bg-[#fbe9e9] px-3 py-2 text-[12.5px] text-[#c53f3f]">{error}</div>
+        )}
+        <div className="mt-1 flex justify-end gap-2">
+          <button onClick={onClose} className={buttonClass("secondary")}>
+            Cancel
+          </button>
+          <button disabled={saving} onClick={handleSave} className={buttonClass("primary")}>
+            {saving ? "Saving…" : "Save"}
           </button>
         </div>
-      </td>
-    </tr>
+      </div>
+    </Modal>
   );
 }
