@@ -2,6 +2,7 @@
 
 import { safeRevalidate } from "./revalidate";
 import { db } from "@/lib/db";
+import { requireWrite } from "@/lib/authz";
 import { nextDocNumber } from "@/lib/calc/docNumber";
 import { fefoLotFor } from "@/lib/calc/fefo";
 
@@ -27,6 +28,7 @@ export async function confirmIssueAction(
   const docDate = new Date(input.docDate);
 
   try {
+    await requireWrite();
     const docNo = await nextDocNumber("ISS", docDate);
 
     await db.$transaction(async (tx) => {

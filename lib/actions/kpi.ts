@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { requireWrite } from "@/lib/authz";
 import { qualityBreakdown, accuracyBreakdown } from "@/lib/calc/kpi";
 import { KpiKey } from "@prisma/client";
 
@@ -27,6 +28,11 @@ export async function addKpiLogAction(
   _prev: AddKpiLogState,
   formData: FormData
 ): Promise<AddKpiLogState> {
+  try {
+    await requireWrite();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Not allowed" };
+  }
   const key = String(formData.get("key")) as KpiKey;
   const date = String(formData.get("date") ?? "");
   if (!date) return { error: "Pick a date (เลือกวันที่)" };
@@ -96,6 +102,7 @@ export async function getRecentIssueDocsAction() {
 
 /** Delete a single KPI log entry (Safety / Cost / Delivery). */
 export async function deleteKpiLogAction(id: string) {
+  await requireWrite();
   await db.kpiLog.delete({ where: { id } });
   revalidatePath("/dashboard");
   return { ok: true };

@@ -16,30 +16,41 @@ function daysFromNow(n: number): Date {
 async function main() {
   // User accounts are ensured on every deploy regardless of other data state,
   // so logins keep working even after a "clear all data" reset.
-  const somchaiHash = await bcrypt.hash("warehouse123", 10);
+  const guyHash = await bcrypt.hash("guy1234", 10);
   await db.user.upsert({
-    where: { email: "somchai@nbcwarehouse.test" },
-    update: {},
+    where: { email: "guy" },
+    update: { permission: "admin" },
     create: {
-      email: "somchai@nbcwarehouse.test",
-      passwordHash: somchaiHash,
-      name: "Somchai K.",
-      role: "Warehouse Lead · WH-01",
-      avatarInitials: "SC",
+      email: "guy",
+      passwordHash: guyHash,
+      name: "Guy",
+      role: "Warehouse Admin",
+      permission: "admin",
+      avatarInitials: "GY",
     },
   });
   const kritsanaHash = await bcrypt.hash("fls1234", 10);
   await db.user.upsert({
     where: { email: "kritsana" },
-    update: {},
+    update: { permission: "admin" },
     create: {
       email: "kritsana",
       passwordHash: kritsanaHash,
       name: "Kritsana",
-      role: "Warehouse Staff",
+      role: "Warehouse Admin",
+      permission: "admin",
       avatarInitials: "K",
     },
   });
+
+  // Remove the old demo login once (guarded), so it stays gone after the admin
+  // deletes it instead of being re-created on the next deploy.
+  const REMOVE_SOMCHAI_FLAG = "remove_somchai_v1";
+  const removedSomchai = await db.seedFlag.findUnique({ where: { key: REMOVE_SOMCHAI_FLAG } });
+  if (!removedSomchai) {
+    await db.user.deleteMany({ where: { email: "somchai@nbcwarehouse.test" } });
+    await db.seedFlag.create({ data: { key: REMOVE_SOMCHAI_FLAG } });
+  }
 
   // Real product master data from the customer's SAP export — applied once
   // (guarded by a SeedFlag) rather than every deploy, so deleting one of

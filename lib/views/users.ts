@@ -8,6 +8,7 @@ export async function getUsers() {
     email: u.email,
     name: u.name,
     role: u.role,
+    permission: u.permission,
     avatarInitials: u.avatarInitials,
   }));
 }

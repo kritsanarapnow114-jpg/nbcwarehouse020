@@ -2,6 +2,7 @@
 
 import { safeRevalidate } from "./revalidate";
 import { db } from "@/lib/db";
+import { requireWrite } from "@/lib/authz";
 import { nextDocNumber } from "@/lib/calc/docNumber";
 import { fifoLots } from "@/lib/calc/fefo";
 
@@ -39,6 +40,7 @@ export async function confirmReceiptAction(
   const docDate = new Date(input.docDate);
 
   try {
+    await requireWrite();
     const docNo = await nextDocNumber("RC", docDate);
 
     await db.$transaction(async (tx) => {

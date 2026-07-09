@@ -16,6 +16,7 @@ export type SessionPayload = {
   email: string;
   name: string;
   role: string;
+  permission: string; // admin | staff | viewer
   avatarInitials: string;
 };
 

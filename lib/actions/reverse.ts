@@ -2,6 +2,7 @@
 
 import { safeRevalidate } from "./revalidate";
 import { db } from "@/lib/db";
+import { requireWrite } from "@/lib/authz";
 import { Prisma } from "@prisma/client";
 
 export type ReversibleKind = "receipt" | "issue" | "adjustment" | "transfer" | "count";
@@ -34,6 +35,7 @@ export async function reverseDocumentAction(
   let docNo = "";
 
   try {
+    await requireWrite();
     await db.$transaction(async (tx) => {
     if (kind === "receipt") {
       const receipt = await tx.receipt.findUnique({

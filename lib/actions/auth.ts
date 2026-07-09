@@ -34,6 +34,7 @@ export async function loginAction(
     email: user.email,
     name: user.name,
     role: user.role,
+    permission: user.permission,
     avatarInitials: user.avatarInitials,
   });
 

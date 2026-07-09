@@ -2,6 +2,7 @@
 
 import { safeRevalidate } from "./revalidate";
 import { db } from "@/lib/db";
+import { requireWrite } from "@/lib/authz";
 import { nextDocNumber } from "@/lib/calc/docNumber";
 import { AdjustReason } from "@prisma/client";
 
@@ -18,6 +19,7 @@ function revalidateAll() {
 }
 
 export async function confirmAdjustAction(input: ConfirmAdjustInput) {
+  await requireWrite();
   const docDate = new Date(input.docDate);
   const docNo = await nextDocNumber("ADJ", docDate);
 

@@ -3,6 +3,8 @@
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/authz";
+import { normPerm } from "@/lib/permissions";
 
 export type FormState = { error?: string };
 
@@ -17,10 +19,16 @@ export async function createUserAction(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
+  try {
+    await requireAdmin();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Not allowed" };
+  }
   const loginId = String(formData.get("email") ?? "").trim().toLowerCase();
   const name = String(formData.get("name") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const role = String(formData.get("role") ?? "Warehouse Staff").trim();
+  const permission = normPerm(String(formData.get("permission") ?? "staff"));
 
   if (!loginId || !name || !password) {
     return { error: "Fill in username, name, and password (กรอกชื่อผู้ใช้ ชื่อ และรหัสผ่านให้ครบ)" };
@@ -41,6 +49,7 @@ export async function createUserAction(
       passwordHash,
       name,
       role: role || "Warehouse Staff",
+      permission,
       avatarInitials: initialsOf(name),
     },
   });
@@ -49,7 +58,26 @@ export async function createUserAction(
   return {};
 }
 
+export async function updateUserPermissionAction(
+  id: string,
+  permission: string
+): Promise<{ error?: string }> {
+  try {
+    await requireAdmin();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Not allowed" };
+  }
+  await db.user.update({ where: { id }, data: { permission: normPerm(permission) } });
+  revalidatePath("/settings");
+  return {};
+}
+
 export async function deleteUserAction(id: string): Promise<{ error?: string }> {
+  try {
+    await requireAdmin();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Not allowed" };
+  }
   const count = await db.user.count();
   if (count <= 1) {
     return { error: "Cannot delete the last remaining user (ลบไม่ได้ เหลือผู้ใช้คนสุดท้าย)" };

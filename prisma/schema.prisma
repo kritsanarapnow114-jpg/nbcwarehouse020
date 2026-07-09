@@ -60,6 +60,7 @@ model User {
   passwordHash   String
   name           String
   role           String   @default("Warehouse Lead")
+  permission     String   @default("staff") // access level: admin | staff | viewer
   avatarInitials String   @default("U")
   createdAt      DateTime @default(now())
 }

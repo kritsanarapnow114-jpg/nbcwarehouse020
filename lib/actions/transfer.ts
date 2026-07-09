@@ -2,6 +2,7 @@
 
 import { safeRevalidate } from "./revalidate";
 import { db } from "@/lib/db";
+import { requireWrite } from "@/lib/authz";
 import { nextDocNumber } from "@/lib/calc/docNumber";
 
 export type TransferLineInput = { lotId: string; toLocationCode: string; qty: number };
@@ -16,6 +17,7 @@ function revalidateAll() {
 }
 
 export async function confirmTransferAction(input: ConfirmTransferInput) {
+  await requireWrite();
   const docDate = new Date(input.docDate);
   const docNo = await nextDocNumber("TRF", docDate);
 

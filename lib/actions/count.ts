@@ -2,6 +2,7 @@
 
 import { safeRevalidate } from "./revalidate";
 import { db } from "@/lib/db";
+import { requireWrite } from "@/lib/authz";
 import { nextDocNumber } from "@/lib/calc/docNumber";
 import { productLabel } from "@/lib/calc/productName";
 import { Zone } from "@prisma/client";
@@ -46,6 +47,7 @@ export async function getLotsByZoneAction(pullZone: string) {
 }
 
 export async function confirmCountAction(input: ConfirmCountInput) {
+  await requireWrite();
   const docDate = new Date(input.docDate);
   const docNo = await nextDocNumber("CNT", docDate);
 

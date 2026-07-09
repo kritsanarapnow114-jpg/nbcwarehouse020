@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { requireWrite } from "@/lib/authz";
 import { buildStockCard } from "@/lib/calc/stockCard";
 import { getProductDetail } from "@/lib/views/products";
 import { productLabel } from "@/lib/calc/productName";
@@ -24,6 +25,11 @@ export async function createProductAction(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
+  try {
+    await requireWrite();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Not allowed" };
+  }
   const code = String(formData.get("code") ?? "").trim();
   const category = String(formData.get("category") ?? "") as Category;
   const nameEn = String(formData.get("nameEn") ?? "").trim();
@@ -67,6 +73,7 @@ export async function createProductAction(
 }
 
 export async function deleteProductAction(code: string) {
+  await requireWrite();
   await db.product.update({
     where: { code },
     data: { deletedAt: new Date() },
@@ -75,6 +82,7 @@ export async function deleteProductAction(code: string) {
 }
 
 export async function toggleLotQcAction(lotId: string) {
+  await requireWrite();
   const lot = await db.lot.findUnique({ where: { id: lotId } });
   if (!lot) return;
   await db.lot.update({
@@ -109,6 +117,7 @@ export async function updateLotAction(
   lotId: string,
   data: { lotNo: string; mfgDate: string; expDate: string }
 ): Promise<{ error?: string }> {
+  await requireWrite();
   const lot = await db.lot.findUnique({ where: { id: lotId } });
   if (!lot) return { error: "Lot not found" };
   const lotNo = data.lotNo.trim() || "-";
@@ -171,6 +180,7 @@ export async function updateProductAction(
     maxQty: number;
   }
 ) {
+  await requireWrite();
   if (!data.nameEn.trim() || !data.unit.trim()) {
     throw new Error("Fill in name and unit (กรอกชื่อและหน่วยให้ครบ)");
   }

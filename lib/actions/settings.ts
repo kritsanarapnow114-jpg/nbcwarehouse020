@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/authz";
 
 /** Upsert one or more app settings. An empty-string value deletes the key so
  *  it reverts to its built-in default. */
 export async function saveAppSettingsAction(entries: Record<string, string>) {
+  await requireAdmin();
   for (const [key, raw] of Object.entries(entries)) {
     const value = raw.trim();
     if (value === "") {

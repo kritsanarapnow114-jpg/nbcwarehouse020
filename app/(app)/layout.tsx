@@ -32,6 +32,7 @@ export default async function AppLayout({
         user={{
           name: session.name,
           role: session.role,
+          permission: session.permission,
           avatarInitials: session.avatarInitials,
         }}
       >

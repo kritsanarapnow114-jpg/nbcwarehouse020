@@ -5,14 +5,18 @@ import { useState } from "react";
 import { PAGE_TITLES } from "./nav";
 import { CurrencyToggleButton } from "@/components/ui/Currency";
 import { NewDocMenu } from "./NewDocMenu";
+import { canWrite } from "@/lib/permissions";
 
 export function Header({
   onMenuClick,
   subtitleOverrides,
+  permission,
 }: {
   onMenuClick?: () => void;
   subtitleOverrides?: Record<string, string>;
+  permission?: string;
 }) {
+  const writable = canWrite(permission);
   const pathname = usePathname();
   const router = useRouter();
   const [q, setQ] = useState("");
@@ -53,7 +57,13 @@ export function Header({
         />
       </form>
       <CurrencyToggleButton />
-      <NewDocMenu />
+      {writable ? (
+        <NewDocMenu />
+      ) : (
+        <span className="flex-none rounded-[9px] border border-[#e2e6ec] bg-[#f1f3f7] px-3 py-2 text-[12px] font-medium text-[#69748a]">
+          👁 ดูอย่างเดียว (read-only)
+        </span>
+      )}
     </header>
   );
 }
