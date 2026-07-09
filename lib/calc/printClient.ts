@@ -1,7 +1,90 @@
 "use client";
 
+import { FLS_LOGO, NATUREWORKS_LOGO } from "./countSheetLogos";
+
 function esc(v: string | number): string {
   return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/**
+ * Print the customer's "CYCLE COUNT WEEKLY" form: FLS + NatureWorks logos, a
+ * titled header block (repeated on every page), a compact portrait table with
+ * blank Count + Remark columns to fill in by hand, and a signature footer.
+ */
+export function printCountSheet(opts: {
+  meta?: string[];
+  showSys?: boolean;
+  /** rows: [sapCode, description, lot, location, sysQtyText] */
+  rows: [string, string, string, string, string][];
+}) {
+  const w = window.open("", "_blank", "width=1000,height=900");
+  if (!w) return;
+  const showSys = opts.showSys ?? false;
+  const meta = (opts.meta ?? []).map((m) => esc(m)).join(" &nbsp;·&nbsp; ");
+  const headCells = [
+    "No.",
+    "SAP Material Master",
+    "Material Description",
+    "Lot",
+    "Location",
+    ...(showSys ? ["System"] : []),
+    "Count (นับจริง)",
+    "Remark",
+  ];
+  const head = headCells.map((h) => `<th>${esc(h)}</th>`).join("");
+  const body = opts.rows.length
+    ? opts.rows
+        .map((r, i) => {
+          const cells = [
+            String(i + 1),
+            r[0],
+            r[1],
+            r[2],
+            r[3],
+            ...(showSys ? [r[4]] : []),
+            "", // Count — blank to write
+            "", // Remark — blank to write
+          ];
+          return `<tr>${cells
+            .map((c, ci) => `<td class="${ci >= cells.length - 2 ? "write" : ""}">${esc(c)}</td>`)
+            .join("")}</tr>`;
+        })
+        .join("")
+    : `<tr><td colspan="${headCells.length}">—</td></tr>`;
+
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>CYCLE COUNT WEEKLY</title>
+<style>
+  @page { size: portrait; margin: 8mm; }
+  * { box-sizing: border-box; }
+  body { font-family:'Aptos Narrow',Arial,sans-serif; color:#16202e; margin:0; padding:0; }
+  .hdr { display:flex; align-items:center; gap:14px; border-bottom:2px solid #16202e; padding-bottom:6px; margin-bottom:6px; }
+  .hdr img { height:42px; width:auto; }
+  .hdr .nw { height:38px; }
+  .hdr .ttl { flex:1; text-align:center; }
+  .hdr .ttl h1 { margin:0; font-size:19px; letter-spacing:1px; }
+  .hdr .ttl .m { color:#5a6675; font-size:10.5px; margin-top:2px; }
+  table { width:100%; border-collapse:collapse; }
+  thead { display:table-header-group; }
+  tr { page-break-inside:avoid; }
+  th { background:#12557e; color:#fff; border:1px solid #9fb0c3; padding:3px 5px; text-align:left; font-size:10px; }
+  td { border:1px solid #b9c2cd; padding:2px 5px; font-size:10px; }
+  td.write { min-width:70px; }
+  tbody tr { height:19px; }
+  tbody tr:nth-child(even) td { background:#f2f6f9; }
+  .sig { margin-top:22px; display:flex; justify-content:space-around; gap:30px; page-break-inside:avoid; }
+  .sig div { flex:1; max-width:30%; border-top:1px solid #333; padding-top:5px; text-align:center; font-size:10.5px; color:#3a4658; }
+</style></head><body>
+<div class="hdr">
+  <img src="${FLS_LOGO}" alt="FLS"/>
+  <div class="ttl"><h1>CYCLE COUNT WEEKLY</h1>${meta ? `<div class="m">${meta}</div>` : ""}</div>
+  <img class="nw" src="${NATUREWORKS_LOGO}" alt="NatureWorks"/>
+</div>
+<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>
+<div class="sig"><div>Counted by (ผู้นับ)</div><div>Checked by (ผู้ตรวจ)</div><div>Approved by (ผู้อนุมัติ)</div></div>
+</body></html>`);
+  w.document.close();
+  w.focus();
+  w.print();
 }
 
 /**

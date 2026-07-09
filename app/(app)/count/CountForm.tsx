@@ -9,7 +9,7 @@ import { CuteBoxPopup } from "@/components/ui/CuteBoxPopup";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { takeRedo } from "@/lib/redoTemplate";
 import { downloadExcel } from "@/lib/calc/csvClient";
-import { printTable } from "@/lib/calc/printClient";
+import { printCountSheet } from "@/lib/calc/printClient";
 import { fmtDateISO } from "@/lib/calc/date";
 
 const ZONES = [
@@ -207,30 +207,16 @@ export function CountForm({
   function handlePrint() {
     // Blank count sheet: the "Count" column is always empty (to write by hand);
     // the System (on-hand) column is optional.
-    const headers = [
-      "SAP Material Master",
-      "Material Description",
-      "Lot",
-      "Location",
-      ...(printShowSys ? ["System (ระบบ)"] : []),
-      "Count (นับจริง)",
-    ];
-    const rows: (string | number)[][] = lines.map((l) => [
-      l.productCode,
-      l.name,
-      l.lotNo,
-      l.locationCode,
-      ...(printShowSys ? [l.sysQty.toLocaleString()] : []),
-      "      ", // blank space to write the count
-    ]);
-    printTable({
-      title: "Stock Count Sheet (ใบนับสต็อก)",
-      meta: [`Pull: ${pullZone}`, `Doc date: ${docDate}`, `${rows.length} lines`],
-      headers,
-      rows,
-      // Long narrow list → portrait + compact fits far more rows per page (ประหยัดกระดาษ).
-      orientation: "portrait",
-      compact: true,
+    printCountSheet({
+      meta: [`Pull: ${pullZone}`, `Date: ${docDate}`, `${lines.length} lines`],
+      showSys: printShowSys,
+      rows: lines.map((l) => [
+        l.productCode,
+        l.name,
+        l.lotNo,
+        l.locationCode,
+        l.sysQty.toLocaleString(),
+      ]),
     });
   }
 
