@@ -8,6 +8,7 @@ export function subtitleKey(page: string) {
 // Editable pick-lists (one entry per line), managed on the Settings page.
 export const ISSUE_TO_KEY = "list.issueTo"; // Issue → "จ่ายไปที่" options
 export const OPERATORS_KEY = "list.operators"; // Transfer → "ผู้ปฏิบัติงาน" options
+export const BOM_SOURCE_KEY = "list.bomSource"; // BOM consumes materials only from these location codes (empty = anywhere)
 
 export const ISSUE_TO_DEFAULTS = [
   "PRODUCTION-AREA110",

@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { requireWrite } from "@/lib/authz";
 import { nextDocNumber } from "@/lib/calc/docNumber";
 import { fifoLots } from "@/lib/calc/fefo";
+import { getAppSetting } from "@/lib/views/settings";
+import { BOM_SOURCE_KEY, parseList } from "@/lib/settingsKeys";
 
 export type ReceiveLineInput = {
   productCode: string;
@@ -152,6 +154,7 @@ export async function confirmReceiptAction(
         include: { lines: true },
       });
       if (bom) {
+        const bomSource = parseList(await getAppSetting(BOM_SOURCE_KEY));
         const lossByBomLineId = new Map((input.bomLoss ?? []).map((bl) => [bl.bomLineId, bl.lossQty]));
         const excluded = new Set(input.excludeBomLineIds ?? []);
         for (const bomLine of bom.lines) {
@@ -166,7 +169,10 @@ export async function confirmReceiptAction(
           if (totalNeeded <= 0) continue;
 
           const materialLots = await tx.lot.findMany({
-            where: { productCode: bomLine.materialProductCode },
+            where: {
+              productCode: bomLine.materialProductCode,
+              ...(bomSource.length > 0 ? { locationCode: { in: bomSource } } : {}),
+            },
           });
           // BOM materials are consumed FIFO (oldest received first).
           const eligible = fifoLots(

@@ -2,6 +2,8 @@ import "server-only";
 import { db } from "@/lib/db";
 import { peekNextDocNumber } from "@/lib/calc/docNumber";
 import { productLabel } from "@/lib/calc/productName";
+import { getAppSetting } from "@/lib/views/settings";
+import { BOM_SOURCE_KEY, parseList } from "@/lib/settingsKeys";
 
 export async function getReceiveFormData() {
   const [products, pos, locations, lots, bomsRaw, docNo] = await Promise.all([
@@ -25,8 +27,16 @@ export async function getReceiveFormData() {
   const materialCodes = [
     ...new Set(bomsRaw.flatMap((b) => b.lines.map((l) => l.materialProductCode))),
   ];
+  // If a BOM source location is configured (e.g. the packing line), only those
+  // bins' stock is eligible to be consumed by production.
+  const bomSource = parseList(await getAppSetting(BOM_SOURCE_KEY));
   const materialLots = await db.lot.findMany({
-    where: { productCode: { in: materialCodes }, status: "OK", qty: { gt: 0 } },
+    where: {
+      productCode: { in: materialCodes },
+      status: "OK",
+      qty: { gt: 0 },
+      ...(bomSource.length > 0 ? { locationCode: { in: bomSource } } : {}),
+    },
     orderBy: [{ recvDate: "asc" }, { lotNo: "asc" }],
   });
   const lotsByCode = new Map<string, { lotNo: string; qty: number; locationCode: string }[]>();

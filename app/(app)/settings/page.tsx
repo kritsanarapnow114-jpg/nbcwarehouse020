@@ -10,7 +10,7 @@ import { UsersCard } from "./UsersCard";
 import { CountPlanCard } from "./CountPlanCard";
 import { SubtitlesCard } from "./SubtitlesCard";
 import { ListSettingsCard } from "./ListSettingsCard";
-import { ISSUE_TO_KEY, OPERATORS_KEY } from "@/lib/settingsKeys";
+import { ISSUE_TO_KEY, OPERATORS_KEY, BOM_SOURCE_KEY } from "@/lib/settingsKeys";
 
 export default async function SettingsPage() {
   const [users, settings, totalLots] = await Promise.all([
@@ -47,6 +47,7 @@ export default async function SettingsPage() {
         <ListSettingsCard
           issueTo={settings[ISSUE_TO_KEY] ?? ""}
           operators={settings[OPERATORS_KEY] ?? ""}
+          bomSource={settings[BOM_SOURCE_KEY] ?? ""}
         />
       </div>
       <div className="mt-4">
