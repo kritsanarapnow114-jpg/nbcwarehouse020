@@ -60,7 +60,8 @@ export function WarehouseMap({ racks }: { racks: Record<string, RackInfo> }) {
           <Legend color="#d24141" label="มีของหมดอายุ" />
           <Legend color="#d7dce4" label="ว่าง (empty)" />
           <Legend color="#8fcf9f" label="ประตู (door)" />
-          <Legend color="#eef3f7" label="ทางเดิน (aisle)" />
+          <Legend color="#f2c200" label="ขอบทางเดิน (เหลือง)" />
+          <Legend color="#2aa775" label="ทางเดินคน (เขียว)" />
           <div className="flex-1" />
           <span className="text-[#69748a]">
             Rack ใช้งาน <b className="font-num text-[#16202e]">{occupied}</b>/{rackBlocks.length}
@@ -82,11 +83,15 @@ export function WarehouseMap({ racks }: { racks: Record<string, RackInfo> }) {
                   top: pct(a.r, GRID_H),
                   width: pct(a.cs, GRID_W),
                   height: pct(a.rs, GRID_H),
-                  background: "#eef3f7",
+                  // Yellow lane edges (top & bottom) like painted floor markings…
+                  background: "#f7f4e3",
+                  borderTop: "2px solid #f2c200",
+                  borderBottom: "2px solid #f2c200",
                 }}
                 className="flex items-center justify-center"
               >
-                <div className="h-0 w-[92%] border-t border-dashed border-[#b6c4d2]" />
+                {/* …green pedestrian centre line */}
+                <div className="h-0 w-[94%] border-t-2 border-dashed border-[#2aa775]" />
               </div>
             ))}
 

@@ -27,22 +27,43 @@ export type RackInfo = {
 
 const norm = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
 
-/** Which rack (if any) a location code belongs to: exact match, or the rack
- *  code followed by a level suffix (L1/L2/L3, "-L1", "L2", …). */
-function rackOfLocation(locCode: string, rackCodes: string[]): string | null {
-  const n = norm(locCode);
+/** Rack codes grouped by letter prefix → the set of numbers that exist, so we can
+ *  match location codes that use ranges (B07-08), no leading zero (B7) or a level
+ *  suffix (PACA01-L2). */
+function buildPrefixIndex(rackCodes: string[]): Map<string, Set<number>> {
+  const idx = new Map<string, Set<number>>();
   for (const r of rackCodes) {
-    if (n === r) return r;
-    if (n.startsWith(r)) {
-      const rest = n.slice(r.length);
-      if (/^L?[0-9]{1,2}$/.test(rest)) return r; // level suffix
-    }
+    const m = r.match(/^([A-Z]+)(\d+)$/);
+    if (!m) continue;
+    const set = idx.get(m[1]) ?? new Set<number>();
+    set.add(parseInt(m[2], 10));
+    idx.set(m[1], set);
   }
-  return null;
+  return idx;
+}
+
+/** All racks a location code occupies. Handles: exact (B07), no leading zero
+ *  (B7), a level suffix (PACA01-L2), and ranges (B07-08 → B07 & B08). */
+function racksForLocation(locCode: string, idx: Map<string, Set<number>>): string[] {
+  // Drop a trailing level marker so it doesn't get read as a range end.
+  const cleaned = locCode.toUpperCase().replace(/[-_. ]?L\d{1,2}$/i, "");
+  const m = cleaned.match(/^([A-Z]+)[-_. ]?0*(\d+)(?:\s*-\s*(?:[A-Z]+[-_. ]?)?0*(\d+))?$/);
+  if (!m) return [];
+  const prefix = m[1];
+  const nums = idx.get(prefix);
+  if (!nums) return [];
+  const n1 = parseInt(m[2], 10);
+  const n2 = m[3] ? parseInt(m[3], 10) : n1;
+  const out: string[] = [];
+  for (let n = Math.min(n1, n2); n <= Math.max(n1, n2); n++) {
+    if (nums.has(n)) out.push(prefix + String(n).padStart(2, "0"));
+  }
+  return out;
 }
 
 export async function getRackMap(): Promise<Record<string, RackInfo>> {
   const rackCodes = MAP_BLOCKS.filter((b) => b.k === "rack").map((b) => norm(b.t));
+  const prefixIdx = buildPrefixIndex(rackCodes);
   const lots = await db.lot.findMany({
     where: { qty: { gt: 0 } },
     include: { product: true },
@@ -53,40 +74,42 @@ export async function getRackMap(): Promise<Record<string, RackInfo>> {
   const productQty: Record<string, Map<string, number>> = {};
 
   for (const l of lots) {
-    const rack = rackOfLocation(l.locationCode, rackCodes);
-    if (!rack) continue;
-    if (!map[rack]) {
-      map[rack] = {
-        code: rack,
-        lotCount: 0,
-        totalQty: 0,
-        hasQc: false,
-        hasExpired: false,
-        topProduct: null,
-        contents: [],
-      };
-      productQty[rack] = new Map();
-    }
+    const matched = racksForLocation(l.locationCode, prefixIdx);
+    if (matched.length === 0) continue;
     const expired = !!(l.expDate && l.expDate < today);
-    const info = map[rack];
-    info.lotCount++;
-    info.totalQty += l.qty;
-    if (l.status === "QC") info.hasQc = true;
-    if (expired) info.hasExpired = true;
-    info.contents.push({
-      productCode: l.product.code,
-      name: productLabel(l.product.nameEn, l.product.nameTh),
-      lotNo: l.lotNo,
-      qty: l.qty,
-      unit: l.product.unit,
-      locationCode: l.locationCode,
-      status: l.status,
-      expired,
-    });
-    productQty[rack].set(
-      l.product.code,
-      (productQty[rack].get(l.product.code) ?? 0) + l.qty
-    );
+    for (const rack of matched) {
+      if (!map[rack]) {
+        map[rack] = {
+          code: rack,
+          lotCount: 0,
+          totalQty: 0,
+          hasQc: false,
+          hasExpired: false,
+          topProduct: null,
+          contents: [],
+        };
+        productQty[rack] = new Map();
+      }
+      const info = map[rack];
+      info.lotCount++;
+      info.totalQty += l.qty;
+      if (l.status === "QC") info.hasQc = true;
+      if (expired) info.hasExpired = true;
+      info.contents.push({
+        productCode: l.product.code,
+        name: productLabel(l.product.nameEn, l.product.nameTh),
+        lotNo: l.lotNo,
+        qty: l.qty,
+        unit: l.product.unit,
+        locationCode: l.locationCode,
+        status: l.status,
+        expired,
+      });
+      productQty[rack].set(
+        l.product.code,
+        (productQty[rack].get(l.product.code) ?? 0) + l.qty
+      );
+    }
   }
 
   // Pick the highest-quantity product per rack as its headline.
