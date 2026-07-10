@@ -29,6 +29,28 @@ export function WarehouseMap({ racks }: { racks: Record<string, RackInfo> }) {
   const rackBlocks = MAP_BLOCKS.filter((b) => b.k === "rack");
   const occupied = rackBlocks.filter((b) => (racks[norm(b.t)]?.lotCount ?? 0) > 0).length;
 
+  // Derive the main walkways: horizontal lanes in the vertical gaps between
+  // banks of racks (racks that share a top row form one bank).
+  const bandMap = new Map<number, { top: number; bot: number; minC: number; maxC: number }>();
+  for (const b of rackBlocks) {
+    const g = bandMap.get(b.r) ?? { top: b.r, bot: b.r + b.rs, minC: b.c, maxC: b.c + b.cs };
+    g.bot = Math.max(g.bot, b.r + b.rs);
+    g.minC = Math.min(g.minC, b.c);
+    g.maxC = Math.max(g.maxC, b.c + b.cs);
+    bandMap.set(b.r, g);
+  }
+  const bands = [...bandMap.values()].sort((a, b) => a.top - b.top);
+  const aisles: { c: number; r: number; cs: number; rs: number }[] = [];
+  for (let i = 0; i < bands.length - 1; i++) {
+    const g1 = bands[i];
+    const g2 = bands[i + 1];
+    const gap = g2.top - g1.bot;
+    if (gap < 3) continue;
+    const minC = Math.min(g1.minC, g2.minC);
+    const maxC = Math.max(g1.maxC, g2.maxC);
+    aisles.push({ c: minC, r: g1.bot, cs: maxC - minC, rs: gap });
+  }
+
   return (
     <div className="flex flex-col gap-4 lg:flex-row">
       <div className="min-w-0 flex-1">
@@ -37,6 +59,8 @@ export function WarehouseMap({ racks }: { racks: Record<string, RackInfo> }) {
           <Legend color="#e59a2b" label="ติด QC" />
           <Legend color="#d24141" label="มีของหมดอายุ" />
           <Legend color="#d7dce4" label="ว่าง (empty)" />
+          <Legend color="#8fcf9f" label="ประตู (door)" />
+          <Legend color="#eef3f7" label="ทางเดิน (aisle)" />
           <div className="flex-1" />
           <span className="text-[#69748a]">
             Rack ใช้งาน <b className="font-num text-[#16202e]">{occupied}</b>/{rackBlocks.length}
@@ -46,8 +70,26 @@ export function WarehouseMap({ racks }: { racks: Record<string, RackInfo> }) {
         <div className="overflow-x-auto rounded-[14px] border border-[#e7ebf1] bg-white p-3 shadow-[0_1px_2px_rgba(20,30,48,.04),0_6px_18px_rgba(20,30,48,.035)]">
           <div
             className="relative"
-            style={{ width: 1460, aspectRatio: `${GRID_W} / ${GRID_H}` }}
+            style={{ width: 1600, aspectRatio: `${GRID_W} / ${GRID_H}`, background: "#f6f8fa" }}
           >
+            {/* Walkways (aisles) — light lanes with a dashed centre line */}
+            {aisles.map((a, i) => (
+              <div
+                key={`aisle${i}`}
+                style={{
+                  position: "absolute",
+                  left: pct(a.c, GRID_W),
+                  top: pct(a.r, GRID_H),
+                  width: pct(a.cs, GRID_W),
+                  height: pct(a.rs, GRID_H),
+                  background: "#eef3f7",
+                }}
+                className="flex items-center justify-center"
+              >
+                <div className="h-0 w-[92%] border-t border-dashed border-[#b6c4d2]" />
+              </div>
+            ))}
+
             {MAP_BLOCKS.map((b, i) => {
               const pos: React.CSSProperties = {
                 position: "absolute",
@@ -57,14 +99,20 @@ export function WarehouseMap({ racks }: { racks: Record<string, RackInfo> }) {
                 height: pct(b.rs, GRID_H),
               };
               if (b.k === "door") {
+                // Doors = openings in walls: a small green gap marker.
                 return (
-                  <div key={i} style={{ ...pos, background: "#8b96a6", borderRadius: 1, opacity: 0.55 }} />
+                  <div
+                    key={i}
+                    title="ประตู / ทางเข้า-ออก (door)"
+                    style={{ ...pos, background: "#8fcf9f", borderRadius: 1, opacity: 0.85 }}
+                  />
                 );
               }
               if (b.k === "rack") {
                 const info = racks[norm(b.t)];
                 const st = rackStyle(info);
                 const active = selected === norm(b.t);
+                const tall = b.rs > b.cs * 1.3; // narrow-tall rack → vertical label
                 return (
                   <button
                     key={i}
@@ -73,18 +121,26 @@ export function WarehouseMap({ racks }: { racks: Record<string, RackInfo> }) {
                     style={{
                       ...pos,
                       background: st.bg,
-                      border: `1.5px solid ${active ? "#16202e" : st.border}`,
+                      border: `1px solid ${active ? "#16202e" : st.border}`,
                       color: st.text,
-                      borderRadius: 3,
+                      borderRadius: 2,
                       overflow: "hidden",
                       cursor: "pointer",
                     }}
-                    className="flex flex-col items-center justify-center px-0.5 text-center leading-none"
+                    className="flex items-center justify-center"
                   >
-                    <span className="font-num text-[8.5px] font-bold">{b.t}</span>
-                    {info?.topProduct && (
-                      <span className="font-num mt-[1px] text-[7px] opacity-80">{info.topProduct}</span>
-                    )}
+                    <span
+                      className="font-num font-bold"
+                      style={{
+                        fontSize: 8,
+                        lineHeight: 1,
+                        writingMode: tall ? "vertical-rl" : "horizontal-tb",
+                        transform: tall ? "rotate(180deg)" : undefined,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {b.t}
+                    </span>
                   </button>
                 );
               }
