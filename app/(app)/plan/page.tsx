@@ -9,6 +9,7 @@ export default async function PlanPage() {
         packagingProducts={data.packagingProducts}
         packagingTypes={data.packagingTypes}
         schedule={data.schedule}
+        incoming={data.incoming}
         rows={data.rows}
         days={data.days}
       />

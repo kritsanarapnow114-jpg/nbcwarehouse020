@@ -15,5 +15,15 @@ export type ScheduleRow = {
   pkgTypeId: string;
 };
 
+/** A planned incoming delivery ("เรียกเข้า"): `qty` of material `code` arrives
+ *  at the warehouse on `date`. */
+export type IncomingRow = {
+  id: string;
+  date: string; // yyyy-mm-dd
+  code: string;
+  qty: number;
+};
+
 export const PKG_TYPES_KEY = "packagingTypes";
 export const SCHEDULE_KEY = "productionSchedule";
+export const INCOMING_KEY = "incomingSchedule";

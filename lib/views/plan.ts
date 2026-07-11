@@ -6,8 +6,10 @@ import { getAppSetting } from "./settings";
 import {
   PackagingType,
   ScheduleRow,
+  IncomingRow,
   PKG_TYPES_KEY,
   SCHEDULE_KEY,
+  INCOMING_KEY,
 } from "@/lib/planTypes";
 
 export type PlanProduct = { code: string; name: string; unit: string };
@@ -20,6 +22,7 @@ export type MaterialReq = {
   unit: string;
   required: number;
   onHand: number;
+  incoming: number; // total planned incoming ("เรียกเข้า")
   toOrder: number;
   pallet: number;
   shortageDate: string | null; // first day the warehouse stock runs short (yyyy-mm-dd)
@@ -47,8 +50,13 @@ export async function getSchedule(): Promise<ScheduleRow[]> {
   return Array.isArray(arr) ? arr : [];
 }
 
+export async function getIncoming(): Promise<IncomingRow[]> {
+  const arr = parseJson<IncomingRow[]>(await getAppSetting(INCOMING_KEY), []);
+  return Array.isArray(arr) ? arr : [];
+}
+
 export async function getPlanData() {
-  const [allProducts, lots, packagingTypes, schedule] = await Promise.all([
+  const [allProducts, lots, packagingTypes, schedule, incomingRows] = await Promise.all([
     db.product.findMany({
       where: { deletedAt: null },
       select: { code: true, nameEn: true, nameTh: true, unit: true, category: true, pallet: true },
@@ -56,7 +64,23 @@ export async function getPlanData() {
     db.lot.findMany({ where: { qty: { gt: 0 } }, select: { productCode: true, qty: true } }),
     getPackagingTypes(),
     getSchedule(),
+    getIncoming(),
   ]);
+
+  // Planned incoming ("เรียกเข้า") per material, by date + total.
+  const incomingByDate = new Map<string, Map<string, number>>();
+  const incomingTotal = new Map<string, number>();
+  for (const r of incomingRows) {
+    const qty = Number(r.qty) || 0;
+    if (!r.code || qty <= 0) continue;
+    incomingTotal.set(r.code, (incomingTotal.get(r.code) ?? 0) + qty);
+    let m = incomingByDate.get(r.code);
+    if (!m) {
+      m = new Map();
+      incomingByDate.set(r.code, m);
+    }
+    m.set(r.date, (m.get(r.date) ?? 0) + qty);
+  }
 
   const prodInfo = new Map(allProducts.map((p) => [p.code, p]));
   const onHand = new Map<string, number>();
@@ -109,22 +133,23 @@ export async function getPlanData() {
     if (!info) continue;
     const oh = onHand.get(code) ?? 0;
 
-    // Walk the production days in order; the first day the running balance goes
-    // negative is when the warehouse would run out.
+    // Walk the days in order (both consumption and planned incoming), so the
+    // first day the running balance goes negative is when stock runs out.
+    const inc = incomingByDate.get(code);
+    const incTotal = incomingTotal.get(code) ?? 0;
     let shortageDate: string | null = null;
-    const byDate = reqByDate.get(code);
-    if (byDate) {
-      let running = oh;
-      for (const d of [...byDate.keys()].sort()) {
-        running -= byDate.get(d) ?? 0;
-        if (running < 0 && !shortageDate) {
-          shortageDate = d;
-          break;
-        }
+    const byDate = reqByDate.get(code) ?? new Map<string, number>();
+    const allDates = [...new Set([...byDate.keys(), ...(inc ? inc.keys() : [])])].sort();
+    let running = oh;
+    for (const d of allDates) {
+      running += (inc?.get(d) ?? 0) - (byDate.get(d) ?? 0);
+      if (running < 0 && !shortageDate) {
+        shortageDate = d;
+        break;
       }
     }
 
-    const net = required - oh; // warehouse stock only — POs are ignored
+    const net = required - oh - incTotal; // warehouse stock + planned incoming; POs ignored
     rows.push({
       code,
       name: productLabel(info.nameEn, info.nameTh),
@@ -133,6 +158,7 @@ export async function getPlanData() {
       unit: info.unit,
       required: Math.round(required),
       onHand: oh,
+      incoming: incTotal,
       toOrder: net > 0 ? roundUp(net, info.pallet) : 0,
       pallet: info.pallet,
       shortageDate,
@@ -148,5 +174,5 @@ export async function getPlanData() {
     .map(([date, v]) => ({ date, qty: v.qty, lines: v.lines }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  return { packagingProducts, packagingTypes, schedule, rows, days };
+  return { packagingProducts, packagingTypes, schedule, incoming: incomingRows, rows, days };
 }

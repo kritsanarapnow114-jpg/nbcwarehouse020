@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireWrite } from "@/lib/authz";
-import { PackagingType, ScheduleRow, PKG_TYPES_KEY, SCHEDULE_KEY } from "@/lib/planTypes";
+import { PackagingType, ScheduleRow, IncomingRow, PKG_TYPES_KEY, SCHEDULE_KEY, INCOMING_KEY } from "@/lib/planTypes";
 
 async function saveSetting(key: string, value: string) {
   await db.appSetting.upsert({
@@ -48,5 +48,18 @@ export async function saveScheduleAction(rows: ScheduleRow[]): Promise<{ error?:
       pkgTypeId: r.pkgTypeId ?? "",
     }));
   await saveSetting(SCHEDULE_KEY, JSON.stringify(clean));
+  return {};
+}
+
+export async function saveIncomingAction(rows: IncomingRow[]): Promise<{ error?: string }> {
+  try {
+    await requireWrite();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Not allowed" };
+  }
+  const clean = rows
+    .filter((r) => r.date && r.code && Number(r.qty) > 0)
+    .map((r) => ({ id: r.id, date: r.date, code: r.code, qty: Number(r.qty) }));
+  await saveSetting(INCOMING_KEY, JSON.stringify(clean));
   return {};
 }

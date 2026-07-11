@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MaterialReq, PlanProduct, DayTotal } from "@/lib/views/plan";
-import { PackagingType, ScheduleRow } from "@/lib/planTypes";
-import { savePackagingTypesAction, saveScheduleAction } from "@/lib/actions/plan";
+import { PackagingType, ScheduleRow, IncomingRow } from "@/lib/planTypes";
+import { savePackagingTypesAction, saveScheduleAction, saveIncomingAction } from "@/lib/actions/plan";
 import { buttonClass } from "@/components/ui/Button";
 import { showToast } from "@/components/ui/Toast";
 import { downloadExcel } from "@/lib/calc/csvClient";
@@ -16,12 +16,14 @@ export function PlanForm({
   packagingProducts,
   packagingTypes,
   schedule,
+  incoming,
   rows,
   days,
 }: {
   packagingProducts: PlanProduct[];
   packagingTypes: PackagingType[];
   schedule: ScheduleRow[];
+  incoming: IncomingRow[];
   rows: MaterialReq[];
   days: DayTotal[];
 }) {
@@ -95,6 +97,30 @@ export function PlanForm({
     setSched((s) => s.filter((r) => r.id !== id));
   }
 
+  // ---- Incoming ("เรียกเข้า") ----
+  const [inc, setInc] = useState<IncomingRow[]>(incoming);
+  const [savingI, setSavingI] = useState(false);
+  async function saveIncoming() {
+    setSavingI(true);
+    const res = await saveIncomingAction(inc);
+    setSavingI(false);
+    if (res.error) return showToast(res.error);
+    showToast("บันทึกแผนของเข้าแล้ว — คำนวณใหม่");
+    router.refresh();
+  }
+  function addInc() {
+    setInc((s) => [
+      ...s,
+      { id: uid(), date: fmtDateISO(new Date()), code: packagingProducts[0]?.code ?? "", qty: 0 },
+    ]);
+  }
+  function setIncRow(id: string, patch: Partial<IncomingRow>) {
+    setInc((s) => s.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  }
+  function delInc(id: string) {
+    setInc((s) => s.filter((r) => r.id !== id));
+  }
+
   const [leadDays, setLeadDays] = useState(1);
   const shown = onlyPkg ? rows.filter((r) => r.category === "PACKAGING") : rows;
   const toOrderCount = rows.filter((r) => r.toOrder > 0).length;
@@ -123,8 +149,8 @@ export function PlanForm({
     downloadExcel(
       "packaging-plan.xls",
       "Order Plan",
-      ["SAP Material Master", "Material Description", "Category", "Required", "OnHand", "ToOrder", "NeedDate", "OrderBy", "Unit"],
-      shown.map((r) => [r.code, r.name, r.categoryLabel, r.required, r.onHand, r.toOrder, shortStr(r.shortageDate), orderByStr(r.shortageDate), r.unit])
+      ["SAP Material Master", "Material Description", "Category", "Required", "OnHand", "Incoming", "ToOrder", "NeedDate", "OrderBy", "Unit"],
+      shown.map((r) => [r.code, r.name, r.categoryLabel, r.required, r.onHand, r.incoming, r.toOrder, shortStr(r.shortageDate), orderByStr(r.shortageDate), r.unit])
     );
   }
 
@@ -271,6 +297,75 @@ export function PlanForm({
         )}
       </Card>
 
+      {/* 2b) Incoming schedule */}
+      <Card>
+        <Header
+          title="แผนของเข้า / เรียกเข้า (Incoming) — วันไหน ของอะไร เข้ามาเท่าไร"
+          action={
+            <div className="flex gap-2">
+              <button onClick={addInc} className={buttonClass("secondary")}>＋ เพิ่มของเข้า</button>
+              <button onClick={saveIncoming} disabled={savingI} className={buttonClass("primary")}>
+                {savingI ? "Saving…" : "บันทึก & คำนวณ"}
+              </button>
+            </div>
+          }
+        />
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] border-collapse text-[13px]">
+            <thead>
+              <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
+                <th className="p-[9px_14px] text-[11.5px] font-medium">วันที่เข้า (Date)</th>
+                <th className="p-[9px_14px] text-[11.5px] font-medium">บรรจุภัณฑ์ (Item)</th>
+                <th className="p-[9px_14px] text-right text-[11.5px] font-medium">จำนวนเข้า (Qty)</th>
+                <th className="w-8 p-[9px_14px]"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {inc.map((r) => (
+                <tr key={r.id} className="border-t border-[#eef1f5]">
+                  <td className="p-[8px_14px]">
+                    <input
+                      type="date"
+                      value={r.date}
+                      onChange={(e) => setIncRow(r.id, { date: e.target.value })}
+                      className="font-num rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
+                    />
+                  </td>
+                  <td className="p-[8px_14px]">
+                    <select
+                      value={r.code}
+                      onChange={(e) => setIncRow(r.id, { code: e.target.value })}
+                      className="font-num w-full min-w-[200px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
+                    >
+                      {packagingProducts.map((pp) => (
+                        <option key={pp.code} value={pp.code}>{pp.code} · {pp.name}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="p-[8px_14px] text-right">
+                    <input
+                      value={String(r.qty)}
+                      onChange={(e) => setIncRow(r.id, { qty: Number(e.target.value) || 0 })}
+                      className="font-num w-[100px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-right text-[13px]"
+                    />
+                  </td>
+                  <td className="p-[8px_14px] text-center">
+                    <button onClick={() => delInc(r.id)} className="text-[15px] text-[#c2606f]">×</button>
+                  </td>
+                </tr>
+              ))}
+              {inc.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="p-6 text-center text-[#9aa4b4]">
+                    ถ้ามีของที่สั่ง/เรียกเข้ามาแล้ว ใส่ตรงนี้ ระบบจะเอาไปเติมสต็อกตามวันที่
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
       {/* 3) Aggregate order plan */}
       <Card>
         <div className="flex flex-wrap items-center gap-3 border-b border-[#eef1f5] p-[14px_20px]">
@@ -307,6 +402,7 @@ export function PlanForm({
                 <th className="p-[10px_16px] text-[11.5px] font-medium">หมวด</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">ต้องใช้</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">คงเหลือในคลัง</th>
+                <th className="p-[10px_16px] text-right text-[11.5px] font-medium">ของเข้า</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">ต้องสั่ง</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">วันจะขาด</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">ควรสั่งภายใน</th>
@@ -327,6 +423,9 @@ export function PlanForm({
                   </td>
                   <td className="font-num p-[10px_16px] text-right">{r.required.toLocaleString()} {r.unit}</td>
                   <td className="font-num p-[10px_16px] text-right text-[#69748a]">{r.onHand.toLocaleString()}</td>
+                  <td className="font-num p-[10px_16px] text-right text-[#0e8ba1]">
+                    {r.incoming > 0 ? `+${r.incoming.toLocaleString()}` : "—"}
+                  </td>
                   <td className="p-[10px_16px] text-right">
                     {r.toOrder > 0 ? (
                       <span className="font-num rounded-[6px] bg-[#e6f5ee] px-2 py-0.5 text-[13px] font-bold text-[#0e8a4f]">
@@ -346,7 +445,7 @@ export function PlanForm({
               ))}
               {shown.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-[#9aa4b4]">
+                  <td colSpan={9} className="p-6 text-center text-[#9aa4b4]">
                     ใส่แผนผลิตด้านบนแล้วกด &quot;บันทึก &amp; คำนวณ&quot;
                   </td>
                 </tr>
