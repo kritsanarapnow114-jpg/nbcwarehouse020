@@ -40,11 +40,10 @@ export async function saveScheduleAction(rows: ScheduleRow[]): Promise<{ error?:
     return { error: e instanceof Error ? e.message : "Not allowed" };
   }
   const clean = rows
-    .filter((r) => r.date && r.fgCode && Number(r.qty) > 0)
+    .filter((r) => r.date && Number(r.qty) > 0)
     .map((r) => ({
       id: r.id,
       date: r.date,
-      fgCode: r.fgCode,
       qty: Number(r.qty),
       pkgTypeId: r.pkgTypeId ?? "",
     }));

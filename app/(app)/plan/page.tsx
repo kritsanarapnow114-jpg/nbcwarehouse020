@@ -6,7 +6,6 @@ export default async function PlanPage() {
   return (
     <div className="max-w-[1200px] p-[22px_26px]">
       <PlanForm
-        fgs={data.fgs}
         packagingProducts={data.packagingProducts}
         packagingTypes={data.packagingTypes}
         schedule={data.schedule}

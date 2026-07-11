@@ -13,14 +13,12 @@ import { fmtDateISO, fmtDateBE } from "@/lib/calc/date";
 const uid = () => Math.random().toString(36).slice(2, 9);
 
 export function PlanForm({
-  fgs,
   packagingProducts,
   packagingTypes,
   schedule,
   rows,
   days,
 }: {
-  fgs: PlanProduct[];
   packagingProducts: PlanProduct[];
   packagingTypes: PackagingType[];
   schedule: ScheduleRow[];
@@ -87,7 +85,7 @@ export function PlanForm({
   function addRow() {
     setSched((s) => [
       ...s,
-      { id: uid(), date: fmtDateISO(new Date()), fgCode: fgs[0]?.code ?? "", qty: 0, pkgTypeId: types[0]?.id ?? "" },
+      { id: uid(), date: fmtDateISO(new Date()), qty: 0, pkgTypeId: types[0]?.id ?? "" },
     ]);
   }
   function setRow(id: string, patch: Partial<ScheduleRow>) {
@@ -97,15 +95,36 @@ export function PlanForm({
     setSched((s) => s.filter((r) => r.id !== id));
   }
 
+  const [leadDays, setLeadDays] = useState(1);
   const shown = onlyPkg ? rows.filter((r) => r.category === "PACKAGING") : rows;
   const toOrderCount = rows.filter((r) => r.toOrder > 0).length;
 
-  function handleExport() {
+  // Order-by date = the day stock runs short, minus the lead time.
+  function orderByStr(shortage: string | null): string {
+    if (!shortage) return "—";
+    const d = new Date(shortage);
+    d.setDate(d.getDate() - leadDays);
+    return fmtDateBE(d);
+  }
+  const shortStr = (s: string | null) => (s ? fmtDateBE(new Date(s)) : "—");
+
+  // Ready-to-use order list: only items that need ordering.
+  function handleOrderList() {
+    const toOrder = rows.filter((r) => r.toOrder > 0);
+    downloadExcel(
+      "order-list.xls",
+      "Order List",
+      ["SAP Material Master", "Material Description", "หน่วย (Unit)", "จำนวนที่ต้องสั่ง (Order Qty)", "วันจะขาด (Need date)", "ควรสั่งภายใน (Order by)"],
+      toOrder.map((r) => [r.code, r.name, r.unit, r.toOrder, shortStr(r.shortageDate), orderByStr(r.shortageDate)])
+    );
+  }
+
+  function handleExportAll() {
     downloadExcel(
       "packaging-plan.xls",
       "Order Plan",
-      ["SAP Material Master", "Material Description", "Category", "Required", "OnHand", "IncomingPO", "ToOrder", "Unit"],
-      shown.map((r) => [r.code, r.name, r.categoryLabel, r.required, r.onHand, r.incoming, r.toOrder, r.unit])
+      ["SAP Material Master", "Material Description", "Category", "Required", "OnHand", "ToOrder", "NeedDate", "OrderBy", "Unit"],
+      shown.map((r) => [r.code, r.name, r.categoryLabel, r.required, r.onHand, r.toOrder, shortStr(r.shortageDate), orderByStr(r.shortageDate), r.unit])
     );
   }
 
@@ -175,10 +194,10 @@ export function PlanForm({
       {/* 2) Daily production schedule */}
       <Card>
         <Header
-          title="แผนผลิตรายวัน (Production schedule) — ใส่วันที่ · สินค้า · จำนวน · แบบบรรจุภัณฑ์"
+          title="แผนผลิตรายวัน (Production schedule) — ใส่วันที่ · จำนวน · แบบบรรจุภัณฑ์"
           action={
             <div className="flex gap-2">
-              <button onClick={addRow} disabled={fgs.length === 0} className={buttonClass("secondary")}>＋ เพิ่มวัน</button>
+              <button onClick={addRow} className={buttonClass("secondary")}>＋ เพิ่มวัน</button>
               <button onClick={saveSchedule} disabled={savingS} className={buttonClass("primary")}>
                 {savingS ? "Saving…" : "บันทึก & คำนวณ"}
               </button>
@@ -190,9 +209,8 @@ export function PlanForm({
             <thead>
               <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
                 <th className="p-[9px_14px] text-[11.5px] font-medium">วันที่ (Date)</th>
-                <th className="p-[9px_14px] text-[11.5px] font-medium">สินค้าที่ผลิต (Finished good)</th>
-                <th className="p-[9px_14px] text-right text-[11.5px] font-medium">จำนวน (Qty)</th>
-                <th className="p-[9px_14px] text-[11.5px] font-medium">แบบบรรจุภัณฑ์</th>
+                <th className="p-[9px_14px] text-[11.5px] font-medium">แบบบรรจุภัณฑ์ (Box / Supersack)</th>
+                <th className="p-[9px_14px] text-right text-[11.5px] font-medium">จำนวนที่ผลิต (Qty)</th>
                 <th className="w-8 p-[9px_14px]"></th>
               </tr>
             </thead>
@@ -209,12 +227,13 @@ export function PlanForm({
                   </td>
                   <td className="p-[8px_14px]">
                     <select
-                      value={r.fgCode}
-                      onChange={(e) => setRow(r.id, { fgCode: e.target.value })}
-                      className="font-num w-full min-w-[200px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
+                      value={r.pkgTypeId}
+                      onChange={(e) => setRow(r.id, { pkgTypeId: e.target.value })}
+                      className="w-full min-w-[160px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
                     >
-                      {fgs.map((f) => (
-                        <option key={f.code} value={f.code}>{f.code} · {f.name}</option>
+                      <option value="">— เลือกแบบ —</option>
+                      {types.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
                       ))}
                     </select>
                   </td>
@@ -222,20 +241,8 @@ export function PlanForm({
                     <input
                       value={String(r.qty)}
                       onChange={(e) => setRow(r.id, { qty: Number(e.target.value) || 0 })}
-                      className="font-num w-[90px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-right text-[13px]"
+                      className="font-num w-[100px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-right text-[13px]"
                     />
-                  </td>
-                  <td className="p-[8px_14px]">
-                    <select
-                      value={r.pkgTypeId}
-                      onChange={(e) => setRow(r.id, { pkgTypeId: e.target.value })}
-                      className="w-full min-w-[120px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
-                    >
-                      <option value="">— ไม่ระบุ —</option>
-                      {types.map((t) => (
-                        <option key={t.id} value={t.id}>{t.name}</option>
-                      ))}
-                    </select>
                   </td>
                   <td className="p-[8px_14px] text-center">
                     <button onClick={() => delRow(r.id)} className="text-[15px] text-[#c2606f]">×</button>
@@ -244,7 +251,7 @@ export function PlanForm({
               ))}
               {sched.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-[#9aa4b4]">
+                  <td colSpan={4} className="p-6 text-center text-[#9aa4b4]">
                     กด &quot;＋ เพิ่มวัน&quot; เพื่อใส่แผนผลิตรายวัน
                   </td>
                 </tr>
@@ -268,16 +275,27 @@ export function PlanForm({
       <Card>
         <div className="flex flex-wrap items-center gap-3 border-b border-[#eef1f5] p-[14px_20px]">
           <div className="text-[14px] font-semibold">
-            รวมทั้งแผน · ต้องสั่งซื้อ —{" "}
+            เทียบของในคลัง · ต้องสั่งซื้อ —{" "}
             <span className="text-[#0e8ba1]">{toOrderCount}</span> รายการต้องสั่งเพิ่ม
           </div>
+          <label className="flex items-center gap-1.5 text-[12px] text-[#3a4658]">
+            Lead time (วัน)
+            <input
+              value={String(leadDays)}
+              onChange={(e) => setLeadDays(Math.max(0, Number(e.target.value) || 0))}
+              className="font-num w-[52px] rounded-[7px] border border-[#d7dce4] px-2 py-1 text-right text-[12.5px]"
+            />
+          </label>
           <label className="flex items-center gap-1.5 text-[12px] text-[#69748a]">
             <input type="checkbox" checked={onlyPkg} onChange={(e) => setOnlyPkg(e.target.checked)} />
             เฉพาะบรรจุภัณฑ์
           </label>
           <div className="flex-1" />
-          <button onClick={handleExport} className="flex items-center gap-1.5 rounded-[8px] border border-[#16a6bf] bg-[#e6f5fa] px-3.5 py-2 text-[12.5px] font-semibold text-[#0c7f93]">
-            ⤓ Export Excel
+          <button onClick={handleOrderList} className="flex items-center gap-1.5 rounded-[8px] bg-[#0e8a4f] px-3.5 py-2 text-[12.5px] font-semibold text-white">
+            ⤓ ใบสั่งของ (order list)
+          </button>
+          <button onClick={handleExportAll} className="flex items-center gap-1.5 rounded-[8px] border border-[#16a6bf] bg-[#e6f5fa] px-3.5 py-2 text-[12.5px] font-semibold text-[#0c7f93]">
+            ⤓ ทั้งหมด
           </button>
         </div>
         <div className="overflow-x-auto">
@@ -288,9 +306,10 @@ export function PlanForm({
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Material Description</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">หมวด</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">ต้องใช้</th>
-                <th className="p-[10px_16px] text-right text-[11.5px] font-medium">คงเหลือ</th>
-                <th className="p-[10px_16px] text-right text-[11.5px] font-medium">PO ค้าง</th>
+                <th className="p-[10px_16px] text-right text-[11.5px] font-medium">คงเหลือในคลัง</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">ต้องสั่ง</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">วันจะขาด</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">ควรสั่งภายใน</th>
               </tr>
             </thead>
             <tbody>
@@ -308,7 +327,6 @@ export function PlanForm({
                   </td>
                   <td className="font-num p-[10px_16px] text-right">{r.required.toLocaleString()} {r.unit}</td>
                   <td className="font-num p-[10px_16px] text-right text-[#69748a]">{r.onHand.toLocaleString()}</td>
-                  <td className="font-num p-[10px_16px] text-right text-[#69748a]">{r.incoming.toLocaleString()}</td>
                   <td className="p-[10px_16px] text-right">
                     {r.toOrder > 0 ? (
                       <span className="font-num rounded-[6px] bg-[#e6f5ee] px-2 py-0.5 text-[13px] font-bold text-[#0e8a4f]">
@@ -318,11 +336,17 @@ export function PlanForm({
                       <span className="text-[12px] text-[#9aa4b4]">พอ</span>
                     )}
                   </td>
+                  <td className="font-num p-[10px_16px] text-[12px]" style={{ color: r.shortageDate ? "#c0453f" : "#9aa4b4" }}>
+                    {shortStr(r.shortageDate)}
+                  </td>
+                  <td className="font-num p-[10px_16px] text-[12px] font-semibold" style={{ color: r.shortageDate ? "#b5790f" : "#9aa4b4" }}>
+                    {orderByStr(r.shortageDate)}
+                  </td>
                 </tr>
               ))}
               {shown.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-6 text-center text-[#9aa4b4]">
+                  <td colSpan={8} className="p-6 text-center text-[#9aa4b4]">
                     ใส่แผนผลิตด้านบนแล้วกด &quot;บันทึก &amp; คำนวณ&quot;
                   </td>
                 </tr>

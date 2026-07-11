@@ -20,9 +20,9 @@ export type MaterialReq = {
   unit: string;
   required: number;
   onHand: number;
-  incoming: number;
   toOrder: number;
   pallet: number;
+  shortageDate: string | null; // first day the warehouse stock runs short (yyyy-mm-dd)
 };
 
 export type DayTotal = { date: string; qty: number; lines: number };
@@ -48,19 +48,12 @@ export async function getSchedule(): Promise<ScheduleRow[]> {
 }
 
 export async function getPlanData() {
-  const [boms, allProducts, lots, poLines, packagingTypes, schedule] = await Promise.all([
-    db.bom.findMany({
-      include: { lines: { include: { materialProduct: true } }, finishedProduct: true },
-    }),
+  const [allProducts, lots, packagingTypes, schedule] = await Promise.all([
     db.product.findMany({
       where: { deletedAt: null },
       select: { code: true, nameEn: true, nameTh: true, unit: true, category: true, pallet: true },
     }),
     db.lot.findMany({ where: { qty: { gt: 0 } }, select: { productCode: true, qty: true } }),
-    db.purchaseOrderLine.findMany({
-      where: { po: { status: { not: "COMPLETE" } } },
-      select: { productCode: true, ordered: true, received: true },
-    }),
     getPackagingTypes(),
     getSchedule(),
   ]);
@@ -68,29 +61,27 @@ export async function getPlanData() {
   const prodInfo = new Map(allProducts.map((p) => [p.code, p]));
   const onHand = new Map<string, number>();
   for (const l of lots) onHand.set(l.productCode, (onHand.get(l.productCode) ?? 0) + l.qty);
-  const incoming = new Map<string, number>();
-  for (const l of poLines)
-    incoming.set(l.productCode, (incoming.get(l.productCode) ?? 0) + Math.max(0, l.ordered - l.received));
-
-  const fgs: PlanProduct[] = boms
-    .map((b) => ({
-      code: b.finishedProductCode,
-      name: productLabel(b.finishedProduct.nameEn, b.finishedProduct.nameTh),
-      unit: b.finishedProduct.unit,
-    }))
-    .sort((a, b) => a.code.localeCompare(b.code));
 
   const packagingProducts: PlanProduct[] = allProducts
     .filter((p) => p.category === "PACKAGING")
     .map((p) => ({ code: p.code, name: productLabel(p.nameEn, p.nameTh), unit: p.unit }))
     .sort((a, b) => a.code.localeCompare(b.code));
 
-  const bomByFg = new Map(boms.map((b) => [b.finishedProductCode, b]));
   const pkgById = new Map(packagingTypes.map((t) => [t.id, t]));
 
-  // Aggregate material requirements across the whole schedule.
-  const req = new Map<string, number>();
-  const addReq = (code: string, qty: number) => req.set(code, (req.get(code) ?? 0) + qty);
+  // Aggregate material requirements across the schedule, tracked per production
+  // date so we can work out which day the warehouse stock runs short.
+  const reqTotal = new Map<string, number>();
+  const reqByDate = new Map<string, Map<string, number>>();
+  const addReq = (code: string, date: string, qty: number) => {
+    reqTotal.set(code, (reqTotal.get(code) ?? 0) + qty);
+    let m = reqByDate.get(code);
+    if (!m) {
+      m = new Map();
+      reqByDate.set(code, m);
+    }
+    m.set(date, (m.get(date) ?? 0) + qty);
+  };
   const dayTotals = new Map<string, { qty: number; lines: number }>();
 
   for (const row of schedule) {
@@ -101,34 +92,39 @@ export async function getPlanData() {
     dt.lines += 1;
     dayTotals.set(row.date, dt);
 
-    // Raw materials from the finished good's BOM (packaging handled separately).
-    const bom = bomByFg.get(row.fgCode);
-    if (bom) {
-      for (const line of bom.lines) {
-        if (line.materialProduct.category === "PACKAGING") continue;
-        if (line.qtyPerUnit <= 0) continue;
-        const perQty = line.perQty > 0 ? line.perQty : 1;
-        addReq(line.materialProductCode, (qty / perQty) * line.qtyPerUnit);
-      }
-    }
-    // Packaging from the chosen packaging type.
+    // Packaging needed = the chosen type's items × units produced that day.
     const pkg = pkgById.get(row.pkgTypeId);
     if (pkg) {
       for (const pl of pkg.lines) {
         if (!pl.code || pl.qtyPerUnit <= 0) continue;
-        addReq(pl.code, qty * pl.qtyPerUnit);
+        addReq(pl.code, row.date, qty * pl.qtyPerUnit);
       }
     }
   }
 
   const roundUp = (v: number, pack: number) => (pack > 0 ? Math.ceil(v / pack) * pack : Math.ceil(v));
   const rows: MaterialReq[] = [];
-  for (const [code, required] of req) {
+  for (const [code, required] of reqTotal) {
     const info = prodInfo.get(code);
     if (!info) continue;
     const oh = onHand.get(code) ?? 0;
-    const inc = incoming.get(code) ?? 0;
-    const net = required - oh - inc;
+
+    // Walk the production days in order; the first day the running balance goes
+    // negative is when the warehouse would run out.
+    let shortageDate: string | null = null;
+    const byDate = reqByDate.get(code);
+    if (byDate) {
+      let running = oh;
+      for (const d of [...byDate.keys()].sort()) {
+        running -= byDate.get(d) ?? 0;
+        if (running < 0 && !shortageDate) {
+          shortageDate = d;
+          break;
+        }
+      }
+    }
+
+    const net = required - oh; // warehouse stock only — POs are ignored
     rows.push({
       code,
       name: productLabel(info.nameEn, info.nameTh),
@@ -137,9 +133,9 @@ export async function getPlanData() {
       unit: info.unit,
       required: Math.round(required),
       onHand: oh,
-      incoming: inc,
       toOrder: net > 0 ? roundUp(net, info.pallet) : 0,
       pallet: info.pallet,
+      shortageDate,
     });
   }
   rows.sort((a, b) => {
@@ -152,5 +148,5 @@ export async function getPlanData() {
     .map(([date, v]) => ({ date, qty: v.qty, lines: v.lines }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  return { fgs, packagingProducts, packagingTypes, schedule, rows, days };
+  return { packagingProducts, packagingTypes, schedule, rows, days };
 }
