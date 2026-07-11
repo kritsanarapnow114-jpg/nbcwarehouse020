@@ -3,10 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireWrite } from "@/lib/authz";
-import { PLAN_KEY } from "@/lib/views/plan";
+import { PLAN_KEY, PlanPeriod, getFullPlan } from "@/lib/views/plan";
 
-/** Save the production plan (finished-good code → planned quantity). */
-export async function savePlanAction(plan: Record<string, number>): Promise<{ error?: string }> {
+/** Save the production plan for one period (day/month/year). */
+export async function savePlanAction(
+  period: PlanPeriod,
+  plan: Record<string, number>
+): Promise<{ error?: string }> {
   try {
     await requireWrite();
   } catch (e) {
@@ -18,7 +21,9 @@ export async function savePlanAction(plan: Record<string, number>): Promise<{ er
     const n = Number(v);
     if (Number.isFinite(n) && n > 0) clean[k] = n;
   }
-  const value = JSON.stringify(clean);
+  const full = await getFullPlan();
+  full[period] = clean;
+  const value = JSON.stringify(full);
   await db.appSetting.upsert({
     where: { key: PLAN_KEY },
     update: { value },

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PlanFG, MaterialReq } from "@/lib/views/plan";
+import { PlanPeriod, PLAN_PERIODS, PERIOD_WORD } from "@/lib/planPeriods";
 import { savePlanAction } from "@/lib/actions/plan";
 import { buttonClass } from "@/components/ui/Button";
 import { showToast } from "@/components/ui/Toast";
@@ -15,7 +17,15 @@ const CAT_COLOR: Record<string, string> = {
   SPARE_PARTS: "#7b6ef0",
 };
 
-export function PlanForm({ fgs, rows }: { fgs: PlanFG[]; rows: MaterialReq[] }) {
+export function PlanForm({
+  fgs,
+  rows,
+  period,
+}: {
+  fgs: PlanFG[];
+  rows: MaterialReq[];
+  period: PlanPeriod;
+}) {
   const router = useRouter();
   const [plan, setPlan] = useState<Record<string, string>>(() => {
     const p: Record<string, string> = {};
@@ -29,7 +39,7 @@ export function PlanForm({ fgs, rows }: { fgs: PlanFG[]; rows: MaterialReq[] }) 
     setSaving(true);
     const payload: Record<string, number> = {};
     for (const [k, v] of Object.entries(plan)) payload[k] = Number(v) || 0;
-    const res = await savePlanAction(payload);
+    const res = await savePlanAction(period, payload);
     setSaving(false);
     if (res.error) {
       showToast(res.error);
@@ -53,10 +63,30 @@ export function PlanForm({ fgs, rows }: { fgs: PlanFG[]; rows: MaterialReq[] }) 
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Period tabs */}
+      <div className="flex flex-wrap items-center gap-2.5">
+        {PLAN_PERIODS.map((t) => (
+          <Link
+            key={t.value}
+            href={`/plan?period=${t.value}`}
+            className={`rounded-full px-4 py-1.5 text-[12.5px] font-medium ${
+              period === t.value
+                ? "bg-[#12a2bb] text-white"
+                : "border border-[#e2e6ec] bg-white text-[#3a4658]"
+            }`}
+          >
+            {t.label}
+          </Link>
+        ))}
+        <span className="text-[12px] text-[#9aa4b4]">— แผนแต่ละช่วงเก็บแยกกัน</span>
+      </div>
+
       {/* Production plan input */}
       <div className="overflow-hidden rounded-[14px] border border-[#e7ebf1] bg-white shadow-[0_1px_2px_rgba(20,30,48,.04),0_6px_18px_rgba(20,30,48,.035)]">
         <div className="flex items-center gap-3 border-b border-[#eef1f5] p-[16px_20px]">
-          <div className="flex-1 text-[14px] font-semibold">แผนการผลิต (Production plan) — จะผลิตอะไรกี่หน่วย</div>
+          <div className="flex-1 text-[14px] font-semibold">
+            แผนการผลิต ({PERIOD_WORD[period]}) — จะผลิตอะไรกี่หน่วย
+          </div>
           <button onClick={handleSave} disabled={saving} className={buttonClass("primary")}>
             {saving ? "Saving…" : "บันทึก & คำนวณ"}
           </button>
@@ -90,7 +120,7 @@ export function PlanForm({ fgs, rows }: { fgs: PlanFG[]; rows: MaterialReq[] }) 
       <div className="overflow-hidden rounded-[14px] border border-[#e7ebf1] bg-white shadow-[0_1px_2px_rgba(20,30,48,.04),0_6px_18px_rgba(20,30,48,.035)]">
         <div className="flex flex-wrap items-center gap-3 border-b border-[#eef1f5] p-[14px_20px]">
           <div className="text-[14px] font-semibold">
-            ต้องสั่งซื้อ (Order plan) —{" "}
+            ต้องสั่งซื้อ ({PERIOD_WORD[period]}) —{" "}
             <span className="text-[#0e8ba1]">{toOrderCount}</span> รายการต้องสั่งเพิ่ม
           </div>
           <label className="flex items-center gap-1.5 text-[12px] text-[#69748a]">

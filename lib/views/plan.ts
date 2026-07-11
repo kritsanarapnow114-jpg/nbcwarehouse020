@@ -3,8 +3,11 @@ import { db } from "@/lib/db";
 import { productLabel } from "@/lib/calc/productName";
 import { CATEGORY_LABEL } from "@/components/ui/tone";
 import { getAppSetting } from "./settings";
+import { PlanPeriod } from "@/lib/planPeriods";
 
-export const PLAN_KEY = "productionPlan"; // JSON: { [finishedGoodCode]: plannedQty }
+export const PLAN_KEY = "productionPlan"; // JSON: { day|month|year: { [fgCode]: qty } }
+
+export type { PlanPeriod };
 
 export type PlanFG = { code: string; name: string; unit: string; qty: number };
 export type MaterialReq = {
@@ -20,15 +23,31 @@ export type MaterialReq = {
   pallet: number;
 };
 
-export async function getProductionPlan(): Promise<Record<string, number>> {
+type FullPlan = Record<PlanPeriod, Record<string, number>>;
+
+export async function getFullPlan(): Promise<FullPlan> {
+  const empty: FullPlan = { day: {}, month: {}, year: {} };
   const raw = await getAppSetting(PLAN_KEY);
-  if (!raw) return {};
+  if (!raw) return empty;
   try {
     const j = JSON.parse(raw);
-    return j && typeof j === "object" ? (j as Record<string, number>) : {};
+    if (!j || typeof j !== "object") return empty;
+    // Backward-compat: an old flat plan is treated as the monthly plan.
+    if (!("day" in j) && !("month" in j) && !("year" in j)) {
+      return { ...empty, month: j as Record<string, number> };
+    }
+    return {
+      day: j.day ?? {},
+      month: j.month ?? {},
+      year: j.year ?? {},
+    };
   } catch {
-    return {};
+    return empty;
   }
+}
+
+export async function getProductionPlan(period: PlanPeriod): Promise<Record<string, number>> {
+  return (await getFullPlan())[period] ?? {};
 }
 
 /**
@@ -36,7 +55,9 @@ export async function getProductionPlan(): Promise<Record<string, number>> {
  * much of every material (packaging + raw) is needed, then net off current
  * stock and open-PO incoming to suggest an order quantity.
  */
-export async function getPackagingPlan(): Promise<{ fgs: PlanFG[]; rows: MaterialReq[] }> {
+export async function getPackagingPlan(
+  period: PlanPeriod = "month"
+): Promise<{ fgs: PlanFG[]; rows: MaterialReq[] }> {
   const [boms, lots, poLines, plan] = await Promise.all([
     db.bom.findMany({
       include: { lines: { include: { materialProduct: true } }, finishedProduct: true },
@@ -46,7 +67,7 @@ export async function getPackagingPlan(): Promise<{ fgs: PlanFG[]; rows: Materia
       where: { po: { status: { not: "COMPLETE" } } },
       select: { productCode: true, ordered: true, received: true },
     }),
-    getProductionPlan(),
+    getProductionPlan(period),
   ]);
 
   const onHand = new Map<string, number>();
