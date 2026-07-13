@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { productLabel } from "@/lib/calc/productName";
 import { todayBangkok } from "@/lib/calc/date";
-import { MAP_BLOCKS } from "@/lib/warehouseMap";
+import { SLOT_BOXES } from "@/lib/storageLayout";
 
 export type RackContent = {
   productCode: string;
@@ -74,7 +74,7 @@ export async function getStorageMap(): Promise<{
   racks: Record<string, RackInfo>;
   summary: StorageSummary;
 }> {
-  const rackCodes = MAP_BLOCKS.filter((b) => b.k === "rack").map((b) => norm(b.t));
+  const rackCodes = SLOT_BOXES.map((b) => norm(b.code));
   const prefixIdx = buildPrefixIndex(rackCodes);
   const lots = await db.lot.findMany({
     where: { qty: { gt: 0 } },
