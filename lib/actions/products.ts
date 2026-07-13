@@ -40,6 +40,7 @@ export async function createProductAction(
   const width = Number(formData.get("width") ?? 1);
   const length = Number(formData.get("length") ?? 1);
   const stackLevels = Number(formData.get("stackLevels") ?? 1);
+  const containerType = String(formData.get("containerType") ?? "OTHER").trim() || "OTHER";
   const minQty = Number(formData.get("minQty") ?? 0);
   const maxQty = Number(formData.get("maxQty") ?? 0);
 
@@ -63,6 +64,7 @@ export async function createProductAction(
       width,
       length,
       stackLevels,
+      containerType,
       minQty: minQty > 0 ? minQty : 0,
       maxQty: maxQty > 0 ? maxQty : 0,
     },
@@ -176,6 +178,7 @@ export async function updateProductAction(
     width: number;
     length: number;
     stackLevels: number;
+    containerType: string;
     minQty: number;
     maxQty: number;
   }

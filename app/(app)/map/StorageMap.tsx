@@ -2,16 +2,26 @@
 
 import { useState } from "react";
 import { SLOT_BOXES, PLAN_IMG_W, PLAN_IMG_H } from "@/lib/storageLayout";
+import { CONTAINER_TYPES, containerDef } from "@/lib/containerTypes";
 import type { RackInfo, StorageSummary } from "@/lib/views/storage";
 
-// Occupancy tint painted over each rack slot on the real floor-plan image.
-// Kept light so the printed rack code stays readable underneath.
-function slotTint(info: RackInfo | undefined): { bg: string; border: string } {
-  if (!info || info.lotCount === 0)
-    return { bg: "rgba(46,167,117,.34)", border: "#1f8a56" }; // ว่าง / free
-  if (info.hasExpired) return { bg: "rgba(210,65,65,.5)", border: "#a52d2d" };
-  if (info.hasQc) return { bg: "rgba(229,154,43,.5)", border: "#b5790f" };
-  return { bg: "rgba(74,92,120,.46)", border: "#3b4a61" }; // มีของ / occupied
+const FREE = { bg: "rgba(46,167,117,.32)", border: "#1f8a56" };
+
+function hexA(hex: string, a: number) {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// Top-view tint: free slots glow green; occupied slots take their container's
+// colour so you can read what kind of unit sits where.
+function slotStyle(info: RackInfo | undefined): { bg: string; border: string } {
+  if (!info || info.lotCount === 0) return FREE;
+  const c = containerDef(info.containerType);
+  const border = info.hasExpired ? "#d24141" : info.hasQc ? "#e59a2b" : c.color;
+  return { bg: hexA(c.color, 0.55), border };
 }
 
 const ZOOM_MIN = 1;
@@ -35,6 +45,8 @@ export function StorageMap({
   const showLabels = zoom >= 2;
   const planW = BASE_W * zoom;
 
+  const typeCount = new Map(summary.byType.map((t) => [t.code, t.count]));
+
   return (
     <div className="flex flex-col gap-4">
       {/* Summary tiles — free positions headline the view */}
@@ -47,11 +59,17 @@ export function StorageMap({
 
       <div className="flex flex-col gap-4 lg:flex-row">
         <div className="min-w-0 flex-1">
-          <div className="mb-3 flex flex-wrap items-center gap-3 text-[11.5px]">
-            <Legend color="#2ea775" label="ว่าง (free)" />
-            <Legend color="#4a5c78" label="มีของ (occupied)" />
-            <Legend color="#e59a2b" label="ติด QC" />
-            <Legend color="#d24141" label="มีของหมดอายุ" />
+          {/* Container-type legend with per-type counts */}
+          <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11.5px]">
+            <Legend color="#2ea775" label={`ว่าง (free) · ${summary.free}`} />
+            {CONTAINER_TYPES.map((t) => (
+              <Legend
+                key={t.code}
+                color={t.color}
+                label={`${t.en}${typeCount.get(t.code) ? ` · ${typeCount.get(t.code)}` : ""}`}
+              />
+            ))}
+            <span className="text-[#9aa4b4]">| ขอบแดง = หมดอายุ, ขอบส้ม = QC</span>
             <div className="flex-1" />
             <button
               onClick={() => setFreeOnly((v) => !v)}
@@ -113,16 +131,18 @@ export function StorageMap({
               {SLOT_BOXES.map((s) => {
                 const info = racks[s.code];
                 const isFree = !info || info.lotCount === 0;
-                const tint = slotTint(info);
+                const st = slotStyle(info);
                 const active = selected === s.code;
                 const dim = freeOnly && !isFree;
+                const stack = info?.stackCount ?? 0;
+                const cLabel = isFree ? "ว่าง (free)" : containerDef(info!.containerType).en;
                 return (
                   <button
                     key={s.code}
                     onClick={() => setSelected(s.code)}
                     title={
                       info
-                        ? `${s.code}: ${info.lotCount} lots · ${info.topProduct ?? ""}`
+                        ? `${s.code} · ${cLabel} · ซ้อน ${stack} · ${info.lotCount} lots`
                         : `${s.code}: ว่าง (free)`
                     }
                     style={{
@@ -131,8 +151,8 @@ export function StorageMap({
                       top: `${s.t}%`,
                       width: `${s.w}%`,
                       height: `${s.h}%`,
-                      background: tint.bg,
-                      border: `1px solid ${active ? "#16202e" : tint.border}`,
+                      background: st.bg,
+                      border: `${info && (info.hasExpired || info.hasQc) ? 1.6 : 1}px solid ${active ? "#16202e" : st.border}`,
                       borderRadius: 1.5,
                       cursor: "pointer",
                       opacity: dim ? 0.1 : 1,
@@ -153,13 +173,13 @@ export function StorageMap({
                           fontWeight: 700,
                           lineHeight: 1,
                           color: "#10202f",
-                          textShadow:
-                            "0 0 2px #fff, 0 0 2px #fff, 0 0 2px #fff, 0 0 2px #fff",
+                          textShadow: "0 0 2px #fff, 0 0 2px #fff, 0 0 2px #fff, 0 0 2px #fff",
                           whiteSpace: "nowrap",
                           letterSpacing: "-0.3px",
                         }}
                       >
                         {s.code}
+                        {stack >= 2 ? ` ×${stack}` : ""}
                       </span>
                     )}
                   </button>
@@ -168,7 +188,7 @@ export function StorageMap({
             </div>
           </div>
           <p className="mt-2 text-[11px] text-[#9aa4b4]">
-            ผังตามไฟล์ BIN_LOCATION จริง · แตะที่แร็คเพื่อดูรายละเอียด · ซูม 2× ขึ้นไปจะเห็นรหัสช่อง
+            ผังตามไฟล์ BIN_LOCATION จริง · สีบอกชนิดภาชนะ · ×N = จำนวนพาเลทที่ซ้อน · ซูม 2× จะเห็นรหัสช่อง
           </p>
         </div>
 
@@ -181,12 +201,20 @@ export function StorageMap({
               </div>
             ) : (
               <>
-                <div className="mb-2 flex items-center gap-2">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
                   <span className="font-num text-[15px] font-bold text-[#16202e]">{selected}</span>
                   {selInfo && selInfo.lotCount > 0 ? (
-                    <span className="font-num text-[11.5px] text-[#69748a]">
-                      {selInfo.lotCount} lots · {selInfo.totalQty.toLocaleString()} รวม
-                    </span>
+                    <>
+                      <span
+                        className="rounded-[5px] px-1.5 py-0.5 text-[11px] font-semibold text-white"
+                        style={{ background: containerDef(selInfo.containerType).color }}
+                      >
+                        {containerDef(selInfo.containerType).en}
+                      </span>
+                      <span className="font-num text-[11.5px] text-[#69748a]">
+                        ซ้อน {selInfo.stackCount} · {selInfo.lotCount} lots
+                      </span>
+                    </>
                   ) : (
                     <span className="rounded-[5px] bg-[#dff4e6] px-1.5 py-0.5 text-[11px] font-semibold text-[#1f8a56]">
                       ว่าง (free)
@@ -197,8 +225,14 @@ export function StorageMap({
                   <div className="flex max-h-[460px] flex-col gap-2 overflow-auto">
                     {selInfo.contents.map((c, i) => (
                       <div key={i} className="rounded-[9px] border border-[#eef1f5] p-2.5">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <span className="text-[12.5px] font-medium">{c.name}</span>
+                          <span
+                            className="rounded-[4px] px-1 text-[9.5px] font-semibold text-white"
+                            style={{ background: containerDef(c.containerType).color }}
+                          >
+                            {containerDef(c.containerType).en}
+                          </span>
                           {c.status === "QC" && (
                             <span className="rounded-[4px] bg-[#fbf1df] px-1 text-[9.5px] font-semibold text-[#b5790f]">
                               QC
@@ -211,7 +245,7 @@ export function StorageMap({
                           )}
                         </div>
                         <div className="font-num mt-0.5 text-[11px] text-[#9aa4b4]">
-                          {c.productCode} · Lot {c.lotNo} · {c.locationCode}
+                          {c.productCode} · Lot {c.lotNo} · {c.locationCode} · {c.pallets} พาเลท
                         </div>
                         <div className="font-num text-[12px] font-semibold text-[#0e8ba1]">
                           {c.qty.toLocaleString()} {c.unit}

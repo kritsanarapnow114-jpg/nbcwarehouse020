@@ -7,6 +7,7 @@ import { updateProductAction } from "@/lib/actions/products";
 import { showToast } from "@/components/ui/Toast";
 import { ProductDetail } from "@/lib/views/products";
 import { Category } from "@prisma/client";
+import { CONTAINER_TYPES } from "@/lib/containerTypes";
 
 export function EditProductModal({
   product,
@@ -28,6 +29,7 @@ export function EditProductModal({
   const [width, setWidth] = useState(String(product.width));
   const [length, setLength] = useState(String(product.length));
   const [stackLevels, setStackLevels] = useState(String(product.stackLevels));
+  const [containerType, setContainerType] = useState(product.containerType || "OTHER");
   const [minQty, setMinQty] = useState(product.minQty ? String(product.minQty) : "");
   const [maxQty, setMaxQty] = useState(product.maxQty ? String(product.maxQty) : "");
   const [saving, setSaving] = useState(false);
@@ -47,6 +49,7 @@ export function EditProductModal({
         width: Number(width) || 0,
         length: Number(length) || 0,
         stackLevels: Number(stackLevels) || 0,
+        containerType,
         minQty: Number(minQty) || 0,
         maxQty: Number(maxQty) || 0,
       });
@@ -81,6 +84,19 @@ export function EditProductModal({
             <input value={unit} onChange={(e) => setUnit(e.target.value)} className={inputClass} />
           </Field>
         </div>
+        <Field label="ชนิดภาชนะ · Container type (แสดงในแผนผังคลัง)">
+          <select
+            value={containerType}
+            onChange={(e) => setContainerType(e.target.value)}
+            className={inputClass}
+          >
+            {CONTAINER_TYPES.map((t) => (
+              <option key={t.code} value={t.code}>
+                {t.en} · {t.th}
+              </option>
+            ))}
+          </select>
+        </Field>
         <Field label="Name EN">
           <input value={nameEn} onChange={(e) => setNameEn(e.target.value)} className={inputClass} />
         </Field>

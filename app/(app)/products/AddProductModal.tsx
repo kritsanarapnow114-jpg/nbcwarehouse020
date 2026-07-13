@@ -6,6 +6,7 @@ import { Modal, ModalHeader } from "@/components/ui/Modal";
 import { buttonClass } from "@/components/ui/Button";
 import { createProductAction, FormState } from "@/lib/actions/products";
 import { showToast } from "@/components/ui/Toast";
+import { CONTAINER_TYPES } from "@/lib/containerTypes";
 
 const initialState: FormState = {};
 
@@ -64,6 +65,15 @@ function AddProductModal({
         </Field>
         <Field label="Name TH (optional)">
           <input name="nameTh" className={inputClass} />
+        </Field>
+        <Field label="ชนิดภาชนะ · Container type (แสดงในแผนผังคลัง)">
+          <select name="containerType" defaultValue="OTHER" className={inputClass}>
+            {CONTAINER_TYPES.map((t) => (
+              <option key={t.code} value={t.code}>
+                {t.en} · {t.th}
+              </option>
+            ))}
+          </select>
         </Field>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Field label="Unit">

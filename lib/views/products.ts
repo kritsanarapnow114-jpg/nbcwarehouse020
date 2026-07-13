@@ -138,6 +138,7 @@ export type ProductDetail = ProductRow & {
   width: number;
   length: number;
   stackLevels: number;
+  containerType: string;
   lots: {
     id: string;
     locationCode: string;
@@ -187,6 +188,7 @@ export async function getProductDetail(
     width: p.width,
     length: p.length,
     stackLevels: p.stackLevels,
+    containerType: p.containerType,
     onHand,
     totalValue: onHand * p.price,
     locations: [...new Set(activeLots.map((l) => l.locationCode))],

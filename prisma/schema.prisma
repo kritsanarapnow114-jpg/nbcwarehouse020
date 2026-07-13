@@ -76,6 +76,7 @@ model Product {
   width       Float // storage footprint, m
   length      Float // storage footprint, m
   stackLevels Int       @default(1)
+  containerType String  @default("OTHER") // IBC / SUPERSACK / BOX / OCTABIN / BAG / DRUM / OTHER
   minQty      Float     @default(0) // reorder point; 0 = not set
   maxQty      Float     @default(0) // stock ceiling; 0 = not set
   deletedAt   DateTime?

@@ -13,6 +13,8 @@ export type RackContent = {
   locationCode: string;
   status: "OK" | "QC";
   expired: boolean;
+  containerType: string;
+  pallets: number; // whole pallets this lot occupies here
 };
 
 export type RackInfo = {
@@ -22,6 +24,8 @@ export type RackInfo = {
   hasQc: boolean;
   hasExpired: boolean;
   topProduct: string | null; // main product code stored
+  containerType: string; // dominant container form in this position
+  stackCount: number; // pallets stacked here (auto: Σ ceil(qty / pallet))
   contents: RackContent[];
 };
 
@@ -32,6 +36,7 @@ export type StorageSummary = {
   qc: number; // positions with a QC hold
   expired: number; // positions with expired stock
   utilPct: number; // occupied / total
+  byType: { code: string; count: number }[]; // occupied positions per container type
 };
 
 const norm = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -84,11 +89,15 @@ export async function getStorageMap(): Promise<{
 
   const map: Record<string, RackInfo> = {};
   const productQty: Record<string, Map<string, number>> = {};
+  const productContainer = new Map<string, string>(); // product code → container type
 
   for (const l of lots) {
     const matched = racksForLocation(l.locationCode, prefixIdx);
     if (matched.length === 0) continue;
     const expired = !!(l.expDate && l.expDate < today);
+    const palletSize = Math.max(1, l.product.pallet);
+    const pallets = Math.max(1, Math.ceil(l.qty / palletSize));
+    productContainer.set(l.product.code, l.product.containerType || "OTHER");
     for (const rack of matched) {
       if (!map[rack]) {
         map[rack] = {
@@ -98,6 +107,8 @@ export async function getStorageMap(): Promise<{
           hasQc: false,
           hasExpired: false,
           topProduct: null,
+          containerType: "OTHER",
+          stackCount: 0,
           contents: [],
         };
         productQty[rack] = new Map();
@@ -105,6 +116,7 @@ export async function getStorageMap(): Promise<{
       const info = map[rack];
       info.lotCount++;
       info.totalQty += l.qty;
+      info.stackCount += pallets;
       if (l.status === "QC") info.hasQc = true;
       if (expired) info.hasExpired = true;
       info.contents.push({
@@ -116,6 +128,8 @@ export async function getStorageMap(): Promise<{
         locationCode: l.locationCode,
         status: l.status,
         expired,
+        containerType: l.product.containerType || "OTHER",
+        pallets,
       });
       productQty[rack].set(
         l.product.code,
@@ -124,7 +138,7 @@ export async function getStorageMap(): Promise<{
     }
   }
 
-  // Pick the highest-quantity product per rack as its headline.
+  // Pick the highest-quantity product per rack as its headline + container form.
   for (const rack of Object.keys(map)) {
     let top: string | null = null;
     let best = -1;
@@ -135,6 +149,7 @@ export async function getStorageMap(): Promise<{
       }
     }
     map[rack].topProduct = top;
+    map[rack].containerType = (top && productContainer.get(top)) || "OTHER";
     map[rack].contents.sort((a, b) => b.qty - a.qty);
   }
 
@@ -143,12 +158,14 @@ export async function getStorageMap(): Promise<{
   let occupied = 0;
   let qc = 0;
   let expired = 0;
+  const typeCount = new Map<string, number>();
   for (const code of rackCodes) {
     const info = map[code];
     if (info && info.lotCount > 0) {
       occupied++;
       if (info.hasQc) qc++;
       if (info.hasExpired) expired++;
+      typeCount.set(info.containerType, (typeCount.get(info.containerType) ?? 0) + 1);
     }
   }
   const summary: StorageSummary = {
@@ -158,6 +175,9 @@ export async function getStorageMap(): Promise<{
     qc,
     expired,
     utilPct: total > 0 ? Math.round((occupied / total) * 100) : 0,
+    byType: [...typeCount.entries()]
+      .map(([code, count]) => ({ code, count }))
+      .sort((a, b) => b.count - a.count),
   };
 
   return { racks: map, summary };
