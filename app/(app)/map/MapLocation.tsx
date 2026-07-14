@@ -407,36 +407,36 @@ function StackMap({ cell }: { cell: MapCell }) {
         </span>
         <span className="font-num text-[11px] text-[#aeb4c6]">แต่ละจุด = 1 พาเลท · สีบอกลอต</span>
       </div>
-      <div className="flex flex-col gap-1.5 rounded-[12px] border border-[#eef0f7] bg-[#fbfcfe] p-3">
-        {S > 1 ? (
-          Array.from({ length: S }).map((_, idx) => {
-            const layer = S - idx; // render top layer first
-            return (
-              <div key={layer} className="flex items-center gap-2.5">
-                <span className="w-[42px] flex-none text-[11px] font-bold text-[#5a6076]">ชั้น {layer}</span>
-                <div className="flex flex-wrap gap-[4px]">
-                  {Array.from({ length: groundSpots }).map((_, j) => {
-                    const palletIdx = (layer - 1) * groundSpots + j;
-                    return (
-                      <span
-                        key={j}
-                        title={titleAt(palletIdx)}
-                        className="h-[14px] w-[16px] rounded-[3px]"
-                        style={{ background: colorAt(palletIdx) }}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <div className="flex flex-wrap gap-[5px]">
-            {Array.from({ length: Math.max(P, Math.min(cell.capacity, 60)) }).map((_, i) => (
-              <span key={i} title={titleAt(i)} className="h-[14px] w-[14px] rounded-[3px]" style={{ background: colorAt(i) }} />
+      {/* Vertical layout: each ground spot is a row going down; stack levels
+          sit side by side within the row. */}
+      <div className="rounded-[12px] border border-[#eef0f7] bg-[#fbfcfe] p-3">
+        {S > 1 && (
+          <div className="mb-1 flex gap-[4px] pl-[54px] text-[9px] font-bold text-[#9aa2b8]">
+            {Array.from({ length: S }).map((_, c) => (
+              <span key={c} className="w-[16px] text-center">
+                ช{c + 1}
+              </span>
             ))}
           </div>
         )}
+        <div className="flex max-h-[280px] flex-col gap-[4px] overflow-y-auto">
+          {Array.from({ length: Math.max(1, groundSpots) }).map((_, r) => (
+            <div key={r} className="flex items-center gap-[4px]">
+              <span className="w-[50px] flex-none text-[10px] font-medium text-[#aeb4c6]">จุด {r + 1}</span>
+              {Array.from({ length: S }).map((_, c) => {
+                const palletIdx = c * groundSpots + r;
+                return (
+                  <span
+                    key={c}
+                    title={titleAt(palletIdx)}
+                    className="h-[15px] w-[16px] rounded-[3px]"
+                    style={{ background: colorAt(palletIdx) }}
+                  />
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </div>
       {S > 1 && (
         <div className="font-num mt-1.5 text-[11.5px] text-[#8a92a8]">
