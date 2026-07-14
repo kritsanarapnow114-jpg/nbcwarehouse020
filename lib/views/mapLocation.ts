@@ -9,6 +9,7 @@ import { binCapacity, lotFloorArea } from "@/lib/calc/storage";
 const DEFAULT_PALLET_M2 = 0.96;
 
 export type MapLot = {
+  id: string;
   productCode: string;
   name: string;
   lotNo: string;
@@ -103,6 +104,7 @@ export async function getMapLocationData() {
     areaByLoc.set(l.locationCode, (areaByLoc.get(l.locationCode) ?? 0) + area);
     stackByLoc.set(l.locationCode, Math.max(stackByLoc.get(l.locationCode) ?? 1, l.product.stackLevels || 1));
     const entry: MapLot = {
+      id: l.id,
       productCode: l.product.code,
       name: productLabel(l.product.nameEn, l.product.nameTh),
       lotNo: l.lotNo,
@@ -220,6 +222,7 @@ export async function getMapLocationData() {
   };
 
   const zones = [...new Set(cells.map((c) => c.zone))].sort();
+  const locationCodes = locations.map((l) => l.code).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
-  return { racks, floors, summary, zones };
+  return { racks, floors, summary, zones, locationCodes };
 }

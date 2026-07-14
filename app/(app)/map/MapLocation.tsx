@@ -1,8 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { containerDef } from "@/lib/containerTypes";
-import type { RackZone, FloorZone, MapSummary, MapCell } from "@/lib/views/mapLocation";
+import { moveLotAction, swapLocationsAction } from "@/lib/actions/mapMove";
+import { showToast } from "@/components/ui/Toast";
+import type { RackZone, FloorZone, MapSummary, MapCell, MapLot } from "@/lib/views/mapLocation";
+
+// Distinct colours to tell the lots in a bin apart on the position map.
+const LOT_COLORS = ["#4f5bd5", "#e08a2b", "#2f9e6f", "#d0568f", "#8a5cd8", "#c0453f", "#3f9aa8", "#b7671a"];
+const lotColor = (i: number) => LOT_COLORS[i % LOT_COLORS.length];
 
 type StatusKey = "free" | "partial" | "full";
 
@@ -22,11 +29,13 @@ export function MapLocation({
   floors,
   summary,
   zones,
+  locationCodes,
 }: {
   racks: RackZone[];
   floors: FloorZone[];
   summary: MapSummary;
   zones: string[];
+  locationCodes: string[];
 }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | StatusKey>("all");
@@ -204,7 +213,9 @@ export function MapLocation({
         )}
       </div>
 
-      {selCell && <Drawer cell={selCell} onClose={() => setSelId(null)} />}
+      {selCell && (
+        <Drawer cell={selCell} locationCodes={locationCodes} onClose={() => setSelId(null)} />
+      )}
     </div>
   );
 }
@@ -372,43 +383,57 @@ function FloorTile({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
   );
 }
 
-function StackMap({ cell, color }: { cell: MapCell; color: string }) {
+function StackMap({ cell }: { cell: MapCell }) {
   const S = Math.max(1, cell.stack);
   const P = cell.pallets;
-  // ground positions the stored pallets sit on; each can stack up to S high
   const groundSpots = Math.max(1, Math.ceil(P / S));
+  // map each pallet position → the lot sitting there, so cells are coloured by
+  // what they hold (and the tooltip says which product / lot it is)
+  const lotOfPallet: number[] = [];
+  cell.lots.forEach((lot, li) => {
+    for (let k = 0; k < lot.pallets; k++) lotOfPallet.push(li);
+  });
+  const colorAt = (idx: number) => (idx < P ? lotColor(lotOfPallet[idx] ?? 0) : "#e6e9f2");
+  const titleAt = (idx: number) => {
+    if (idx >= P) return "ว่าง";
+    const lot = cell.lots[lotOfPallet[idx]];
+    return lot ? `${lot.name} · Lot ${lot.lotNo}` : "";
+  };
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between">
         <span className="text-[12px] font-bold text-[#8a92a8]">
-          ผังการวางซ้อน {S > 1 ? `(ซ้อนได้ ${S} ชั้น)` : "(แต่ละจุด = 1 พาเลท)"}
+          ผังการวางซ้อน {S > 1 ? `(ซ้อนได้ ${S} ชั้น)` : ""}
         </span>
-        <span className="font-num text-[11px] text-[#aeb4c6]">แต่ละจุด = 1 พาเลท</span>
+        <span className="font-num text-[11px] text-[#aeb4c6]">แต่ละจุด = 1 พาเลท · สีบอกลอต</span>
       </div>
       <div className="flex flex-col gap-1.5 rounded-[12px] border border-[#eef0f7] bg-[#fbfcfe] p-3">
         {S > 1 ? (
           Array.from({ length: S }).map((_, idx) => {
             const layer = S - idx; // render top layer first
-            const filled = Math.min(groundSpots, Math.max(0, P - (layer - 1) * groundSpots));
             return (
               <div key={layer} className="flex items-center gap-2.5">
                 <span className="w-[42px] flex-none text-[11px] font-bold text-[#5a6076]">ชั้น {layer}</span>
                 <div className="flex flex-wrap gap-[4px]">
-                  {Array.from({ length: groundSpots }).map((_, j) => (
-                    <span
-                      key={j}
-                      className="h-[14px] w-[16px] rounded-[3px]"
-                      style={{ background: j < filled ? color : "#e6e9f2" }}
-                    />
-                  ))}
+                  {Array.from({ length: groundSpots }).map((_, j) => {
+                    const palletIdx = (layer - 1) * groundSpots + j;
+                    return (
+                      <span
+                        key={j}
+                        title={titleAt(palletIdx)}
+                        className="h-[14px] w-[16px] rounded-[3px]"
+                        style={{ background: colorAt(palletIdx) }}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             );
           })
         ) : (
           <div className="flex flex-wrap gap-[5px]">
-            {Array.from({ length: Math.min(cell.capacity, 60) }).map((_, i) => (
-              <span key={i} className="h-[14px] w-[14px] rounded-[3px]" style={{ background: i < P ? color : "#e6e9f2" }} />
+            {Array.from({ length: Math.max(P, Math.min(cell.capacity, 60)) }).map((_, i) => (
+              <span key={i} title={titleAt(i)} className="h-[14px] w-[14px] rounded-[3px]" style={{ background: colorAt(i) }} />
             ))}
           </div>
         )}
@@ -422,9 +447,52 @@ function StackMap({ cell, color }: { cell: MapCell; color: string }) {
   );
 }
 
-function Drawer({ cell, onClose }: { cell: MapCell; onClose: () => void }) {
+function Drawer({
+  cell,
+  locationCodes,
+  onClose,
+}: {
+  cell: MapCell;
+  locationCodes: string[];
+  onClose: () => void;
+}) {
+  const router = useRouter();
   const s = STATUS[cell.status];
   const p = pct(cell.areaUsed, cell.areaCap);
+  const [moveLotId, setMoveLotId] = useState<string | null>(null);
+  const [moveTo, setMoveTo] = useState("");
+  const [swapTo, setSwapTo] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function doMove(lot: MapLot) {
+    if (!moveTo.trim() || busy) return;
+    setBusy(true);
+    const res = await moveLotAction(lot.id, moveTo);
+    setBusy(false);
+    if (res.error) {
+      showToast(res.error);
+      return;
+    }
+    showToast(`ย้าย ${lot.name} → ${moveTo.trim()} แล้ว`);
+    setMoveLotId(null);
+    setMoveTo("");
+    router.refresh();
+  }
+
+  async function doSwap() {
+    if (!swapTo.trim() || busy) return;
+    setBusy(true);
+    const res = await swapLocationsAction(cell.code, swapTo);
+    setBusy(false);
+    if (res.error) {
+      showToast(res.error);
+      return;
+    }
+    showToast(`สลับ ${cell.code} ↔ ${swapTo.trim()} แล้ว`);
+    setSwapTo("");
+    router.refresh();
+  }
+
   return (
     <div>
       <div onClick={onClose} className="fixed inset-0 z-40 bg-[rgba(20,25,40,.28)]" />
@@ -472,8 +540,13 @@ function Drawer({ cell, onClose }: { cell: MapCell; onClose: () => void }) {
             </div>
           </div>
 
-          {/* position map — shows stacking layers (ซ้อน 1-2-3) */}
-          <StackMap cell={cell} color={s.color} />
+          {/* position map — coloured by lot so you can see what each pallet is */}
+          <StackMap cell={cell} />
+          <datalist id="allLocs">
+            {locationCodes.map((code) => (
+              <option key={code} value={code} />
+            ))}
+          </datalist>
 
           {/* lots */}
           <div>
@@ -489,6 +562,11 @@ function Drawer({ cell, onClose }: { cell: MapCell; onClose: () => void }) {
                   return (
                     <div key={i} className="rounded-[12px] border border-[#eceff7] p-[11px_13px]">
                       <div className="flex items-start gap-2.5">
+                        <span
+                          className="mt-1 h-3 w-3 flex-none rounded-[4px]"
+                          style={{ background: lotColor(i) }}
+                          title="สีของลอตนี้ในผังด้านบน"
+                        />
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-[13.5px] font-semibold">{lot.name}</div>
                           <div className="font-num text-[11.5px] text-[#8a92a8]">{lot.productCode}</div>
@@ -513,12 +591,66 @@ function Drawer({ cell, onClose }: { cell: MapCell; onClose: () => void }) {
                         )}
                         {lot.status === "QC" && <span className="font-semibold text-[#b5790f]">ติด QC</span>}
                       </div>
+                      {moveLotId === lot.id ? (
+                        <div className="mt-2.5 flex items-center gap-1.5">
+                          <input
+                            value={moveTo}
+                            onChange={(e) => setMoveTo(e.target.value)}
+                            list="allLocs"
+                            placeholder="พิมพ์ช่องปลายทาง เช่น A44"
+                            className="min-w-0 flex-1 rounded-[8px] border border-[#d7dce4] px-2 py-1.5 font-num text-[12.5px] outline-none focus:border-[#4f5bd5]"
+                          />
+                          <button
+                            onClick={() => doMove(lot)}
+                            disabled={busy || !moveTo.trim()}
+                            className="flex-none rounded-[8px] bg-[#4f5bd5] px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+                          >
+                            ย้าย
+                          </button>
+                          <button
+                            onClick={() => { setMoveLotId(null); setMoveTo(""); }}
+                            className="flex-none rounded-[8px] border border-[#e0e4f0] px-2 py-1.5 text-[12px] text-[#69748a]"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setMoveLotId(lot.id); setMoveTo(""); }}
+                          className="mt-2.5 w-full rounded-[8px] border border-[#e0e4f0] py-1.5 text-[12px] font-semibold text-[#4f5bd5] hover:bg-[#f5f6ff]"
+                        >
+                          ↔ ย้ายลอตนี้ไปช่องอื่น
+                        </button>
+                      )}
                     </div>
                   );
                 })}
               </div>
             )}
           </div>
+
+          {/* swap this bin with another */}
+          {cell.lots.length > 0 && (
+            <div className="rounded-[12px] border border-dashed border-[#cfd6ea] bg-[#fbfcfe] p-3">
+              <div className="mb-2 text-[12px] font-bold text-[#8a92a8]">สลับของทั้งช่องกับอีกช่อง</div>
+              <div className="flex items-center gap-1.5">
+                <input
+                  value={swapTo}
+                  onChange={(e) => setSwapTo(e.target.value)}
+                  list="allLocs"
+                  placeholder={`สลับ ${cell.code} ↔ ช่อง…`}
+                  className="min-w-0 flex-1 rounded-[8px] border border-[#d7dce4] px-2 py-1.5 font-num text-[12.5px] outline-none focus:border-[#4f5bd5]"
+                />
+                <button
+                  onClick={doSwap}
+                  disabled={busy || !swapTo.trim()}
+                  className="flex-none rounded-[8px] bg-[#111827] px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+                >
+                  สลับ
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </aside>
     </div>
