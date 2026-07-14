@@ -329,7 +329,62 @@ function FloorTile({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
       <span className="font-num text-[9.5px] font-bold leading-none" style={{ color: s.color }}>
         {cell.pallets}/{cell.capacity}
       </span>
+      {cell.stack > 1 && (
+        <span className="rounded-[4px] bg-white/70 px-1 text-[8px] font-bold text-[#5a6076]">
+          ซ้อน {cell.stack}
+        </span>
+      )}
     </button>
+  );
+}
+
+function StackMap({ cell, color }: { cell: MapCell; color: string }) {
+  const S = Math.max(1, cell.stack);
+  const P = cell.pallets;
+  // ground positions the stored pallets sit on; each can stack up to S high
+  const groundSpots = Math.max(1, Math.ceil(P / S));
+  return (
+    <div>
+      <div className="mb-2 flex items-baseline justify-between">
+        <span className="text-[12px] font-bold text-[#8a92a8]">
+          ผังการวางซ้อน {S > 1 ? `(ซ้อนได้ ${S} ชั้น)` : "(แต่ละจุด = 1 พาเลท)"}
+        </span>
+        <span className="font-num text-[11px] text-[#aeb4c6]">แต่ละจุด = 1 พาเลท</span>
+      </div>
+      <div className="flex flex-col gap-1.5 rounded-[12px] border border-[#eef0f7] bg-[#fbfcfe] p-3">
+        {S > 1 ? (
+          Array.from({ length: S }).map((_, idx) => {
+            const layer = S - idx; // render top layer first
+            const filled = Math.min(groundSpots, Math.max(0, P - (layer - 1) * groundSpots));
+            return (
+              <div key={layer} className="flex items-center gap-2.5">
+                <span className="w-[42px] flex-none text-[11px] font-bold text-[#5a6076]">ชั้น {layer}</span>
+                <div className="flex flex-wrap gap-[4px]">
+                  {Array.from({ length: groundSpots }).map((_, j) => (
+                    <span
+                      key={j}
+                      className="h-[14px] w-[16px] rounded-[3px]"
+                      style={{ background: j < filled ? color : "#e6e9f2" }}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="flex flex-wrap gap-[5px]">
+            {Array.from({ length: Math.min(cell.capacity, 60) }).map((_, i) => (
+              <span key={i} className="h-[14px] w-[14px] rounded-[3px]" style={{ background: i < P ? color : "#e6e9f2" }} />
+            ))}
+          </div>
+        )}
+      </div>
+      {S > 1 && (
+        <div className="font-num mt-1.5 text-[11.5px] text-[#8a92a8]">
+          วาง {P} พาเลท บน {groundSpots} จุด · ซ้อนสูงสุด {S} ชั้น
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -383,19 +438,8 @@ function Drawer({ cell, onClose }: { cell: MapCell; onClose: () => void }) {
             </div>
           </div>
 
-          {/* position map (pallet dots) */}
-          <div>
-            <div className="mb-2 text-[12px] font-bold text-[#8a92a8]">ผังตำแหน่ง (แต่ละจุด = 1 พาเลท)</div>
-            <div className="flex flex-wrap gap-[5px] rounded-[12px] border border-[#eef0f7] bg-[#fbfcfe] p-3">
-              {Array.from({ length: Math.min(cell.capacity, 60) }).map((_, i) => (
-                <span
-                  key={i}
-                  className="h-[14px] w-[14px] rounded-[3px]"
-                  style={{ background: i < cell.pallets ? s.color : "#e6e9f2" }}
-                />
-              ))}
-            </div>
-          </div>
+          {/* position map — shows stacking layers (ซ้อน 1-2-3) */}
+          <StackMap cell={cell} color={s.color} />
 
           {/* lots */}
           <div>

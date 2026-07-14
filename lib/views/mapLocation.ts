@@ -35,6 +35,7 @@ export type MapCell = {
   areaUsed: number; // area occupied by stored pallets (m²)
   capacity: number; // pallet capacity — depends on the pallet size stored
   pallets: number;
+  stack: number; // how many pallets high the stored product stacks (ซ้อน 1-3)
   status: "free" | "partial" | "full";
   containerType: string; // dominant
   topLot: string | null;
@@ -95,10 +96,12 @@ export async function getMapLocationData() {
 
   const lotsByLoc = new Map<string, MapLot[]>();
   const areaByLoc = new Map<string, number>(); // m² occupied per location
+  const stackByLoc = new Map<string, number>(); // max pallets-high stored per location
   for (const l of lots) {
     const pallets = Math.max(1, Math.ceil(l.qty / Math.max(1, l.product.pallet)));
     const area = lotFloorArea(l.qty, l.product.width, l.product.length, l.product.stackLevels, l.product.pallet);
     areaByLoc.set(l.locationCode, (areaByLoc.get(l.locationCode) ?? 0) + area);
+    stackByLoc.set(l.locationCode, Math.max(stackByLoc.get(l.locationCode) ?? 1, l.product.stackLevels || 1));
     const entry: MapLot = {
       productCode: l.product.code,
       name: productLabel(l.product.nameEn, l.product.nameTh),
@@ -150,6 +153,7 @@ export async function getMapLocationData() {
       areaUsed: Math.round(areaUsed * 10) / 10,
       capacity,
       pallets,
+      stack: stackByLoc.get(loc.code) ?? 1,
       status: pallets === 0 ? "free" : freeArea < footPerPallet ? "full" : "partial",
       containerType: dom,
       topLot: cellLots[0]?.name ?? null,
