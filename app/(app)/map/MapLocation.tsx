@@ -185,7 +185,10 @@ export function MapLocation({
             <div className="mb-2 text-[10.5px] text-[#aeb4c6]">
               แต่ละแท่ง = 1 แถว · แถว = จุดวางบนพื้น · คอลัมน์ = ชั้นซ้อน (1→บนสุด) · สียิ่งเข้ม = ชั้นสูงขึ้น
             </div>
-            <div className="flex items-start gap-2 overflow-x-auto pb-1">
+            <div
+              className="grid items-start gap-2 overflow-x-auto pb-1"
+              style={{ gridTemplateColumns: "repeat(30, minmax(34px, 1fr))" }}
+            >
               {f.tiles.map((c) => (
                 <FloorTile key={c.id} cell={c} onClick={() => setSelId(c.id)} />
               ))}
@@ -318,17 +321,18 @@ function FloorTile({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
     <button
       onClick={onClick}
       title={`${cell.code} · ${cell.pallets}/${cell.capacity} พาเลท · ซ้อนได้ ${cell.stack} ชั้น · ${cell.pallets > 0 ? c.en : "ว่าง"}`}
-      className="flex flex-none flex-col items-center gap-1.5 rounded-[11px] border p-2 pt-2.5 transition hover:brightness-[.98]"
-      style={{ background: s.bg, borderColor: s.border, width: 30 + S * 10 }}
+      className="flex w-full min-w-0 flex-col items-center gap-1 overflow-hidden rounded-[10px] border p-1.5 pt-2 transition hover:brightness-[.98]"
+      style={{ background: s.bg, borderColor: s.border }}
     >
-      <span className="font-num text-[12px] font-bold leading-none" style={{ color: s.color }}>
+      <span className="font-num whitespace-nowrap text-[11px] font-bold leading-none" style={{ color: s.color }}>
         {cell.code}
       </span>
       <span
-        className="w-full truncate rounded-[4px] px-1 py-0.5 text-center text-[8px] font-semibold text-white"
+        className="max-w-full whitespace-nowrap rounded-[4px] px-1 py-0.5 text-center text-[9px] font-bold leading-none text-white"
         style={{ background: cell.pallets > 0 ? c.color : "#aeb4c6" }}
+        title={cell.pallets > 0 ? c.en : "ว่าง"}
       >
-        {cell.pallets > 0 ? c.en : "ว่าง"}
+        {cell.pallets > 0 ? c.abbr : "ว่าง"}
       </span>
       {S > 1 && (
         <div className="flex gap-[3px] text-[7px] font-bold leading-none text-[#9aa2b8]">

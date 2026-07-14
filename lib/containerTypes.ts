@@ -4,17 +4,18 @@ export type ContainerTypeDef = {
   code: string;
   en: string;
   th: string;
+  abbr: string; // short tag for tight spaces (map tiles)
   color: string; // fill hue on the storage map (distinct from the free-slot green)
 };
 
 export const CONTAINER_TYPES: ContainerTypeDef[] = [
-  { code: "IBC", en: "IBC", th: "IBC (ถังพลาสติกกรง)", color: "#2f6fd0" },
-  { code: "SUPERSACK", en: "Supersack", th: "ซุปเปอร์แซค", color: "#8a5cd8" },
-  { code: "BOX", en: "Box", th: "กล่อง", color: "#e08a2b" },
-  { code: "OCTABIN", en: "Octabin", th: "ออคตาบิน", color: "#b7671a" },
-  { code: "BAG", en: "Bag on pallet", th: "ถุงวางพาเลท", color: "#d059a3" },
-  { code: "DRUM", en: "Drum", th: "ถัง (Drum)", color: "#3f9aa8" },
-  { code: "OTHER", en: "Other", th: "อื่นๆ", color: "#8a94a6" },
+  { code: "IBC", en: "IBC", th: "IBC (ถังพลาสติกกรง)", abbr: "IBC", color: "#2f6fd0" },
+  { code: "SUPERSACK", en: "Supersack", th: "ซุปเปอร์แซค", abbr: "SS", color: "#8a5cd8" },
+  { code: "BOX", en: "Box", th: "กล่อง", abbr: "BOX", color: "#e08a2b" },
+  { code: "OCTABIN", en: "Octabin", th: "ออคตาบิน", abbr: "OCT", color: "#b7671a" },
+  { code: "BAG", en: "Bag on pallet", th: "ถุงวางพาเลท", abbr: "BAG", color: "#d059a3" },
+  { code: "DRUM", en: "Drum", th: "ถัง (Drum)", abbr: "DRM", color: "#3f9aa8" },
+  { code: "OTHER", en: "Other", th: "อื่นๆ", abbr: "-", color: "#8a94a6" },
 ];
 
 export const CONTAINER_LABEL: Record<string, ContainerTypeDef> = Object.fromEntries(
@@ -41,5 +42,7 @@ export function containerDef(value: string | null | undefined): ContainerTypeDef
   const builtin = CONTAINER_TYPES.find((t) => t.code === key || norm(t.en) === key);
   if (builtin) return builtin;
   const name = value.trim();
-  return { code: name, en: name, th: name, color: hashColor(key) };
+  // custom pack type → short readable tag from the first alphanumerics
+  const abbr = (name.replace(/[^\p{L}\p{N}]/gu, "").slice(0, 4) || name.slice(0, 4)).toUpperCase();
+  return { code: name, en: name, th: name, abbr, color: hashColor(key) };
 }
