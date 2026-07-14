@@ -183,9 +183,9 @@ export function MapLocation({
           <section key={f.zone} className="rounded-[16px] border border-[#eceff7] bg-white p-[18px_20px] shadow-[0_1px_3px_rgba(30,36,51,.04)]">
             <ZoneHeader tag={f.zone} title={`พื้นวางซ้อน · โซน ${f.zone}`} sub={`${f.tiles.length} บล็อก`} used={f.used} cap={f.cap} />
             <div className="mb-2 text-[10.5px] text-[#aeb4c6]">
-              มองจากด้านบน · เรียงตามพื้นที่จริง (กว้าง×ยาว) · แต่ละจุด = 1 พาเลท
+              มองจากด้านบน · แต่ละแท่ง = 1 แถว (วางแนวตั้ง) · แต่ละจุด = 1 พาเลท
             </div>
-            <div className="flex flex-wrap items-start gap-2.5">
+            <div className="flex items-start gap-2 overflow-x-auto pb-1">
               {f.tiles.map((c) => (
                 <FloorTile key={c.id} cell={c} onClick={() => setSelId(c.id)} />
               ))}
@@ -298,38 +298,37 @@ function RackCell({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
 function FloorTile({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
   const s = STATUS[cell.status];
   const c = containerDef(cell.containerType);
+  // A floor row is physically a tall vertical lane — render it as a vertical
+  // bar with pallet slots stacked top→bottom.
+  const slots = Math.min(cell.capacity, 40);
   return (
     <button
       onClick={onClick}
-      title={`${cell.code} · ${cell.pallets}/${cell.capacity} พาเลท`}
-      className="flex w-[132px] flex-col gap-1 rounded-[12px] border p-2.5 text-left transition hover:brightness-[.98]"
+      title={`${cell.code} · ${cell.pallets}/${cell.capacity} พาเลท · ${cell.pallets > 0 ? c.en : "ว่าง"}`}
+      className="flex w-[58px] flex-none flex-col items-center gap-1.5 rounded-[11px] border p-2 pt-2.5 transition hover:brightness-[.98]"
       style={{ background: s.bg, borderColor: s.border }}
     >
-      <div className="flex items-baseline gap-1.5">
-        <span className="font-num text-[13px] font-bold" style={{ color: s.color }}>
-          {cell.code}
-        </span>
-        <span className="font-num text-[9.5px] text-[#9aa2b8]">
-          {cell.width}×{cell.length}ม.
-        </span>
-      </div>
+      <span className="font-num text-[12px] font-bold leading-none" style={{ color: s.color }}>
+        {cell.code}
+      </span>
       <span
-        className="w-fit rounded-[5px] px-1.5 py-0.5 text-[9px] font-semibold text-white"
+        className="w-full truncate rounded-[4px] px-1 py-0.5 text-center text-[8px] font-semibold text-white"
         style={{ background: cell.pallets > 0 ? c.color : "#aeb4c6" }}
       >
         {cell.pallets > 0 ? c.en : "ว่าง"}
       </span>
-      <Dots used={cell.pallets} cap={cell.capacity} color={s.color} />
-      <div className="flex items-baseline justify-between">
-        <span className="font-num text-[10px] font-bold" style={{ color: s.color }}>
-          {cell.pallets}/{cell.capacity} พาเลท
-        </span>
+      <div className="flex flex-col items-center gap-[3px] py-0.5">
+        {Array.from({ length: slots }).map((_, i) => (
+          <span
+            key={i}
+            className="h-[6px] w-[22px] rounded-[2px]"
+            style={{ background: i < cell.pallets ? s.color : "#e0e4ee" }}
+          />
+        ))}
       </div>
-      {cell.topLot && (
-        <span className="truncate text-[9.5px] text-[#8a92a8]" title={cell.topLot}>
-          {cell.topLot}
-        </span>
-      )}
+      <span className="font-num text-[9.5px] font-bold leading-none" style={{ color: s.color }}>
+        {cell.pallets}/{cell.capacity}
+      </span>
     </button>
   );
 }
