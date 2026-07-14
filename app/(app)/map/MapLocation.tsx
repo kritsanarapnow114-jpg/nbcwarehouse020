@@ -315,8 +315,6 @@ function FloorTile({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
   // bottom level across the spots first, then stack up — so the filled columns
   // to the right mean pallets are stacked higher there.
   const S = Math.max(1, Math.min(cell.stack, 5));
-  const groundUsed = cell.pallets > 0 ? Math.ceil(cell.pallets / S) : 0;
-  const G = cell.pallets > 0 ? Math.min(groundUsed, 22) : 5; // empty → placeholder rows
   return (
     <button
       onClick={onClick}
@@ -334,32 +332,36 @@ function FloorTile({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
       >
         {cell.pallets > 0 ? c.abbr : "ว่าง"}
       </span>
+      {/* Fixed-height stack bars — one per level, filled from the bottom by how
+          full that level is. Every tile is the same size regardless of count. */}
+      <div className="flex h-[52px] items-end justify-center gap-[3px] py-0.5">
+        {Array.from({ length: S }).map((_, c2) => {
+          const capGround = Math.max(1, Math.round(cell.capacity / S));
+          const filled = Math.min(capGround, Math.max(0, cell.pallets - c2 * capGround));
+          const frac = capGround > 0 ? filled / capGround : 0;
+          return (
+            <div
+              key={c2}
+              className="relative w-[9px] overflow-hidden rounded-[2px]"
+              style={{ height: "100%", background: "#e6e9f2" }}
+            >
+              <div
+                className="absolute inset-x-0 bottom-0"
+                style={{ height: `${Math.round(frac * 100)}%`, background: hexA(s.color, LEVEL_ALPHA[c2] ?? 1) }}
+              />
+            </div>
+          );
+        })}
+      </div>
       {S > 1 && (
         <div className="flex gap-[3px] text-[7px] font-bold leading-none text-[#9aa2b8]">
           {Array.from({ length: S }).map((_, c2) => (
-            <span key={c2} className="w-[8px] text-center">
+            <span key={c2} className="w-[9px] text-center">
               {c2 + 1}
             </span>
           ))}
         </div>
       )}
-      <div className="flex flex-col gap-[3px] py-0.5">
-        {Array.from({ length: G }).map((_, r) => (
-          <div key={r} className="flex gap-[3px]">
-            {Array.from({ length: cell.pallets > 0 ? S : 1 }).map((_, col) => {
-              // level-major fill across the occupied ground spots
-              const filled = cell.pallets > 0 && col * groundUsed + r < cell.pallets;
-              return (
-                <span
-                  key={col}
-                  className="h-[6px] w-[8px] rounded-[2px]"
-                  style={{ background: filled ? hexA(s.color, LEVEL_ALPHA[col] ?? 1) : "#e0e4ee" }}
-                />
-              );
-            })}
-          </div>
-        ))}
-      </div>
       <span className="font-num text-[9.5px] font-bold leading-none" style={{ color: s.color }}>
         {cell.pallets}/{cell.capacity}
       </span>
