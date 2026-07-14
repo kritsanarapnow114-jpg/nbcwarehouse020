@@ -319,7 +319,7 @@ function FloorTile({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
     <button
       onClick={onClick}
       title={`${cell.code} · ${cell.pallets}/${cell.capacity} พาเลท · ซ้อนได้ ${cell.stack} ชั้น · ${cell.pallets > 0 ? c.en : "ว่าง"}`}
-      className="flex w-full min-w-0 flex-col items-center gap-1 overflow-hidden rounded-[10px] border p-1.5 pt-2 transition hover:brightness-[.98]"
+      className="flex h-[132px] w-full min-w-0 flex-col items-center gap-1 overflow-hidden rounded-[10px] border p-1.5 pt-2 transition hover:brightness-[.98]"
       style={{ background: s.bg, borderColor: s.border }}
     >
       <span className="font-num whitespace-nowrap text-[11px] font-bold leading-none" style={{ color: s.color }}>
@@ -362,12 +362,12 @@ function FloorTile({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
           ))}
         </div>
       )}
-      <span className="font-num text-[9.5px] font-bold leading-none" style={{ color: s.color }}>
+      <span className="font-num mt-auto whitespace-nowrap text-[9.5px] font-bold leading-none" style={{ color: s.color }}>
         {cell.pallets}/{cell.capacity}
       </span>
       {cell.stack > 1 && (
-        <span className="rounded-[4px] bg-white/70 px-1 text-[8px] font-bold text-[#5a6076]">
-          ซ้อน {cell.stack} ชั้น
+        <span className="whitespace-nowrap rounded-[4px] bg-white/70 px-1 text-[8px] font-bold text-[#5a6076]">
+          ซ้อน {cell.stack}ช
         </span>
       )}
     </button>
