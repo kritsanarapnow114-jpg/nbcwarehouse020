@@ -2,10 +2,11 @@ import "server-only";
 import { db } from "@/lib/db";
 import { productLabel } from "@/lib/calc/productName";
 import { todayBangkok, fmtDateBE } from "@/lib/calc/date";
+import { binCapacity, lotFloorArea } from "@/lib/calc/storage";
 
-// A pallet footprint in m² (EUR 0.8×1.2) used to estimate how many pallet
-// positions a location holds from its width×length.
-const PALLET_M2 = 0.96;
+// Default pallet footprint in m² (EUR 0.8×1.2) — only used to estimate the
+// pallet capacity of an EMPTY bin, where the pallet size is not yet known.
+const DEFAULT_PALLET_M2 = 0.96;
 
 export type MapLot = {
   productCode: string;
@@ -30,7 +31,9 @@ export type MapCell = {
   level: number; // rack level (1..n); floor = 0
   width: number;
   length: number;
-  capacity: number;
+  areaCap: number; // bin floor area (m²)
+  areaUsed: number; // area occupied by stored pallets (m²)
+  capacity: number; // pallet capacity — depends on the pallet size stored
   pallets: number;
   status: "free" | "partial" | "full";
   containerType: string; // dominant
@@ -60,8 +63,9 @@ export type MapSummary = {
   partial: number;
   full: number;
   pallets: number;
-  capacity: number;
-  utilPct: number;
+  areaUsed: number; // m²
+  areaCap: number; // m²
+  utilPct: number; // by area
 };
 
 const RACK_RE = /^(PAC[AB]|SEM[ABCD])[-_ ]*0*(\d+)[-_ ]*L0*(\d+)$/i;
@@ -90,8 +94,11 @@ export async function getMapLocationData() {
   const today = todayBangkok();
 
   const lotsByLoc = new Map<string, MapLot[]>();
+  const areaByLoc = new Map<string, number>(); // m² occupied per location
   for (const l of lots) {
     const pallets = Math.max(1, Math.ceil(l.qty / Math.max(1, l.product.pallet)));
+    const area = lotFloorArea(l.qty, l.product.width, l.product.length, l.product.stackLevels, l.product.pallet);
+    areaByLoc.set(l.locationCode, (areaByLoc.get(l.locationCode) ?? 0) + area);
     const entry: MapLot = {
       productCode: l.product.code,
       name: productLabel(l.product.nameEn, l.product.nameTh),
@@ -116,7 +123,14 @@ export async function getMapLocationData() {
     if (!parsed) continue;
     const cellLots = (lotsByLoc.get(loc.code) ?? []).sort((a, b) => b.pallets - a.pallets);
     const pallets = cellLots.reduce((s, l) => s + l.pallets, 0);
-    const capacity = Math.max(pallets, 1, Math.round((loc.width * loc.length) / PALLET_M2));
+    // Measure by real floor area (m²). How many pallets fit depends on the
+    // pallet size actually stored — small pallets take less area, so more fit.
+    const areaCap = binCapacity(loc.width, loc.length);
+    const areaUsed = areaByLoc.get(loc.code) ?? 0;
+    const footPerPallet = pallets > 0 ? areaUsed / pallets : DEFAULT_PALLET_M2;
+    const freeArea = Math.max(0, areaCap - areaUsed);
+    const freeSlots = footPerPallet > 0 ? Math.floor(freeArea / footPerPallet) : 0;
+    const capacity = Math.max(1, pallets + freeSlots);
     // dominant container type = the one holding the most pallets
     const byType = new Map<string, number>();
     for (const l of cellLots) byType.set(l.containerType, (byType.get(l.containerType) ?? 0) + l.pallets);
@@ -132,9 +146,11 @@ export async function getMapLocationData() {
       level: parsed.level,
       width: loc.width,
       length: loc.length,
+      areaCap: Math.round(areaCap * 10) / 10,
+      areaUsed: Math.round(areaUsed * 10) / 10,
       capacity,
       pallets,
-      status: pallets === 0 ? "free" : pallets >= capacity ? "full" : "partial",
+      status: pallets === 0 ? "free" : freeArea < footPerPallet ? "full" : "partial",
       containerType: dom,
       topLot: cellLots[0]?.name ?? null,
       lots: cellLots,
@@ -178,13 +194,15 @@ export async function getMapLocationData() {
   let partial = 0;
   let full = 0;
   let pallets = 0;
-  let capacity = 0;
+  let areaUsed = 0;
+  let areaCap = 0;
   for (const c of cells) {
     if (c.status === "free") free++;
     else if (c.status === "full") full++;
     else partial++;
     pallets += c.pallets;
-    capacity += c.capacity;
+    areaUsed += c.areaUsed;
+    areaCap += c.areaCap;
   }
   const summary: MapSummary = {
     positions: cells.length,
@@ -192,8 +210,9 @@ export async function getMapLocationData() {
     partial,
     full,
     pallets,
-    capacity,
-    utilPct: capacity > 0 ? Math.round((pallets / capacity) * 100) : 0,
+    areaUsed: Math.round(areaUsed),
+    areaCap: Math.round(areaCap),
+    utilPct: areaCap > 0 ? Math.round((areaUsed / areaCap) * 100) : 0,
   };
 
   const zones = [...new Set(cells.map((c) => c.zone))].sort();

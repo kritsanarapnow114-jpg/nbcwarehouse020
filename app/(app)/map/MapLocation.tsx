@@ -97,11 +97,11 @@ export function MapLocation({
         {/* Stat cards */}
         <div className="flex flex-wrap items-stretch gap-2.5">
           <div className="min-w-[160px] flex-1 rounded-[12px] border border-[#eceff7] bg-[#f8f9fd] px-4 py-2.5">
-            <div className="text-[11.5px] font-medium text-[#8a92a8]">การใช้งานคลังรวม</div>
+            <div className="text-[11.5px] font-medium text-[#8a92a8]">การใช้งานคลังรวม (ตร.ม.)</div>
             <div className="my-0.5 flex items-baseline gap-1.5">
               <span className="font-num text-[22px] font-bold">{summary.utilPct}%</span>
               <span className="font-num text-[11.5px] text-[#8a92a8]">
-                {summary.pallets.toLocaleString()} / {summary.capacity.toLocaleString()} พาเลท
+                {summary.areaUsed.toLocaleString()} / {summary.areaCap.toLocaleString()} ตร.ม. · {summary.pallets.toLocaleString()} พาเลท
               </span>
             </div>
             <div className="h-[7px] overflow-hidden rounded-[20px] bg-[#e6e9f2]">
@@ -335,7 +335,7 @@ function FloorTile({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
 
 function Drawer({ cell, onClose }: { cell: MapCell; onClose: () => void }) {
   const s = STATUS[cell.status];
-  const p = pct(cell.pallets, cell.capacity);
+  const p = pct(cell.areaUsed, cell.areaCap);
   return (
     <div>
       <div onClick={onClose} className="fixed inset-0 z-40 bg-[rgba(20,25,40,.28)]" />
@@ -367,16 +367,19 @@ function Drawer({ cell, onClose }: { cell: MapCell; onClose: () => void }) {
           {/* capacity */}
           <div className="rounded-[14px] border border-[#eef0f7] bg-[#f8f9fd] px-[15px] py-3">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-[12px] font-bold text-[#8a92a8]">ความจุ</span>
+              <span className="text-[12px] font-bold text-[#8a92a8]">ความจุ (คิดจากพื้นที่)</span>
               <span className="font-num text-[12px] font-semibold text-[#5a6076]">
-                ว่างอีก {Math.max(0, cell.capacity - cell.pallets)} พาเลท
+                ว่างอีก {Math.max(0, Math.round((cell.areaCap - cell.areaUsed) * 10) / 10)} ตร.ม.
               </span>
             </div>
             <div className="mb-2 h-[8px] overflow-hidden rounded-[20px] bg-[#e6e9f2]">
               <div className="h-full rounded-[20px]" style={{ width: `${p}%`, background: p >= 100 ? STATUS.full.color : ACCENT }} />
             </div>
             <div className="text-[13px] text-[#5a6076]">
-              <b className="font-num text-[18px] text-[#1e2433]">{cell.pallets}</b> / {cell.capacity} พาเลท ({p}%)
+              <b className="font-num text-[18px] text-[#1e2433]">{cell.areaUsed}</b> / {cell.areaCap} ตร.ม. ({p}%)
+            </div>
+            <div className="font-num mt-1 text-[12px] text-[#8a92a8]">
+              วางแล้ว {cell.pallets} พาเลท · ยังใส่ได้อีก ~{Math.max(0, cell.capacity - cell.pallets)} พาเลท (ตามขนาดที่วางอยู่)
             </div>
           </div>
 
