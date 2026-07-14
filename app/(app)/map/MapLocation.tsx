@@ -7,9 +7,26 @@ import { moveLotAction, swapLocationsAction } from "@/lib/actions/mapMove";
 import { showToast } from "@/components/ui/Toast";
 import type { RackZone, FloorZone, MapSummary, MapCell, MapLot } from "@/lib/views/mapLocation";
 
-// Distinct colours to tell the lots in a bin apart on the position map.
-const LOT_COLORS = ["#4f5bd5", "#e08a2b", "#2f9e6f", "#d0568f", "#8a5cd8", "#c0453f", "#3f9aa8", "#b7671a"];
-const lotColor = (i: number) => LOT_COLORS[i % LOT_COLORS.length];
+// Build a stable, well-spread colour per product so each product reads as its
+// own colour across the whole map (golden-angle hue spacing = distinct hues).
+type ProductColors = {
+  colorOf: (code: string) => string;
+  products: { code: string; name: string; color: string }[];
+};
+function buildProductColors(racks: RackZone[], floors: FloorZone[]): ProductColors {
+  const names = new Map<string, string>();
+  for (const r of racks) for (const b of r.bays) for (const c of b.levels) for (const l of c.lots) names.set(l.productCode, l.name);
+  for (const f of floors) for (const c of f.tiles) for (const l of c.lots) names.set(l.productCode, l.name);
+  const map = new Map<string, string>();
+  const products = [...names.keys()].sort().map((code, i) => {
+    const hue = Math.round((i * 137.508) % 360);
+    const light = 44 + ((i % 3) * 6); // small lightness jitter to separate near hues
+    const color = `hsl(${hue} 60% ${light}%)`;
+    map.set(code, color);
+    return { code, name: names.get(code) ?? code, color };
+  });
+  return { colorOf: (code: string) => map.get(code) ?? "#8a94a6", products };
+}
 
 type StatusKey = "free" | "partial" | "full";
 
@@ -70,6 +87,12 @@ export function MapLocation({
     }
     setSwapSrc(null);
   }
+
+  const { colorOf: productColor, products: productList } = useMemo(
+    () => buildProductColors(racks, floors),
+    [racks, floors]
+  );
+  const [showLegend, setShowLegend] = useState(false);
 
   const q = search.trim().toLowerCase();
   const matchCell = useMemo(() => {
@@ -204,17 +227,32 @@ export function MapLocation({
       <div className="flex flex-col gap-5 px-6 pb-16 pt-5">
         <div className="flex flex-wrap items-center gap-4 text-[12px]">
           <span className="font-semibold text-[#8a92a8]">
-            Rack = มองด้านหน้า ชั้น L3(บน)→L1(ล่าง) · พื้น = วางซ้อนบล็อก · แต่ละจุด = 1 พาเลท
+            แต่ละจุด = 1 พาเลท · สีบอกสินค้า (สินค้าเดียวกัน = สีเดียวกัน) · ว่าง = สีจาง
           </span>
           <div className="ml-auto flex flex-wrap items-center gap-3.5">
-            {(["free", "partial", "full"] as StatusKey[]).map((k) => (
-              <span key={k} className="flex items-center gap-1.5 text-[11.5px] text-[#5a6076]">
-                <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: STATUS[k].color }} />
-                {STATUS[k].label}
-              </span>
-            ))}
+            <button
+              onClick={() => setShowLegend((v) => !v)}
+              className="rounded-full border border-[#d7dce4] px-3 py-1 text-[11.5px] font-medium text-[#5a6076] hover:border-[#4f5bd5]"
+            >
+              {showLegend ? "ซ่อนสีสินค้า" : `สีสินค้า (${productList.length})`}
+            </button>
           </div>
         </div>
+        {showLegend && (
+          <div className="flex max-h-[168px] flex-wrap gap-x-4 gap-y-1.5 overflow-y-auto rounded-[12px] border border-[#eceff7] bg-white p-3">
+            {productList.length === 0 ? (
+              <span className="text-[12px] text-[#9aa2b8]">ยังไม่มีสินค้าในคลัง</span>
+            ) : (
+              productList.map((p) => (
+                <span key={p.code} className="flex items-center gap-1.5 text-[11.5px] text-[#5a6076]" title={p.name}>
+                  <span className="h-2.5 w-2.5 flex-none rounded-[3px]" style={{ background: p.color }} />
+                  <span className="font-num text-[#8a92a8]">{p.code}</span>
+                  <span className="max-w-[150px] truncate">{p.name}</span>
+                </span>
+              ))
+            )}
+          </div>
+        )}
 
         {/* RACK ZONES */}
         {visRacks.map((r) => (
@@ -233,7 +271,7 @@ export function MapLocation({
                 {r.bays.map((bay) => (
                   <div key={bay.bayCode} className="flex flex-none flex-col gap-1.5">
                     {bay.levels.map((c) => (
-                      <RackCell key={c.id} cell={c} swapSel={swapSrc === c.id} onClick={() => handleTileClick(c.id)} />
+                      <RackCell key={c.id} cell={c} productColor={productColor} swapSel={swapSrc === c.id} onClick={() => handleTileClick(c.id)} />
                     ))}
                     <div className="flex h-[22px] items-center justify-center text-[10px] font-bold text-[#5a6076]">
                       {bay.bayCode}
@@ -257,7 +295,7 @@ export function MapLocation({
               style={{ gridTemplateColumns: "repeat(30, minmax(34px, 1fr))" }}
             >
               {f.tiles.map((c) => (
-                <FloorTile key={c.id} cell={c} swapSel={swapSrc === c.id} onClick={() => handleTileClick(c.id)} />
+                <FloorTile key={c.id} cell={c} productColor={productColor} swapSel={swapSrc === c.id} onClick={() => handleTileClick(c.id)} />
               ))}
             </div>
           </section>
@@ -272,7 +310,7 @@ export function MapLocation({
       </div>
 
       {selCell && (
-        <Drawer cell={selCell} locationCodes={locationCodes} onClose={() => setSelId(null)} />
+        <Drawer cell={selCell} locationCodes={locationCodes} productColor={productColor} onClose={() => setSelId(null)} />
       )}
     </div>
   );
@@ -347,19 +385,30 @@ function Dots({ used, cap, color }: { used: number; cap: number; color: string }
   );
 }
 
-function RackCell({ cell, onClick, swapSel }: { cell: MapCell; onClick: () => void; swapSel?: boolean }) {
+function RackCell({
+  cell,
+  onClick,
+  swapSel,
+  productColor,
+}: {
+  cell: MapCell;
+  onClick: () => void;
+  swapSel?: boolean;
+  productColor: (code: string) => string;
+}) {
   const s = STATUS[cell.status];
+  const domColor = cell.lots[0] ? productColor(cell.lots[0].productCode) : s.color;
   return (
     <button
       onClick={onClick}
-      title={`${cell.code} · ${cell.pallets}/${cell.capacity} พาเลท`}
+      title={`${cell.code} · ${cell.pallets}/${cell.capacity} พาเลท${cell.topLot ? ` · ${cell.topLot}` : ""}`}
       className="flex h-[56px] w-[62px] flex-col items-center justify-center rounded-[9px] border transition hover:brightness-95"
       style={{ background: s.bg, borderColor: swapSel ? "#111827" : s.border, boxShadow: swapSel ? "0 0 0 2px #111827" : undefined }}
     >
       <span className="rounded-[4px] px-1 text-[8.5px] font-bold" style={{ background: s.color, color: "#fff" }}>
         L{cell.level}
       </span>
-      <Dots used={cell.pallets} cap={cell.capacity} color={s.color} />
+      <Dots used={cell.pallets} cap={cell.capacity} color={domColor} />
       <span className="font-num text-[9px] font-bold" style={{ color: s.color }}>
         {cell.pallets}/{cell.capacity}
       </span>
@@ -367,17 +416,18 @@ function RackCell({ cell, onClick, swapSel }: { cell: MapCell; onClick: () => vo
   );
 }
 
-function hexA(hex: string, a: number) {
-  const h = hex.replace("#", "");
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  return `rgba(${r},${g},${b},${a})`;
-}
-// Darker shade for higher stack levels so each level reads differently.
-const LEVEL_ALPHA = [0.5, 0.72, 0.9, 1, 1];
 
-function FloorTile({ cell, onClick, swapSel }: { cell: MapCell; onClick: () => void; swapSel?: boolean }) {
+function FloorTile({
+  cell,
+  onClick,
+  swapSel,
+  productColor,
+}: {
+  cell: MapCell;
+  onClick: () => void;
+  swapSel?: boolean;
+  productColor: (code: string) => string;
+}) {
   const s = STATUS[cell.status];
   const c = containerDef(cell.containerType);
   // Grid = ground positions used (rows) × stack levels (cols). Pallets fill the
@@ -385,6 +435,11 @@ function FloorTile({ cell, onClick, swapSel }: { cell: MapCell; onClick: () => v
   // to the right mean pallets are stacked higher there.
   const S = Math.max(1, Math.min(cell.stack, 5));
   const groundUsed = cell.pallets > 0 ? Math.ceil(cell.pallets / S) : 0;
+  // pallet index → product colour (so you can see products before opening it)
+  const lotOfPallet: number[] = [];
+  cell.lots.forEach((lot, li) => {
+    for (let k = 0; k < lot.pallets; k++) lotOfPallet.push(li);
+  });
   return (
     <button
       onClick={onClick}
@@ -417,12 +472,15 @@ function FloorTile({ cell, onClick, swapSel }: { cell: MapCell; onClick: () => v
         {Array.from({ length: cell.pallets > 0 ? groundUsed : 3 }).map((_, r) => (
           <div key={r} className="flex gap-[3px]">
             {Array.from({ length: cell.pallets > 0 ? S : 1 }).map((_, col) => {
-              const filled = cell.pallets > 0 && col * groundUsed + r < cell.pallets;
+              const idx = col * groundUsed + r;
+              const filled = cell.pallets > 0 && idx < cell.pallets;
+              const lot = filled ? cell.lots[lotOfPallet[idx]] : null;
               return (
                 <span
                   key={col}
+                  title={lot ? `${lot.name} · Lot ${lot.lotNo}` : undefined}
                   className="h-[6px] w-[9px] rounded-[2px]"
-                  style={{ background: filled ? hexA(s.color, LEVEL_ALPHA[col] ?? 1) : "#e0e4ee" }}
+                  style={{ background: lot ? productColor(lot.productCode) : "#e0e4ee" }}
                 />
               );
             })}
@@ -441,17 +499,21 @@ function FloorTile({ cell, onClick, swapSel }: { cell: MapCell; onClick: () => v
   );
 }
 
-function StackMap({ cell }: { cell: MapCell }) {
+function StackMap({ cell, productColor }: { cell: MapCell; productColor: (code: string) => string }) {
   const S = Math.max(1, cell.stack);
   const P = cell.pallets;
   const groundSpots = Math.max(1, Math.ceil(P / S));
   // map each pallet position → the lot sitting there, so cells are coloured by
-  // what they hold (and the tooltip says which product / lot it is)
+  // the product (and the tooltip says which product / lot it is)
   const lotOfPallet: number[] = [];
   cell.lots.forEach((lot, li) => {
     for (let k = 0; k < lot.pallets; k++) lotOfPallet.push(li);
   });
-  const colorAt = (idx: number) => (idx < P ? lotColor(lotOfPallet[idx] ?? 0) : "#e6e9f2");
+  const colorAt = (idx: number) => {
+    if (idx >= P) return "#e6e9f2";
+    const lot = cell.lots[lotOfPallet[idx]];
+    return lot ? productColor(lot.productCode) : "#e6e9f2";
+  };
   const titleAt = (idx: number) => {
     if (idx >= P) return "ว่าง";
     const lot = cell.lots[lotOfPallet[idx]];
@@ -463,7 +525,7 @@ function StackMap({ cell }: { cell: MapCell }) {
         <span className="text-[12px] font-bold text-[#8a92a8]">
           ผังการวางซ้อน {S > 1 ? `(ซ้อนได้ ${S} ชั้น)` : ""}
         </span>
-        <span className="font-num text-[11px] text-[#aeb4c6]">แต่ละจุด = 1 พาเลท · สีบอกลอต</span>
+        <span className="font-num text-[11px] text-[#aeb4c6]">แต่ละจุด = 1 พาเลท · สีบอกสินค้า</span>
       </div>
       {/* Vertical layout: each ground spot is a row going down; stack levels
           sit side by side within the row. */}
@@ -511,10 +573,12 @@ function StackMap({ cell }: { cell: MapCell }) {
 function Drawer({
   cell,
   locationCodes,
+  productColor,
   onClose,
 }: {
   cell: MapCell;
   locationCodes: string[];
+  productColor: (code: string) => string;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -601,8 +665,8 @@ function Drawer({
             </div>
           </div>
 
-          {/* position map — coloured by lot so you can see what each pallet is */}
-          <StackMap cell={cell} />
+          {/* position map — coloured by product so you can see what each pallet is */}
+          <StackMap cell={cell} productColor={productColor} />
           <datalist id="allLocs">
             {locationCodes.map((code) => (
               <option key={code} value={code} />
@@ -625,8 +689,8 @@ function Drawer({
                       <div className="flex items-start gap-2.5">
                         <span
                           className="mt-0.5 flex h-4 w-4 flex-none items-center justify-center rounded-[5px] text-[9px] font-bold text-white"
-                          style={{ background: lotColor(i) }}
-                          title="เลข/สีของลอตนี้ในผังด้านบน"
+                          style={{ background: productColor(lot.productCode) }}
+                          title="เลข/สีของสินค้านี้ในผังด้านบน"
                         >
                           {i + 1}
                         </span>
