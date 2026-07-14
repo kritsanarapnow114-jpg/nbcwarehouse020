@@ -183,7 +183,7 @@ export function MapLocation({
           <section key={f.zone} className="rounded-[16px] border border-[#eceff7] bg-white p-[18px_20px] shadow-[0_1px_3px_rgba(30,36,51,.04)]">
             <ZoneHeader tag={f.zone} title={`พื้นวางซ้อน · โซน ${f.zone}`} sub={`${f.tiles.length} บล็อก`} used={f.used} cap={f.cap} />
             <div className="mb-2 text-[10.5px] text-[#aeb4c6]">
-              มองจากด้านบน · แต่ละแท่ง = 1 แถว (วางแนวตั้ง) · แต่ละจุด = 1 พาเลท
+              แต่ละแท่ง = 1 แถว · แถว = จุดวางบนพื้น · คอลัมน์ = ชั้นซ้อน (1→บนสุด) · สียิ่งเข้ม = ชั้นสูงขึ้น
             </div>
             <div className="flex items-start gap-2 overflow-x-auto pb-1">
               {f.tiles.map((c) => (
@@ -295,18 +295,31 @@ function RackCell({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
   );
 }
 
+function hexA(hex: string, a: number) {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+// Darker shade for higher stack levels so each level reads differently.
+const LEVEL_ALPHA = [0.5, 0.72, 0.9, 1, 1];
+
 function FloorTile({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
   const s = STATUS[cell.status];
   const c = containerDef(cell.containerType);
-  // A floor row is physically a tall vertical lane — render it as a vertical
-  // bar with pallet slots stacked top→bottom.
-  const slots = Math.min(cell.capacity, 40);
+  // Grid = ground positions used (rows) × stack levels (cols). Pallets fill the
+  // bottom level across the spots first, then stack up — so the filled columns
+  // to the right mean pallets are stacked higher there.
+  const S = Math.max(1, Math.min(cell.stack, 5));
+  const groundUsed = cell.pallets > 0 ? Math.ceil(cell.pallets / S) : 0;
+  const G = cell.pallets > 0 ? Math.min(groundUsed, 22) : 5; // empty → placeholder rows
   return (
     <button
       onClick={onClick}
-      title={`${cell.code} · ${cell.pallets}/${cell.capacity} พาเลท · ${cell.pallets > 0 ? c.en : "ว่าง"}`}
-      className="flex w-[58px] flex-none flex-col items-center gap-1.5 rounded-[11px] border p-2 pt-2.5 transition hover:brightness-[.98]"
-      style={{ background: s.bg, borderColor: s.border }}
+      title={`${cell.code} · ${cell.pallets}/${cell.capacity} พาเลท · ซ้อนได้ ${cell.stack} ชั้น · ${cell.pallets > 0 ? c.en : "ว่าง"}`}
+      className="flex flex-none flex-col items-center gap-1.5 rounded-[11px] border p-2 pt-2.5 transition hover:brightness-[.98]"
+      style={{ background: s.bg, borderColor: s.border, width: 30 + S * 10 }}
     >
       <span className="font-num text-[12px] font-bold leading-none" style={{ color: s.color }}>
         {cell.code}
@@ -317,13 +330,30 @@ function FloorTile({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
       >
         {cell.pallets > 0 ? c.en : "ว่าง"}
       </span>
-      <div className="flex flex-col items-center gap-[3px] py-0.5">
-        {Array.from({ length: slots }).map((_, i) => (
-          <span
-            key={i}
-            className="h-[6px] w-[22px] rounded-[2px]"
-            style={{ background: i < cell.pallets ? s.color : "#e0e4ee" }}
-          />
+      {S > 1 && (
+        <div className="flex gap-[3px] text-[7px] font-bold leading-none text-[#9aa2b8]">
+          {Array.from({ length: S }).map((_, c2) => (
+            <span key={c2} className="w-[8px] text-center">
+              {c2 + 1}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="flex flex-col gap-[3px] py-0.5">
+        {Array.from({ length: G }).map((_, r) => (
+          <div key={r} className="flex gap-[3px]">
+            {Array.from({ length: cell.pallets > 0 ? S : 1 }).map((_, col) => {
+              // level-major fill across the occupied ground spots
+              const filled = cell.pallets > 0 && col * groundUsed + r < cell.pallets;
+              return (
+                <span
+                  key={col}
+                  className="h-[6px] w-[8px] rounded-[2px]"
+                  style={{ background: filled ? hexA(s.color, LEVEL_ALPHA[col] ?? 1) : "#e0e4ee" }}
+                />
+              );
+            })}
+          </div>
         ))}
       </div>
       <span className="font-num text-[9.5px] font-bold leading-none" style={{ color: s.color }}>
@@ -331,7 +361,7 @@ function FloorTile({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
       </span>
       {cell.stack > 1 && (
         <span className="rounded-[4px] bg-white/70 px-1 text-[8px] font-bold text-[#5a6076]">
-          ซ้อน {cell.stack}
+          ซ้อน {cell.stack} ชั้น
         </span>
       )}
     </button>
