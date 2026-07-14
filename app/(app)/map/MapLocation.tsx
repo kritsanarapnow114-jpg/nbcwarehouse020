@@ -37,10 +37,39 @@ export function MapLocation({
   zones: string[];
   locationCodes: string[];
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"all" | StatusKey>("all");
   const [zone, setZone] = useState<string>("all");
   const [selId, setSelId] = useState<string | null>(null);
+  const [swapMode, setSwapMode] = useState(false);
+  const [swapSrc, setSwapSrc] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function handleTileClick(code: string) {
+    if (!swapMode) {
+      setSelId(code);
+      return;
+    }
+    if (busy) return;
+    if (!swapSrc) {
+      setSwapSrc(code);
+      return;
+    }
+    if (swapSrc === code) {
+      setSwapSrc(null);
+      return;
+    }
+    setBusy(true);
+    const res = await swapLocationsAction(swapSrc, code);
+    setBusy(false);
+    if (res.error) showToast(res.error);
+    else {
+      showToast(`สลับ ${swapSrc} ↔ ${code} แล้ว`);
+      router.refresh();
+    }
+    setSwapSrc(null);
+  }
 
   const q = search.trim().toLowerCase();
   const matchCell = useMemo(() => {
@@ -140,7 +169,36 @@ export function MapLocation({
               <Chip key={z} active={zone === z} onClick={() => setZone(z)} label={z} />
             ))}
           </div>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => { setSwapMode((v) => !v); setSwapSrc(null); }}
+              className="rounded-[9px] border px-3 py-1.5 text-[12.5px] font-semibold transition"
+              style={{
+                borderColor: swapMode ? "#111827" : "#e4e7f1",
+                background: swapMode ? "#111827" : "#fff",
+                color: swapMode ? "#fff" : "#5a6076",
+              }}
+            >
+              ↔ {swapMode ? "โหมดสลับ: เปิด" : "สลับตำแหน่ง"}
+            </button>
+          </div>
         </div>
+        {swapMode && (
+          <div className="flex items-center gap-2 rounded-[10px] bg-[#111827] px-4 py-2 text-[12.5px] text-white">
+            <span className="h-2 w-2 rounded-full bg-[#6b74e6]" />
+            {swapSrc ? (
+              <>คลิกช่องที่ 2 เพื่อสลับกับ <b className="mx-1">{swapSrc}</b> — หรือคลิก {swapSrc} อีกครั้งเพื่อยกเลิก</>
+            ) : (
+              <>โหมดสลับตำแหน่ง — คลิกช่องแรก แล้วคลิกช่องที่สอง (สลับของทั้ง 2 ช่อง)</>
+            )}
+            <button
+              onClick={() => { setSwapMode(false); setSwapSrc(null); }}
+              className="ml-auto rounded-[7px] bg-[#2b3346] px-2.5 py-1 text-[12px] text-[#cfd4e6]"
+            >
+              ปิดโหมด
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-5 px-6 pb-16 pt-5">
@@ -175,7 +233,7 @@ export function MapLocation({
                 {r.bays.map((bay) => (
                   <div key={bay.bayCode} className="flex flex-none flex-col gap-1.5">
                     {bay.levels.map((c) => (
-                      <RackCell key={c.id} cell={c} onClick={() => setSelId(c.id)} />
+                      <RackCell key={c.id} cell={c} swapSel={swapSrc === c.id} onClick={() => handleTileClick(c.id)} />
                     ))}
                     <div className="flex h-[22px] items-center justify-center text-[10px] font-bold text-[#5a6076]">
                       {bay.bayCode}
@@ -199,7 +257,7 @@ export function MapLocation({
               style={{ gridTemplateColumns: "repeat(30, minmax(34px, 1fr))" }}
             >
               {f.tiles.map((c) => (
-                <FloorTile key={c.id} cell={c} onClick={() => setSelId(c.id)} />
+                <FloorTile key={c.id} cell={c} swapSel={swapSrc === c.id} onClick={() => handleTileClick(c.id)} />
               ))}
             </div>
           </section>
@@ -289,14 +347,14 @@ function Dots({ used, cap, color }: { used: number; cap: number; color: string }
   );
 }
 
-function RackCell({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
+function RackCell({ cell, onClick, swapSel }: { cell: MapCell; onClick: () => void; swapSel?: boolean }) {
   const s = STATUS[cell.status];
   return (
     <button
       onClick={onClick}
       title={`${cell.code} · ${cell.pallets}/${cell.capacity} พาเลท`}
       className="flex h-[56px] w-[62px] flex-col items-center justify-center rounded-[9px] border transition hover:brightness-95"
-      style={{ background: s.bg, borderColor: s.border }}
+      style={{ background: s.bg, borderColor: swapSel ? "#111827" : s.border, boxShadow: swapSel ? "0 0 0 2px #111827" : undefined }}
     >
       <span className="rounded-[4px] px-1 text-[8.5px] font-bold" style={{ background: s.color, color: "#fff" }}>
         L{cell.level}
@@ -319,7 +377,7 @@ function hexA(hex: string, a: number) {
 // Darker shade for higher stack levels so each level reads differently.
 const LEVEL_ALPHA = [0.5, 0.72, 0.9, 1, 1];
 
-function FloorTile({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
+function FloorTile({ cell, onClick, swapSel }: { cell: MapCell; onClick: () => void; swapSel?: boolean }) {
   const s = STATUS[cell.status];
   const c = containerDef(cell.containerType);
   // Grid = ground positions used (rows) × stack levels (cols). Pallets fill the
@@ -332,7 +390,7 @@ function FloorTile({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
       onClick={onClick}
       title={`${cell.code} · ${cell.pallets}/${cell.capacity} พาเลท · ซ้อนได้ ${cell.stack} ชั้น · ${cell.pallets > 0 ? c.en : "ว่าง"}`}
       className="flex h-[150px] w-full min-w-0 flex-col items-center gap-1 overflow-hidden rounded-[10px] border p-1.5 pt-2 transition hover:brightness-[.98]"
-      style={{ background: s.bg, borderColor: s.border }}
+      style={{ background: s.bg, borderColor: swapSel ? "#111827" : s.border, boxShadow: swapSel ? "0 0 0 2px #111827" : undefined }}
     >
       <span className="font-num whitespace-nowrap text-[11px] font-bold leading-none" style={{ color: s.color }}>
         {cell.code}
@@ -425,13 +483,16 @@ function StackMap({ cell }: { cell: MapCell }) {
               <span className="w-[50px] flex-none text-[10px] font-medium text-[#aeb4c6]">จุด {r + 1}</span>
               {Array.from({ length: S }).map((_, c) => {
                 const palletIdx = c * groundSpots + r;
+                const li = palletIdx < P ? lotOfPallet[palletIdx] : -1;
                 return (
                   <span
                     key={c}
                     title={titleAt(palletIdx)}
-                    className="h-[15px] w-[16px] rounded-[3px]"
+                    className="flex h-[15px] w-[16px] items-center justify-center rounded-[3px] text-[8px] font-bold text-white"
                     style={{ background: colorAt(palletIdx) }}
-                  />
+                  >
+                    {li >= 0 ? li + 1 : ""}
+                  </span>
                 );
               })}
             </div>
@@ -563,10 +624,12 @@ function Drawer({
                     <div key={i} className="rounded-[12px] border border-[#eceff7] p-[11px_13px]">
                       <div className="flex items-start gap-2.5">
                         <span
-                          className="mt-1 h-3 w-3 flex-none rounded-[4px]"
+                          className="mt-0.5 flex h-4 w-4 flex-none items-center justify-center rounded-[5px] text-[9px] font-bold text-white"
                           style={{ background: lotColor(i) }}
-                          title="สีของลอตนี้ในผังด้านบน"
-                        />
+                          title="เลข/สีของลอตนี้ในผังด้านบน"
+                        >
+                          {i + 1}
+                        </span>
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-[13.5px] font-semibold">{lot.name}</div>
                           <div className="font-num text-[11.5px] text-[#8a92a8]">{lot.productCode}</div>
