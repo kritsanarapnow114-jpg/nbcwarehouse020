@@ -1,11 +1,9 @@
-import { getStorageMap } from "@/lib/views/storage";
-import { StorageMap } from "./StorageMap";
+import { getMapLocationData } from "@/lib/views/mapLocation";
+import { MapLocation } from "./MapLocation";
 
-export default async function StorageMapPage() {
-  const { racks, summary } = await getStorageMap();
+export default async function MapLocationPage() {
+  const data = await getMapLocationData();
   return (
-    <div className="p-[22px_26px]">
-      <StorageMap racks={racks} summary={summary} />
-    </div>
+    <MapLocation racks={data.racks} floors={data.floors} summary={data.summary} zones={data.zones} />
   );
 }
