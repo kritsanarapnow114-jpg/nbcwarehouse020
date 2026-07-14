@@ -23,6 +23,23 @@ export const CONTAINER_LABEL: Record<string, ContainerTypeDef> = Object.fromEntr
 
 export const CONTAINER_CODES = CONTAINER_TYPES.map((t) => t.code);
 
-export function containerDef(code: string | null | undefined): ContainerTypeDef {
-  return (code && CONTAINER_LABEL[code]) || CONTAINER_LABEL.OTHER;
+const norm = (s: string) => s.trim().toUpperCase().replace(/\s+/g, "");
+
+// Stable pleasant colour for a user-defined pack type name.
+function hashColor(s: string): string {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return `hsl(${h % 360} 52% 46%)`;
+}
+
+/** Resolve a pack-type value to a display def. Matches a built-in by code or
+ *  English name; otherwise treats it as a user-defined type and gives it a
+ *  stable auto colour so custom pack types still render on the map. */
+export function containerDef(value: string | null | undefined): ContainerTypeDef {
+  if (!value || !value.trim()) return CONTAINER_LABEL.OTHER;
+  const key = norm(value);
+  const builtin = CONTAINER_TYPES.find((t) => t.code === key || norm(t.en) === key);
+  if (builtin) return builtin;
+  const name = value.trim();
+  return { code: name, en: name, th: name, color: hashColor(key) };
 }

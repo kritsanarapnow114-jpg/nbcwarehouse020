@@ -66,14 +66,20 @@ function AddProductModal({
         <Field label="Name TH (optional)">
           <input name="nameTh" className={inputClass} />
         </Field>
-        <Field label="ชนิดภาชนะ · Container type (แสดงในแผนผังคลัง)">
-          <select name="containerType" defaultValue="OTHER" className={inputClass}>
-            {CONTAINER_TYPES.map((t) => (
-              <option key={t.code} value={t.code}>
-                {t.en} · {t.th}
+        <Field label="ประเภท Pack · ชนิดภาชนะ (เลือกหรือพิมพ์เองได้ · แสดงในแผนผังคลัง)">
+          <input
+            name="containerType"
+            list="packTypeOptionsAdd"
+            placeholder="เช่น Box, IBC หรือพิมพ์ชื่อเอง"
+            className={inputClass}
+          />
+          <datalist id="packTypeOptionsAdd">
+            {CONTAINER_TYPES.filter((t) => t.code !== "OTHER").map((t) => (
+              <option key={t.code} value={t.en}>
+                {t.th}
               </option>
             ))}
-          </select>
+          </datalist>
         </Field>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Field label="Unit">
