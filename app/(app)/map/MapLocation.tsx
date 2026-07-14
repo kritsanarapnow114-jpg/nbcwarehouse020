@@ -315,11 +315,12 @@ function FloorTile({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
   // bottom level across the spots first, then stack up — so the filled columns
   // to the right mean pallets are stacked higher there.
   const S = Math.max(1, Math.min(cell.stack, 5));
+  const groundUsed = cell.pallets > 0 ? Math.ceil(cell.pallets / S) : 0;
   return (
     <button
       onClick={onClick}
       title={`${cell.code} · ${cell.pallets}/${cell.capacity} พาเลท · ซ้อนได้ ${cell.stack} ชั้น · ${cell.pallets > 0 ? c.en : "ว่าง"}`}
-      className="flex h-[132px] w-full min-w-0 flex-col items-center gap-1 overflow-hidden rounded-[10px] border p-1.5 pt-2 transition hover:brightness-[.98]"
+      className="flex h-[150px] w-full min-w-0 flex-col items-center gap-1 overflow-hidden rounded-[10px] border p-1.5 pt-2 transition hover:brightness-[.98]"
       style={{ background: s.bg, borderColor: s.border }}
     >
       <span className="font-num whitespace-nowrap text-[11px] font-bold leading-none" style={{ color: s.color }}>
@@ -332,28 +333,7 @@ function FloorTile({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
       >
         {cell.pallets > 0 ? c.abbr : "ว่าง"}
       </span>
-      {/* Fixed-height stack bars — one per level, filled from the bottom by how
-          full that level is. Every tile is the same size regardless of count. */}
-      <div className="flex h-[52px] items-end justify-center gap-[3px] py-0.5">
-        {Array.from({ length: S }).map((_, c2) => {
-          const capGround = Math.max(1, Math.round(cell.capacity / S));
-          const filled = Math.min(capGround, Math.max(0, cell.pallets - c2 * capGround));
-          const frac = capGround > 0 ? filled / capGround : 0;
-          return (
-            <div
-              key={c2}
-              className="relative w-[9px] overflow-hidden rounded-[2px]"
-              style={{ height: "100%", background: "#e6e9f2" }}
-            >
-              <div
-                className="absolute inset-x-0 bottom-0"
-                style={{ height: `${Math.round(frac * 100)}%`, background: hexA(s.color, LEVEL_ALPHA[c2] ?? 1) }}
-              />
-            </div>
-          );
-        })}
-      </div>
-      {S > 1 && (
+      {S > 1 && cell.pallets > 0 && (
         <div className="flex gap-[3px] text-[7px] font-bold leading-none text-[#9aa2b8]">
           {Array.from({ length: S }).map((_, c2) => (
             <span key={c2} className="w-[9px] text-center">
@@ -362,7 +342,25 @@ function FloorTile({ cell, onClick }: { cell: MapCell; onClick: () => void }) {
           ))}
         </div>
       )}
-      <span className="font-num mt-auto whitespace-nowrap text-[9.5px] font-bold leading-none" style={{ color: s.color }}>
+      {/* One small cell per pallet (col = stack level). The area is a fixed slot
+          so every tile is the same size; extra rows scroll out of view. */}
+      <div className="flex w-full flex-1 flex-col items-center gap-[3px] overflow-hidden py-0.5">
+        {Array.from({ length: cell.pallets > 0 ? groundUsed : 3 }).map((_, r) => (
+          <div key={r} className="flex gap-[3px]">
+            {Array.from({ length: cell.pallets > 0 ? S : 1 }).map((_, col) => {
+              const filled = cell.pallets > 0 && col * groundUsed + r < cell.pallets;
+              return (
+                <span
+                  key={col}
+                  className="h-[6px] w-[9px] rounded-[2px]"
+                  style={{ background: filled ? hexA(s.color, LEVEL_ALPHA[col] ?? 1) : "#e0e4ee" }}
+                />
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <span className="font-num whitespace-nowrap text-[9.5px] font-bold leading-none" style={{ color: s.color }}>
         {cell.pallets}/{cell.capacity}
       </span>
       {cell.stack > 1 && (
