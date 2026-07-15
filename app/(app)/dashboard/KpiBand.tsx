@@ -66,7 +66,7 @@ export function KpiBand({ kpis }: { kpis: KpiResult[] }) {
               />
               {/* big watermark letter */}
               <span
-                className="pointer-events-none absolute -bottom-6 -right-1 font-num text-[112px] font-black leading-none opacity-[0.09] transition-transform duration-300 group-hover:scale-110"
+                className="pointer-events-none absolute -left-2 -top-7 font-num text-[112px] font-black leading-none opacity-[0.14] transition-transform duration-300 group-hover:scale-110"
                 style={{ color: meta.hue }}
               >
                 {meta.letter}
