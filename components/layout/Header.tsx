@@ -44,7 +44,7 @@ export function Header({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          router.push(`/products?q=${encodeURIComponent(q)}`);
+          if (q.trim()) router.push(`/search?q=${encodeURIComponent(q.trim())}`);
         }}
         className="hidden w-[160px] items-center gap-2 rounded-[9px] border border-[#e2e6ec] bg-[#f1f3f7] px-3 py-2 sm:flex md:w-[220px] lg:w-[290px]"
       >
@@ -52,7 +52,7 @@ export function Header({
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search product / code (ค้นหา)"
+          placeholder="ค้นหา สินค้า / PO / Invoice / SAP Doc / Lot"
           className="w-full min-w-0 border-0 bg-transparent text-[13px] text-[#16202e] outline-none"
         />
       </form>
