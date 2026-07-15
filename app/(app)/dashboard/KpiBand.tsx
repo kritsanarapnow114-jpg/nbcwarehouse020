@@ -31,10 +31,21 @@ export function KpiBand({ kpis }: { kpis: KpiResult[] }) {
 
   return (
     <div className="mb-4">
-      <div className="mb-2.5 flex items-center gap-2">
-        <span className="text-[13px] font-bold tracking-wide text-[#16202e]">SQDCI</span>
-        <span className="text-[11.5px] text-[#9aa4b4]">
-          Safety · Quality · Delivery · Cost · Inventory (แตะเพื่อดู/บันทึก)
+      <div className="mb-3 flex flex-wrap items-end gap-x-3 gap-y-1">
+        <div className="flex items-center">
+          {(["safety", "quality", "delivery", "cost", "accuracy"] as KpiResult["key"][]).map((key) => (
+            <span
+              key={key}
+              className="text-[34px] font-extrabold leading-none tracking-tight drop-shadow-sm sm:text-[40px]"
+              style={{ color: SQDCI[key].hue }}
+            >
+              {SQDCI[key].letter}
+            </span>
+          ))}
+        </div>
+        <span className="pb-1 text-[12px] font-medium text-[#7a889a]">
+          Safety · Quality · Delivery · Cost · Inventory
+          <span className="ml-1 text-[#a6b0bd]">(แตะการ์ดเพื่อดู/บันทึก)</span>
         </span>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">

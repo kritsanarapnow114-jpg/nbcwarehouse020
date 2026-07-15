@@ -30,6 +30,28 @@ const PATHS: Record<string, ReactNode> = {
       <circle cx="12" cy="10" r="2.8" />
     </>
   ),
+  map: (
+    <>
+      <path d="M9 4 3.5 6.2v13.6L9 17.6l6 2.2 5.5-2.2V4L15 6.2z" />
+      <path d="M9 4v13.6" />
+      <path d="M15 6.2v13.6" />
+    </>
+  ),
+  plan: (
+    <>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2.2" />
+      <path d="M3.5 9.5h17" />
+      <path d="M8 3.5v3.2M16 3.5v3.2" />
+      <path d="M8.3 14.6 10.6 17l5-5" />
+    </>
+  ),
+  abc: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 12V3" />
+      <path d="m12 12 7.8 4.5" />
+    </>
+  ),
   receive: (
     <>
       <path d="M12 3v10.5" />
