@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { LoginForm } from "./login-form";
+import { GreenWarehouseBg } from "@/components/ui/GreenWarehouseBg";
 
 export default async function LoginPage({
   searchParams,
@@ -13,13 +14,9 @@ export default async function LoginPage({
   const { next } = await searchParams;
 
   return (
-    <div
-      className="flex min-h-screen items-center justify-center px-4"
-      style={{
-        background: "linear-gradient(180deg,#f5f6fc,#eceef8)",
-      }}
-    >
-      <div className="w-full max-w-sm rounded-[18px] border border-[#e7ebf1] bg-white p-8 shadow-[0_1px_2px_rgba(20,30,48,.04),0_6px_18px_rgba(20,30,48,.035)]">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
+      <GreenWarehouseBg className="pointer-events-none absolute inset-0 h-full w-full" />
+      <div className="relative w-full max-w-sm rounded-[18px] border border-white/70 bg-white/85 p-8 shadow-[0_8px_40px_rgba(20,60,40,.16)] backdrop-blur-md">
         <div className="mb-7 flex items-center gap-3">
           <div className="flex h-10 w-10 flex-none items-center justify-center rounded-[9px] bg-[#1f6b45] text-[15px] font-bold text-white">
             NB
