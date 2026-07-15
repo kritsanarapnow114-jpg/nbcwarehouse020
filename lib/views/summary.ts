@@ -12,7 +12,9 @@ import { getProductRows } from "./products";
 import { getAgingRows } from "./aging";
 import { kpiBand } from "@/lib/calc/kpi";
 
-const DETAIL_CAP = 12;
+// Include the full period's rows in the deck — the PowerPoint export paginates
+// any table that overflows a slide onto continuation slides.
+const DETAIL_CAP = 400;
 
 /** All the numbers a summary presentation needs, computed for one period.
  *  Plain-serializable so it can be handed to the client PowerPoint builder. */
@@ -102,6 +104,7 @@ export async function getExecutiveSummary(range: Range) {
           qty: r.qty,
           unit: r.unit,
           location: r.locationCode,
+          materialDoc: r.materialDoc,
         })),
       },
       issuing: {
@@ -116,6 +119,7 @@ export async function getExecutiveSummary(range: Range) {
           qty: r.qty,
           unit: r.unit,
           issueTo: r.issueTo,
+          materialDoc: r.materialDoc,
         })),
       },
       transfer: {

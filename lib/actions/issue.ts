@@ -14,6 +14,8 @@ export type IssueLineInput = {
 
 export type ConfirmIssueInput = {
   issueTo: string;
+  materialDoc?: string | null;
+  remark?: string | null;
   docDate: string;
   lines: IssueLineInput[];
 };
@@ -36,6 +38,8 @@ export async function confirmIssueAction(
         data: {
           docNo,
           issueTo: input.issueTo,
+          materialDoc: input.materialDoc?.trim() || null,
+          remark: input.remark?.trim() || null,
           docDate,
           shippedDate: docDate,
         },

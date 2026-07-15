@@ -163,6 +163,8 @@ model Receipt {
   poId          String?
   po            PurchaseOrder? @relation(fields: [poId], references: [id])
   invoiceNo     String? // only meaningful when mode = PO
+  materialDoc   String? // SAP Material Document number
+  remark        String? // free-text note
   docDate       DateTime
   producedTotal Float? // mode = PRODUCTION
   prodLoss      Float? // mode = PRODUCTION, finished-goods loss qty
@@ -237,6 +239,8 @@ model Issue {
   id          String    @id @default(cuid())
   docNo       String    @unique
   issueTo     String // "Production - Line A" | "Production - Line B" | "Wholesale - Customer" | "Write-off"
+  materialDoc String? // SAP Material Document number
+  remark      String? // free-text note
   docDate     DateTime
   shippedDate DateTime? // actual ship date, drives Delivery on-time KPI
   reversedAt  DateTime? // set when the document is reversed/voided

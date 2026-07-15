@@ -22,8 +22,8 @@ export async function GET(req: NextRequest) {
   switch (type) {
     case "issuing": {
       const html = toExcelHtml("Report",
-        ["SAP Material Master", "Material Description", "Date", "Qty", "Unit", "Lot", "Issued To", "Doc No."],
-        data.issuing.rows.map((r) => [r.code, r.name, fmtDateBE(new Date(r.docDate)), r.qty, r.unit, r.lotNo, r.issueTo, r.docNo])
+        ["SAP Material Master", "Material Description", "Date", "Qty", "Unit", "Lot", "Issued To", "Mat.Doc (SAP)", "Remark", "Doc No."],
+        data.issuing.rows.map((r) => [r.code, r.name, fmtDateBE(new Date(r.docDate)), r.qty, r.unit, r.lotNo, r.issueTo, r.materialDoc, r.remark, r.docNo])
       );
       return excelResponse("report-issuing.xls", html);
     }
@@ -72,8 +72,8 @@ export async function GET(req: NextRequest) {
     case "receiving":
     default: {
       const html = toExcelHtml("Report",
-        ["SAP Material Master", "Material Description", "Date", "Qty", "Unit", "Lot", "Location", "Mode", "PO Ref.", "Doc No."],
-        data.receiving.rows.map((r) => [r.code, r.name, fmtDateBE(new Date(r.docDate)), r.qty, r.unit, r.lotNo, r.locationCode, r.mode, r.poNo ?? "—", r.docNo])
+        ["SAP Material Master", "Material Description", "Date", "Qty", "Unit", "Lot", "Location", "Mat.Doc (SAP)", "Remark", "Mode", "PO Ref.", "Doc No."],
+        data.receiving.rows.map((r) => [r.code, r.name, fmtDateBE(new Date(r.docDate)), r.qty, r.unit, r.lotNo, r.locationCode, r.materialDoc, r.remark, r.mode, r.poNo ?? "—", r.docNo])
       );
       return excelResponse("report-receiving.xls", html);
     }

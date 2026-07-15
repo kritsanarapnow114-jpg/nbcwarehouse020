@@ -22,6 +22,8 @@ export type ConfirmReceiptInput = {
   mode: "PO" | "PRODUCTION";
   poId: string | null;
   invoiceNo: string | null;
+  materialDoc?: string | null;
+  remark?: string | null;
   docDate: string;
   lines: ReceiveLineInput[];
   producedTotal?: number;
@@ -52,6 +54,8 @@ export async function confirmReceiptAction(
         mode: input.mode,
         poId: input.poId,
         invoiceNo: input.mode === "PO" ? input.invoiceNo : null,
+        materialDoc: input.materialDoc?.trim() || null,
+        remark: input.remark?.trim() || null,
         docDate,
         producedTotal: input.mode === "PRODUCTION" ? input.producedTotal ?? 0 : null,
         prodLoss: input.mode === "PRODUCTION" ? input.prodLoss ?? 0 : null,

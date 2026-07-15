@@ -97,7 +97,7 @@ export default async function ReportsPage({
         <Card>
           <CardTitle>Receiving (รับสินค้า) — log by product</CardTitle>
           <ReportTable
-            cols={["SAP Material Master", "Material Description", "Date", "Qty", "Lot", "Location", "Mode", "PO Ref.", "Doc No."]}
+            cols={["SAP Material Master", "Material Description", "Date", "Qty", "Lot", "Location", "Mat.Doc (SAP)", "Remark", "Mode", "Doc No."]}
             rows={data.receiving.rows.map((r) => [
               r.code,
               r.name,
@@ -105,8 +105,9 @@ export default async function ReportsPage({
               `${r.qty.toLocaleString()} ${r.unit}`,
               r.lotNo,
               r.locationCode,
+              r.materialDoc || "—",
+              r.remark || "—",
               r.mode,
-              r.poNo ?? "—",
               r.docNo,
             ])}
           />
@@ -117,7 +118,7 @@ export default async function ReportsPage({
         <Card>
           <CardTitle>Issuing (จ่ายสินค้า) — log by product</CardTitle>
           <ReportTable
-            cols={["SAP Material Master", "Material Description", "Date", "Qty", "Lot", "Issued To", "Doc No."]}
+            cols={["SAP Material Master", "Material Description", "Date", "Qty", "Lot", "Issued To", "Mat.Doc (SAP)", "Remark", "Doc No."]}
             rows={data.issuing.rows.map((r) => [
               r.code,
               r.name,
@@ -125,6 +126,8 @@ export default async function ReportsPage({
               `${r.qty.toLocaleString()} ${r.unit}`,
               r.lotNo,
               r.issueTo,
+              r.materialDoc || "—",
+              r.remark || "—",
               r.docNo,
             ])}
           />

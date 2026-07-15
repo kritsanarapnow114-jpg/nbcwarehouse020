@@ -255,51 +255,75 @@ export function ExportDeckButton({
         headers: string[], rows: (string | number)[][], weights: number[],
         summaryLine?: string, accent = BLUE
       ) => {
-        const s = newSlide(title, th, no, accent);
-        let top = 2.05;
-        if (summaryLine) {
-          s.addShape("roundRect", { x: 0.5, y: 1.58, w: 12.33, h: 0.5, rectRadius: 0.06, fill: { color: BANNER }, line: { color: CARDLINE, width: 1 } });
-          s.addText(summaryLine, { x: 0.7, y: 1.58, w: 12, h: 0.5, fontSize: 14, bold: true, color: BLUE, valign: "middle", fontFace: FONT });
-          top = 2.32;
-        }
         const totalW = 12.33;
         const wsum = weights.reduce((a, b) => a + b, 0);
         const colW = weights.map((wt) => (wt / wsum) * totalW);
-        // Grow the rows to fill the slide so there's no big empty gap below.
-        const nRows = Math.max(rows.length, 1) + 1; // + header
-        const avail = 6.98 - top;
-        const rowH = Math.min(0.72, Math.max(0.36, avail / nRows));
-        const headRow: PptxGenJSLib.TableRow = headers.map((h) => ({
-          text: h,
-          options: { bold: true, color: "FFFFFF", fill: { color: accent }, fontSize: 13, valign: "middle", fontFace: FONT, margin: [3, 5, 3, 5] as [number, number, number, number] },
-        }));
-        const bodyRows: PptxGenJSLib.TableRow[] = rows.length
-          ? rows.map((r, ri) =>
-              r.map((c, ci) => ({
-                text: String(c),
-                options: {
-                  fontSize: 13,
-                  bold: ci === 0,
-                  color: ci === 0 ? SLATE : INK,
-                  fill: { color: ri % 2 ? PANEL : BANNER },
-                  valign: "middle",
-                  fontFace: FONT,
-                  margin: [2, 5, 2, 5] as [number, number, number, number],
+        const BOTTOM = 6.98;
+        const MIN_ROWH = 0.4; // comfortable row height that drives pagination
+
+        // Split rows across as many slides as needed (first slide is shorter
+        // because of the summary banner). Never cram — spill onto new slides.
+        const firstTop = summaryLine ? 2.32 : 2.05;
+        const firstCap = Math.max(1, Math.floor((BOTTOM - firstTop) / MIN_ROWH) - 1);
+        const contCap = Math.max(1, Math.floor((BOTTOM - 2.05) / MIN_ROWH) - 1);
+        const chunks: (string | number)[][][] = [];
+        if (rows.length === 0) {
+          chunks.push([]);
+        } else {
+          let i = 0;
+          while (i < rows.length) {
+            const cap = chunks.length === 0 ? firstCap : contCap;
+            chunks.push(rows.slice(i, i + cap));
+            i += cap;
+          }
+        }
+
+        let firstSlide: PptxGenJSLib.Slide | null = null;
+        chunks.forEach((chunk, ci) => {
+          const contTh = chunks.length > 1 ? `${th} (ต่อ ${ci + 1}/${chunks.length})` : th;
+          const s = newSlide(title, contTh, no, accent);
+          let top = 2.05;
+          if (ci === 0 && summaryLine) {
+            s.addShape("roundRect", { x: 0.5, y: 1.58, w: 12.33, h: 0.5, rectRadius: 0.06, fill: { color: BANNER }, line: { color: CARDLINE, width: 1 } });
+            s.addText(summaryLine, { x: 0.7, y: 1.58, w: 12, h: 0.5, fontSize: 14, bold: true, color: BLUE, valign: "middle", fontFace: FONT });
+            top = 2.32;
+          }
+          const nRows = Math.max(chunk.length, 1) + 1; // + header
+          const avail = BOTTOM - top;
+          const rowH = Math.min(0.6, Math.max(MIN_ROWH, avail / nRows));
+          const headRow: PptxGenJSLib.TableRow = headers.map((h) => ({
+            text: h,
+            options: { bold: true, color: "FFFFFF", fill: { color: accent }, fontSize: 13, valign: "middle", fontFace: FONT, margin: [3, 5, 3, 5] as [number, number, number, number] },
+          }));
+          const bodyRows: PptxGenJSLib.TableRow[] = chunk.length
+            ? chunk.map((r, ri) =>
+                r.map((c, cix) => ({
+                  text: String(c),
+                  options: {
+                    fontSize: 13,
+                    bold: cix === 0,
+                    color: cix === 0 ? SLATE : INK,
+                    fill: { color: ri % 2 ? PANEL : BANNER },
+                    valign: "middle",
+                    fontFace: FONT,
+                    margin: [2, 5, 2, 5] as [number, number, number, number],
+                  },
+                }))
+              )
+            : [[
+                {
+                  text: "— no data for this period (ไม่มีข้อมูลช่วงนี้) —",
+                  options: { fontSize: 12, italic: true, color: MUTE, colspan: headers.length, align: "center" as const, fill: { color: PANEL }, fontFace: FONT },
                 },
-              }))
-            )
-          : [[
-              {
-                text: "— no data for this period (ไม่มีข้อมูลช่วงนี้) —",
-                options: { fontSize: 12, italic: true, color: MUTE, colspan: headers.length, align: "center" as const, fill: { color: PANEL }, fontFace: FONT },
-              },
-            ]];
-        s.addTable([headRow, ...bodyRows], {
-          x: 0.5, y: top, w: totalW, colW,
-          border: { type: "solid", color: CARDLINE, pt: 0.5 },
-          rowH, valign: "middle",
+              ]];
+          s.addTable([headRow, ...bodyRows], {
+            x: 0.5, y: top, w: totalW, colW,
+            border: { type: "solid", color: CARDLINE, pt: 0.5 },
+            rowH, valign: "middle",
+          });
+          if (ci === 0) firstSlide = s;
         });
-        return s;
+        return firstSlide as unknown as PptxGenJSLib.Slide;
       };
 
       tableSlide(
@@ -334,18 +358,18 @@ export function ExportDeckButton({
 
       tableSlide(
         "GR · Receiving", "รับเข้า", 5,
-        ["SAP Material", "Material Description", "Date", "Qty", "Lot", "Loc"],
-        d.receiving.rows.map((r) => [r.code, r.name, dfmt(r.docDate), `${num(r.qty)} ${r.unit}`, r.lotNo, r.location]),
-        [2, 3.6, 1.8, 1.6, 2, 1],
+        ["SAP Material", "Material Description", "Mat.Doc (SAP)", "Date", "Qty", "Lot", "Loc"],
+        d.receiving.rows.map((r) => [r.code, r.name, r.materialDoc || "-", dfmt(r.docDate), `${num(r.qty)} ${r.unit}`, r.lotNo, r.location]),
+        [1.9, 3.1, 1.7, 1.5, 1.5, 1.7, 0.9],
         `${num(d.receiving.docCount)} docs   ·   รับเข้ารวม ${num(d.receiving.totalUnits)} units`,
         TEAL
       );
 
       tableSlide(
         "GI · Issuing", "จ่ายออก", 6,
-        ["SAP Material", "Material Description", "Date", "Qty", "Lot", "Issued To"],
-        d.issuing.rows.map((r) => [r.code, r.name, dfmt(r.docDate), `${num(r.qty)} ${r.unit}`, r.lotNo, r.issueTo]),
-        [2, 3.4, 1.8, 1.6, 2, 2],
+        ["SAP Material", "Material Description", "Mat.Doc (SAP)", "Date", "Qty", "Lot", "Issued To"],
+        d.issuing.rows.map((r) => [r.code, r.name, r.materialDoc || "-", dfmt(r.docDate), `${num(r.qty)} ${r.unit}`, r.lotNo, r.issueTo]),
+        [1.9, 2.9, 1.7, 1.5, 1.5, 1.7, 1.9],
         `${num(d.issuing.docCount)} docs   ·   จ่ายออกรวม ${num(d.issuing.totalUnits)} units`,
         ORANGE
       );

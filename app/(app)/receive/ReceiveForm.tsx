@@ -27,6 +27,8 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
   const [mode, setMode] = useState<"PO" | "PRODUCTION">("PO");
   const [poId, setPoId] = useState<string>("");
   const [invoiceNo, setInvoiceNo] = useState("");
+  const [materialDoc, setMaterialDoc] = useState("");
+  const [remark, setRemark] = useState("");
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Line[]>([]);
   const [prodLoss, setProdLoss] = useState("20");
@@ -154,6 +156,8 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
       mode,
       poId: mode === "PO" ? poId || null : null,
       invoiceNo: mode === "PO" ? invoiceNo : null,
+      materialDoc: materialDoc || null,
+      remark: remark || null,
       docDate,
       lines: lines.map(
         (l): ReceiveLineInput => ({
@@ -188,6 +192,8 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
         setLines([]);
         setPoId("");
         setInvoiceNo("");
+        setMaterialDoc("");
+        setRemark("");
         router.refresh();
       }
     } catch (e) {
@@ -275,7 +281,25 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
               </div>
             </>
           )}
-          <div className="flex-1" />
+          <div className="h-[34px] w-px bg-[#e2e6ec]" />
+          <div>
+            <div className="mb-1 text-[11.5px] text-[#69748a]">Material Document (SAP)</div>
+            <input
+              value={materialDoc}
+              onChange={(e) => setMaterialDoc(e.target.value)}
+              placeholder="เลขที่จาก SAP"
+              className="font-num w-[150px] rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
+            />
+          </div>
+          <div className="min-w-[160px] flex-1">
+            <div className="mb-1 text-[11.5px] text-[#69748a]">Remark (หมายเหตุ)</div>
+            <input
+              value={remark}
+              onChange={(e) => setRemark(e.target.value)}
+              placeholder="หมายเหตุเพิ่มเติม"
+              className="w-full rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
+            />
+          </div>
           <div>
             <div className="mb-1 text-[11.5px] text-[#69748a]">Doc date (วันที่เอกสาร)</div>
             <input

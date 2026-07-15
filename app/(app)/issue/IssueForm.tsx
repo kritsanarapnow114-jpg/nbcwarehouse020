@@ -17,6 +17,8 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
   const router = useRouter();
   const ISSUE_TO_OPTIONS = issueToOptions.length > 0 ? issueToOptions : ["-"];
   const [issueTo, setIssueTo] = useState(ISSUE_TO_OPTIONS[0]);
+  const [materialDoc, setMaterialDoc] = useState("");
+  const [remark, setRemark] = useState("");
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Line[]>([]);
   const [popup, setPopup] = useState<{ kind: CuteBoxKind; message: string } | null>(null);
@@ -85,6 +87,8 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
     setSaving(true);
     const payload = {
       issueTo,
+      materialDoc: materialDoc || null,
+      remark: remark || null,
       docDate,
       lines: lines.map(
         (l): IssueLineInput => ({
@@ -103,6 +107,8 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
         setPopup({ kind: "out", message: `Issue ${res.docNo} confirmed — stock deducted.` });
         setLastConfirmed({ docNo: res.docNo, lines });
         setLines([]);
+        setMaterialDoc("");
+        setRemark("");
         router.refresh();
       }
     } catch (e) {
@@ -154,7 +160,25 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
               ))}
             </select>
           </div>
-          <div className="flex-1" />
+          <div className="h-[34px] w-px bg-[#e2e6ec]" />
+          <div>
+            <div className="mb-1 text-[11.5px] text-[#69748a]">Material Document (SAP)</div>
+            <input
+              value={materialDoc}
+              onChange={(e) => setMaterialDoc(e.target.value)}
+              placeholder="เลขที่จาก SAP"
+              className="font-num w-[140px] rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
+            />
+          </div>
+          <div className="min-w-[150px] flex-1">
+            <div className="mb-1 text-[11.5px] text-[#69748a]">Remark (หมายเหตุ)</div>
+            <input
+              value={remark}
+              onChange={(e) => setRemark(e.target.value)}
+              placeholder="หมายเหตุเพิ่มเติม"
+              className="w-full rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
+            />
+          </div>
           {lastConfirmed && (
             <button onClick={handlePrint} className={buttonClass("secondary")}>
               ⎙ Print last ({lastConfirmed.docNo})
