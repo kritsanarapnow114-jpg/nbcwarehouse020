@@ -229,7 +229,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
         <div className="flex flex-wrap items-center gap-4 border-b border-[#eef1f5] p-[18px_22px]">
           <div>
             <div className="mb-1 text-[11.5px] text-[#69748a]">Receipt No. (เลขที่รับ) · auto</div>
-            <div className="font-num text-[16px] font-semibold text-[#12a2bb]">{data.docNo}</div>
+            <div className="font-num text-[16px] font-semibold text-[#2f8f5b]">{data.docNo}</div>
           </div>
           <div className="h-[34px] w-px bg-[#e2e6ec]" />
           {mode === "PO" ? (
@@ -251,7 +251,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                   ]}
                   onSelect={selectPo}
                   placeholder="พิมพ์ค้นหา PO / ผู้ขาย…"
-                  className="font-num w-full rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px] outline-none focus:border-[#12a2bb]"
+                  className="font-num w-full rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px] outline-none focus:border-[#2f8f5b]"
                 />
               </div>
             </div>
@@ -367,7 +367,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                       <button
                         onClick={() => splitLine(i)}
                         title="รับอีก Lot ของสินค้าตัวนี้ (split into another lot)"
-                        className="rounded-[6px] border border-[#cfe6d9] bg-[#e6f5fa] px-1.5 py-0.5 text-[11px] font-semibold text-[#0c7f93] hover:bg-[#d6eef4]"
+                        className="rounded-[6px] border border-[#cfe6d9] bg-[#e8f5ec] px-1.5 py-0.5 text-[11px] font-semibold text-[#0c7f93] hover:bg-[#d6eef4]"
                       >
                         ＋Lot
                       </button>
@@ -417,7 +417,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
           <button
             onClick={handleConfirm}
             disabled={saving || lines.length === 0}
-            className={buttonClass("primary", "!bg-[#0e8ba1]")}
+            className={buttonClass("primary", "!bg-[#237a49]")}
           >
             {saving ? "Saving…" : "Confirm receipt (ยืนยันรับ)"}
           </button>
@@ -441,7 +441,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                 className="font-num w-[70px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-right text-[13px]"
               />
             </label>
-            <div className="rounded-[8px] border border-[#cfeaf1] bg-[#e6f5fa] px-2.5 py-1.5 text-[12px] text-[#69748a]">
+            <div className="rounded-[8px] border border-[#cfe8d7] bg-[#e8f5ec] px-2.5 py-1.5 text-[12px] text-[#69748a]">
               Yield → Quality KPI: <b className="font-num text-[#0c7f93]">{yieldPct.toFixed(1)}%</b>
             </div>
           </div>

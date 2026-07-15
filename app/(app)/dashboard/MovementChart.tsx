@@ -170,7 +170,7 @@ export function MovementChart({
               {buckets.map((b, i) => (
                 <tr key={i} className="border-t border-[#eef1f5]">
                   <td className="font-num py-2">{b.label}</td>
-                  <td className="font-num py-2 text-right text-[#0e8ba1]">
+                  <td className="font-num py-2 text-right text-[#237a49]">
                     +{b.recv.toLocaleString()}
                   </td>
                   <td className="font-num py-2 text-right text-[#c9821f]">

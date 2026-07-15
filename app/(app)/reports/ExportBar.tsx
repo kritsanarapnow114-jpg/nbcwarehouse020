@@ -40,7 +40,7 @@ export function ExportBar({ start, end }: { start: string; end: string }) {
         <div className="flex-1" />
         <a
           href={href}
-          className="flex items-center gap-1.5 rounded-[8px] border border-[#16a6bf] bg-[#e6f5fa] px-3.5 py-2 text-[12.5px] font-semibold text-[#0c7f93]"
+          className="flex items-center gap-1.5 rounded-[8px] border border-[#16a6bf] bg-[#e8f5ec] px-3.5 py-2 text-[12.5px] font-semibold text-[#0c7f93]"
         >
           ⤓ Export Excel
         </a>

@@ -35,7 +35,7 @@ export default async function CountPage() {
   return (
     <div className="max-w-[1240px] p-[22px_26px]">
       <CountForm lots={lots} products={products} locations={locations} />
-      <DocHistory title="Recent Counts (ประวัติการนับสต็อก)" rows={rows} accentColor="#12a2bb" reverseKind="count" printSheet="count" />
+      <DocHistory title="Recent Counts (ประวัติการนับสต็อก)" rows={rows} accentColor="#2f8f5b" reverseKind="count" printSheet="count" />
     </div>
   );
 }

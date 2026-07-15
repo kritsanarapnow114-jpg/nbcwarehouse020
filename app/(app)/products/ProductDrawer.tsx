@@ -136,7 +136,7 @@ export function ProductDrawer({
                     {REORDER_LABEL[rs]}
                   </span>
                   <span className="flex-1" />
-                  <button onClick={() => setEditOpen(true)} className="text-[11.5px] font-medium text-[#12a2bb]">
+                  <button onClick={() => setEditOpen(true)} className="text-[11.5px] font-medium text-[#2f8f5b]">
                     กำหนดเอง →
                   </button>
                 </div>
@@ -320,7 +320,7 @@ function LotEditModal({
           <input
             value={lotNo}
             onChange={(e) => setLotNo(e.target.value)}
-            className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#12a2bb]"
+            className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#2f8f5b]"
           />
         </label>
         <div className="grid grid-cols-2 gap-3">
@@ -330,7 +330,7 @@ function LotEditModal({
               type="date"
               value={mfg}
               onChange={(e) => setMfg(e.target.value)}
-              className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#12a2bb]"
+              className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#2f8f5b]"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -339,7 +339,7 @@ function LotEditModal({
               type="date"
               value={exp}
               onChange={(e) => setExp(e.target.value)}
-              className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#12a2bb]"
+              className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#2f8f5b]"
             />
           </label>
         </div>

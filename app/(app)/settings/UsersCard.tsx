@@ -101,7 +101,7 @@ export function UsersCard({ users }: { users: UserRow[] }) {
                   router.refresh();
                 }
               }}
-              className="rounded-[7px] border border-[#d7dce4] px-2 py-1 text-[11.5px] outline-none focus:border-[#12a2bb]"
+              className="rounded-[7px] border border-[#d7dce4] px-2 py-1 text-[11.5px] outline-none focus:border-[#2f8f5b]"
             >
               {PERMISSION_OPTIONS.map((p) => (
                 <option key={p} value={p}>
@@ -131,4 +131,4 @@ export function UsersCard({ users }: { users: UserRow[] }) {
 }
 
 const inputClass =
-  "rounded-[7px] border border-[#d7dce4] px-2.5 py-1.5 text-[12.5px] outline-none focus:border-[#12a2bb]";
+  "rounded-[7px] border border-[#d7dce4] px-2.5 py-1.5 text-[12.5px] outline-none focus:border-[#2f8f5b]";

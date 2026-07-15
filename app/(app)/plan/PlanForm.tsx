@@ -176,7 +176,7 @@ export function PlanForm({
                 <input
                   value={t.name}
                   onChange={(e) => setTypeName(t.id, e.target.value)}
-                  className="flex-1 rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px] font-semibold outline-none focus:border-[#12a2bb]"
+                  className="flex-1 rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px] font-semibold outline-none focus:border-[#2f8f5b]"
                 />
                 <button onClick={() => delType(t.id)} className="text-[15px] text-[#c2606f]">🗑</button>
               </div>
@@ -371,7 +371,7 @@ export function PlanForm({
         <div className="flex flex-wrap items-center gap-3 border-b border-[#eef1f5] p-[14px_20px]">
           <div className="text-[14px] font-semibold">
             เทียบของในคลัง · ต้องสั่งซื้อ —{" "}
-            <span className="text-[#0e8ba1]">{toOrderCount}</span> รายการต้องสั่งเพิ่ม
+            <span className="text-[#237a49]">{toOrderCount}</span> รายการต้องสั่งเพิ่ม
           </div>
           <label className="flex items-center gap-1.5 text-[12px] text-[#3a4658]">
             Lead time (วัน)
@@ -389,7 +389,7 @@ export function PlanForm({
           <button onClick={handleOrderList} className="flex items-center gap-1.5 rounded-[8px] bg-[#0e8a4f] px-3.5 py-2 text-[12.5px] font-semibold text-white">
             ⤓ ใบสั่งของ (order list)
           </button>
-          <button onClick={handleExportAll} className="flex items-center gap-1.5 rounded-[8px] border border-[#16a6bf] bg-[#e6f5fa] px-3.5 py-2 text-[12.5px] font-semibold text-[#0c7f93]">
+          <button onClick={handleExportAll} className="flex items-center gap-1.5 rounded-[8px] border border-[#16a6bf] bg-[#e8f5ec] px-3.5 py-2 text-[12.5px] font-semibold text-[#0c7f93]">
             ⤓ ทั้งหมด
           </button>
         </div>
@@ -423,7 +423,7 @@ export function PlanForm({
                   </td>
                   <td className="font-num p-[10px_16px] text-right">{r.required.toLocaleString()} {r.unit}</td>
                   <td className="font-num p-[10px_16px] text-right text-[#69748a]">{r.onHand.toLocaleString()}</td>
-                  <td className="font-num p-[10px_16px] text-right text-[#0e8ba1]">
+                  <td className="font-num p-[10px_16px] text-right text-[#237a49]">
                     {r.incoming > 0 ? `+${r.incoming.toLocaleString()}` : "—"}
                   </td>
                   <td className="p-[10px_16px] text-right">

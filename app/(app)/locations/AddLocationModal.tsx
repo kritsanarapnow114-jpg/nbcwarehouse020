@@ -104,7 +104,7 @@ function AddLocationModal({
 }
 
 const inputClass =
-  "w-full rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#12a2bb]";
+  "w-full rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#2f8f5b]";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

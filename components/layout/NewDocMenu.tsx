@@ -28,7 +28,7 @@ export function NewDocMenu() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex flex-none items-center gap-1.5 whitespace-nowrap rounded-[9px] border-0 bg-[#12a2bb] px-3 py-2.5 text-[13px] font-semibold text-white sm:px-3.5"
+        className="flex flex-none items-center gap-1.5 whitespace-nowrap rounded-[9px] border-0 bg-[#2f8f5b] px-3 py-2.5 text-[13px] font-semibold text-white sm:px-3.5"
       >
         <span className="sm:hidden">+ New</span>
         <span className="hidden sm:inline">+ New Document (สร้างเอกสาร)</span>
@@ -42,7 +42,7 @@ export function NewDocMenu() {
               onClick={() => setOpen(false)}
               className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-[#16202e] hover:bg-[#f7f9fb]"
             >
-              <span className="w-4 text-center text-[13px] text-[#12a2bb]">
+              <span className="w-4 text-center text-[13px] text-[#2f8f5b]">
                 {o.icon}
               </span>
               {o.label}

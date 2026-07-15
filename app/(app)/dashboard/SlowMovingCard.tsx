@@ -15,7 +15,7 @@ export function SlowMovingCard({ rows }: { rows: Row[] }) {
         <div className="flex-1 text-[14px] font-semibold">
           Slow-moving Stock (สินค้าเคลื่อนไหวช้า)
         </div>
-        <button onClick={() => setOpen(true)} className="text-[12px] text-[#12a2bb]">
+        <button onClick={() => setOpen(true)} className="text-[12px] text-[#2f8f5b]">
           View all →
         </button>
       </div>

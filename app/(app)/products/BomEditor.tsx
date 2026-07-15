@@ -136,7 +136,7 @@ export function BomEditor({
             options={available.map((m) => ({ value: m.code, label: `${m.code} · ${m.name}` }))}
             onSelect={addLine}
             placeholder="+ Add material (เพิ่มวัตถุดิบ) — พิมพ์ค้นหา…"
-            className="mb-2 w-full rounded-[8px] border border-dashed border-[#c4ccd8] bg-[#f7f9fb] px-2.5 py-1.5 text-[12.5px] text-[#3a4658] outline-none focus:border-[#12a2bb]"
+            className="mb-2 w-full rounded-[8px] border border-dashed border-[#c4ccd8] bg-[#f7f9fb] px-2.5 py-1.5 text-[12.5px] text-[#3a4658] outline-none focus:border-[#2f8f5b]"
           />
 
           {error && (
