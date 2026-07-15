@@ -34,25 +34,24 @@ export function Sidebar({
         }`}
         style={{ background: "linear-gradient(180deg,#47a6dd,#1f5f9e)" }}
       >
-        <div className="flex items-center gap-2.5 border-b border-white/15 px-[18px] py-4">
-          <div className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-[9px] bg-white text-[15px] font-bold tracking-wide text-[#1f5f9e]">
-            NB
-          </div>
-          <div className="min-w-0 flex-1 leading-tight">
-            <div className="whitespace-nowrap text-[14px] font-bold text-white">
-              NBC Warehouse
+        <div className="border-b border-white/15 px-[16px] py-3.5">
+          <div className="flex items-start">
+            <div className="flex-1 rounded-[10px] bg-white px-3 py-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/fls-logo.png" alt="FLS GROUP" className="mx-auto h-8 w-auto" />
             </div>
-            <div className="whitespace-nowrap text-[10.5px] text-[#cfe4f6]">
-              Warehouse Mgmt (ระบบคลังสินค้า)
-            </div>
+            <button
+              onClick={onClose}
+              className="ml-2 flex-none text-[18px] leading-none text-white/70 hover:text-white lg:hidden"
+              aria-label="Close menu"
+            >
+              ×
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="flex-none text-[18px] leading-none text-white/70 hover:text-white lg:hidden"
-            aria-label="Close menu"
-          >
-            ×
-          </button>
+          <div className="mt-2 text-center leading-tight">
+            <div className="text-[13.5px] font-bold text-white">NBC Warehouse</div>
+            <div className="text-[10px] text-[#cfe4f6]">Warehouse Mgmt (ระบบคลังสินค้า)</div>
+          </div>
         </div>
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-auto p-3">
