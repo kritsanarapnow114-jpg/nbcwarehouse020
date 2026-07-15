@@ -49,7 +49,7 @@ export function StockCardModal({
         action={
           <a
             href={`/api/export/stock-card/${code}`}
-            className="rounded-[8px] border border-[#16a6bf] bg-[#e8f5ec] px-2.5 py-1.5 text-[12px] font-semibold text-[#0c7f93]"
+            className="rounded-[8px] border border-[#16a6bf] bg-[#e8f2fb] px-2.5 py-1.5 text-[12px] font-semibold text-[#0c7f93]"
           >
             ⤓ Excel
           </a>
@@ -79,7 +79,7 @@ export function StockCardModal({
                   </Badge>
                 </td>
                 <td className="font-num py-2">{r.lot}</td>
-                <td className="font-num py-2 text-right text-[#237a49]">
+                <td className="font-num py-2 text-right text-[#1f66a6]">
                   {r.in > 0 ? `+${r.in.toLocaleString()}` : ""}
                 </td>
                 <td className="font-num py-2 text-right text-[#d24141]">

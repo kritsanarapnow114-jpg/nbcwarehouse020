@@ -48,7 +48,7 @@ export function AgingTable({ rows }: { rows: AgingRow[] }) {
                     ? "#c9821f"
                     : r.expKind === "none"
                       ? "#9aa4b4"
-                      : "#237a49";
+                      : "#1f66a6";
               return (
                 <tr
                   key={r.lotId}

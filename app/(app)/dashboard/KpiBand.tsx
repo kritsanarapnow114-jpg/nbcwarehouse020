@@ -18,7 +18,7 @@ import { fmtDateBE } from "@/lib/calc/date";
 // SQDCI letter + accent per KPI. The 5 KPIs literally are the SQDCI board:
 // Safety · Quality · Delivery · Cost · Inventory-accuracy.
 const SQDCI: Record<KpiResult["key"], { letter: string; hue: string }> = {
-  safety: { letter: "S", hue: "#2f8f5b" },
+  safety: { letter: "S", hue: "#2f86cf" },
   quality: { letter: "Q", hue: "#7b6ef0" },
   delivery: { letter: "D", hue: "#2aa775" },
   cost: { letter: "C", hue: "#e59a2b" },
@@ -228,7 +228,7 @@ function KpiLogModal({ kpi, onClose }: { kpi: KpiResult; onClose: () => void }) 
                     {keyUpper === "SAFETY" && (
                       <>
                         {l.incident === false && (
-                          <span className="mr-1.5 rounded-[5px] bg-[#e4f4f8] px-1.5 py-0.5 text-[10px] font-semibold text-[#237a49]">
+                          <span className="mr-1.5 rounded-[5px] bg-[#e4f4f8] px-1.5 py-0.5 text-[10px] font-semibold text-[#1f66a6]">
                             เริ่มนับ
                           </span>
                         )}
@@ -345,4 +345,4 @@ function AccuracyModal({ onClose }: { onClose: () => void }) {
 }
 
 const inputClass =
-  "rounded-[7px] border border-[#d7dce4] px-2.5 py-1.5 text-[12.5px] outline-none focus:border-[#2f8f5b]";
+  "rounded-[7px] border border-[#d7dce4] px-2.5 py-1.5 text-[12.5px] outline-none focus:border-[#2f86cf]";

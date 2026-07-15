@@ -54,7 +54,7 @@ export function ListSettingsCard({
             value={issueToText}
             onChange={(e) => setIssueToText(e.target.value)}
             rows={6}
-            className="rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 font-num text-[12.5px] outline-none focus:border-[#2f8f5b]"
+            className="rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 font-num text-[12.5px] outline-none focus:border-[#2f86cf]"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -66,7 +66,7 @@ export function ListSettingsCard({
             onChange={(e) => setOpsText(e.target.value)}
             rows={6}
             placeholder="ชื่อผู้ปฏิบัติงานเพิ่มเติม (นอกเหนือจากรายชื่อผู้ใช้)"
-            className="rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 font-num text-[12.5px] outline-none focus:border-[#2f8f5b]"
+            className="rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 font-num text-[12.5px] outline-none focus:border-[#2f86cf]"
           />
           <span className="text-[11px] text-[#9aa4b4]">
             * รายชื่อผู้ใช้ในระบบจะแสดงให้อยู่แล้ว ช่องนี้ไว้เพิ่มชื่อพิเศษ
@@ -81,7 +81,7 @@ export function ListSettingsCard({
             onChange={(e) => setBomText(e.target.value)}
             rows={2}
             placeholder="ใส่รหัส Location ที่ให้ตัด BOM เช่น A-01 (เว้นว่าง = ตัดจากทุกที่ FIFO)"
-            className="rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 font-num text-[12.5px] outline-none focus:border-[#2f8f5b]"
+            className="rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 font-num text-[12.5px] outline-none focus:border-[#2f86cf]"
           />
           <span className="text-[11px] text-[#9aa4b4]">
             ใส่รหัสที่เก็บของสายแพ็ค 1 บรรทัดต่อ 1 รหัส — ถ้าใส่แล้ว ระบบจะตัดวัตถุดิบเฉพาะจากที่นี่เท่านั้น

@@ -35,7 +35,7 @@ const STATUS: Record<StatusKey, { label: string; color: string; bg: string; bord
   partial: { label: "มีบางส่วน", color: "#c8781f", bg: "#fdf5ea", border: "#f4dcbb" },
   full: { label: "เต็ม", color: "#c0453f", bg: "#fdecec", border: "#f5cbc9" },
 };
-const ACCENT = "#2f8f5b";
+const ACCENT = "#2f86cf";
 
 function pct(used: number, cap: number) {
   return cap > 0 ? Math.round((used / cap) * 100) : 0;
@@ -138,22 +138,22 @@ export function MapLocation({
 
   return (
     <div
-      className="min-h-full text-[#22302a]"
-      style={{ background: "linear-gradient(180deg,#eef5ec 0%,#f3f7f0 40%,#f5f8f2 100%)" }}
+      className="min-h-full text-[#1f2a35]"
+      style={{ background: "linear-gradient(180deg,#e9f3fb 0%,#eff6fc 45%,#f4f8fd 100%)" }}
     >
       {/* Sticky in-page header */}
-      <div className="sticky top-0 z-20 flex flex-col gap-3.5 border-b border-[#dbe7dc] bg-white/95 px-6 py-3.5 backdrop-blur">
+      <div className="sticky top-0 z-20 flex flex-col gap-3.5 border-b border-[#d6e3ef] bg-white/95 px-6 py-3.5 backdrop-blur">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2.5">
             <span
               className="flex h-9 w-9 flex-none items-center justify-center rounded-[11px] text-[18px]"
-              style={{ background: "linear-gradient(135deg,#2f8f5b,#57b37e)" }}
+              style={{ background: "linear-gradient(135deg,#2f86cf,#7cc0ec)" }}
             >
-              🌿
+              ☁️
             </span>
             <div>
               <div className="text-[16px] font-bold leading-none">คลังสินค้า · Map Location</div>
-              <div className="mt-1 text-[11.5px] text-[#7a8a7e]">เห็นของ · Lot · ขนาดพาเลท · ว่างตรงไหน</div>
+              <div className="mt-1 text-[11.5px] text-[#7a889a]">เห็นของ · Lot · ขนาดพาเลท · ว่างตรงไหน</div>
             </div>
           </div>
           <div className="relative ml-auto min-w-[200px] max-w-[420px] flex-1">
@@ -161,22 +161,22 @@ export function MapLocation({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="ค้นหา สินค้า / Lot / ช่อง (เช่น PACA01, A37)"
-              className="w-full rounded-[10px] border-[1.5px] border-[#d8e2d9] bg-[#f4f8f3] px-3.5 py-2.5 text-[13.5px] outline-none focus:border-[#2f8f5b]"
+              className="w-full rounded-[10px] border-[1.5px] border-[#d8e2ee] bg-[#f4f8fc] px-3.5 py-2.5 text-[13.5px] outline-none focus:border-[#2f86cf]"
             />
           </div>
         </div>
 
         {/* Stat cards */}
         <div className="flex flex-wrap items-stretch gap-2.5">
-          <div className="min-w-[160px] flex-1 rounded-[12px] border border-[#e5ede6] bg-[#f4f8f3] px-4 py-2.5">
-            <div className="text-[11.5px] font-medium text-[#7c8b80]">การใช้งานคลังรวม (ตร.ม.)</div>
+          <div className="min-w-[160px] flex-1 rounded-[12px] border border-[#e5edf3] bg-[#f4f8fc] px-4 py-2.5">
+            <div className="text-[11.5px] font-medium text-[#7a8798]">การใช้งานคลังรวม (ตร.ม.)</div>
             <div className="my-0.5 flex items-baseline gap-1.5">
               <span className="font-num text-[22px] font-bold">{summary.utilPct}%</span>
-              <span className="font-num text-[11.5px] text-[#7c8b80]">
+              <span className="font-num text-[11.5px] text-[#7a8798]">
                 {summary.areaUsed.toLocaleString()} / {summary.areaCap.toLocaleString()} ตร.ม. · {summary.pallets.toLocaleString()} พาเลท
               </span>
             </div>
-            <div className="h-[7px] overflow-hidden rounded-[20px] bg-[#dfe8df]">
+            <div className="h-[7px] overflow-hidden rounded-[20px] bg-[#dfe7f0]">
               <div className="h-full rounded-[20px]" style={{ width: `${summary.utilPct}%`, background: ACCENT }} />
             </div>
           </div>
@@ -189,15 +189,15 @@ export function MapLocation({
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="mr-0.5 text-[11.5px] font-semibold text-[#7c8b80]">สถานะ</span>
+            <span className="mr-0.5 text-[11.5px] font-semibold text-[#7a8798]">สถานะ</span>
             <Chip active={status === "all"} onClick={() => setStatus("all")} label="ทั้งหมด" />
             <Chip active={status === "free"} onClick={() => setStatus("free")} label="ว่าง" tone={STATUS.free.color} />
             <Chip active={status === "partial"} onClick={() => setStatus("partial")} label="มีบางส่วน" tone={STATUS.partial.color} />
             <Chip active={status === "full"} onClick={() => setStatus("full")} label="เต็ม" tone={STATUS.full.color} />
           </div>
-          <div className="h-[22px] w-px bg-[#dfe8df]" />
+          <div className="h-[22px] w-px bg-[#dfe7f0]" />
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="mr-0.5 text-[11.5px] font-semibold text-[#7c8b80]">โซน</span>
+            <span className="mr-0.5 text-[11.5px] font-semibold text-[#7a8798]">โซน</span>
             <Chip active={zone === "all"} onClick={() => setZone("all")} label="ทั้งหมด" />
             {zones.map((z) => (
               <Chip key={z} active={zone === z} onClick={() => setZone(z)} label={z} />
@@ -208,9 +208,9 @@ export function MapLocation({
               onClick={() => { setSwapMode((v) => !v); setSwapSrc(null); }}
               className="rounded-[9px] border px-3 py-1.5 text-[12.5px] font-semibold transition"
               style={{
-                borderColor: swapMode ? "#234b38" : "#e4e7f1",
-                background: swapMode ? "#234b38" : "#fff",
-                color: swapMode ? "#fff" : "#4f5c52",
+                borderColor: swapMode ? "#22415e" : "#e4e7f1",
+                background: swapMode ? "#22415e" : "#fff",
+                color: swapMode ? "#fff" : "#4f5a68",
               }}
             >
               ↔ {swapMode ? "โหมดสลับ: เปิด" : "สลับตำแหน่ง"}
@@ -218,8 +218,8 @@ export function MapLocation({
           </div>
         </div>
         {swapMode && (
-          <div className="flex items-center gap-2 rounded-[10px] bg-[#234b38] px-4 py-2 text-[12.5px] text-white">
-            <span className="h-2 w-2 rounded-full bg-[#5cc08a]" />
+          <div className="flex items-center gap-2 rounded-[10px] bg-[#22415e] px-4 py-2 text-[12.5px] text-white">
+            <span className="h-2 w-2 rounded-full bg-[#5ca8e0]" />
             {swapSrc ? (
               <>คลิกช่องที่ 2 เพื่อสลับกับ <b className="mx-1">{swapSrc}</b> — หรือคลิก {swapSrc} อีกครั้งเพื่อยกเลิก</>
             ) : (
@@ -227,7 +227,7 @@ export function MapLocation({
             )}
             <button
               onClick={() => { setSwapMode(false); setSwapSrc(null); }}
-              className="ml-auto rounded-[7px] bg-[#2f5a45] px-2.5 py-1 text-[12px] text-[#cfd4e6]"
+              className="ml-auto rounded-[7px] bg-[#2f4e64] px-2.5 py-1 text-[12px] text-[#cfd4e6]"
             >
               ปิดโหมด
             </button>
@@ -237,27 +237,27 @@ export function MapLocation({
 
       <div className="flex flex-col gap-5 px-6 pb-16 pt-5">
         <div className="flex flex-wrap items-center gap-4 text-[12px]">
-          <span className="font-semibold text-[#7c8b80]">
+          <span className="font-semibold text-[#7a8798]">
             แต่ละจุด = 1 พาเลท · สีบอกสินค้า (สินค้าเดียวกัน = สีเดียวกัน) · ว่าง = สีจาง
           </span>
           <div className="ml-auto flex flex-wrap items-center gap-3.5">
             <button
               onClick={() => setShowLegend((v) => !v)}
-              className="rounded-full border border-[#cdd8ce] px-3 py-1 text-[11.5px] font-medium text-[#4f5c52] hover:border-[#2f8f5b]"
+              className="rounded-full border border-[#cdd6e2] px-3 py-1 text-[11.5px] font-medium text-[#4f5a68] hover:border-[#2f86cf]"
             >
               {showLegend ? "ซ่อนสีสินค้า" : `สีสินค้า (${productList.length})`}
             </button>
           </div>
         </div>
         {showLegend && (
-          <div className="flex max-h-[168px] flex-wrap gap-x-4 gap-y-1.5 overflow-y-auto rounded-[12px] border border-[#e5ede6] bg-white p-3">
+          <div className="flex max-h-[168px] flex-wrap gap-x-4 gap-y-1.5 overflow-y-auto rounded-[12px] border border-[#e5edf3] bg-white p-3">
             {productList.length === 0 ? (
-              <span className="text-[12px] text-[#93a096]">ยังไม่มีสินค้าในคลัง</span>
+              <span className="text-[12px] text-[#939db0]">ยังไม่มีสินค้าในคลัง</span>
             ) : (
               productList.map((p) => (
-                <span key={p.code} className="flex items-center gap-1.5 text-[11.5px] text-[#4f5c52]" title={p.name}>
+                <span key={p.code} className="flex items-center gap-1.5 text-[11.5px] text-[#4f5a68]" title={p.name}>
                   <span className="h-2.5 w-2.5 flex-none rounded-[3px]" style={{ background: p.color }} />
-                  <span className="font-num text-[#7c8b80]">{p.code}</span>
+                  <span className="font-num text-[#7a8798]">{p.code}</span>
                   <span className="max-w-[150px] truncate">{p.name}</span>
                 </span>
               ))
@@ -267,7 +267,7 @@ export function MapLocation({
 
         {/* RACK ZONES */}
         {visRacks.map((r) => (
-          <section key={r.zone} className="rounded-[16px] border border-[#e5ede6] bg-white p-[18px_20px] shadow-[0_1px_3px_rgba(30,36,51,.04)]">
+          <section key={r.zone} className="rounded-[16px] border border-[#e5edf3] bg-white p-[18px_20px] shadow-[0_1px_3px_rgba(30,36,51,.04)]">
             <ZoneHeader tag={r.zone} title={`Rack ${r.zone}`} sub={`${r.bays.length} ช่อง (bay) · 3 ชั้น`} used={r.used} cap={r.cap} />
             <div className="overflow-x-auto pb-1">
               <div className="flex items-start gap-2">
@@ -284,7 +284,7 @@ export function MapLocation({
                     {bay.levels.map((c) => (
                       <RackCell key={c.id} cell={c} productColor={productColor} swapSel={swapSrc === c.id} onClick={() => handleTileClick(c.id)} />
                     ))}
-                    <div className="flex h-[22px] items-center justify-center text-[10px] font-bold text-[#4f5c52]">
+                    <div className="flex h-[22px] items-center justify-center text-[10px] font-bold text-[#4f5a68]">
                       {bay.bayCode}
                     </div>
                   </div>
@@ -296,9 +296,9 @@ export function MapLocation({
 
         {/* FLOOR ZONES */}
         {visFloors.map((f) => (
-          <section key={f.zone} className="rounded-[16px] border border-[#e5ede6] bg-white p-[18px_20px] shadow-[0_1px_3px_rgba(30,36,51,.04)]">
+          <section key={f.zone} className="rounded-[16px] border border-[#e5edf3] bg-white p-[18px_20px] shadow-[0_1px_3px_rgba(30,36,51,.04)]">
             <ZoneHeader tag={f.zone} title={`พื้นวางซ้อน · โซน ${f.zone}`} sub={`${f.tiles.length} บล็อก`} used={f.used} cap={f.cap} />
-            <div className="mb-2 text-[10.5px] text-[#a6b1a7]">
+            <div className="mb-2 text-[10.5px] text-[#a6b0bd]">
               แต่ละแท่ง = 1 แถว · แถว = จุดวางบนพื้น · คอลัมน์ = ชั้นซ้อน (1→บนสุด) · สียิ่งเข้ม = ชั้นสูงขึ้น
             </div>
             <div
@@ -313,7 +313,7 @@ export function MapLocation({
         ))}
 
         {noResults && (
-          <div className="py-[50px] text-center text-[#93a096]">
+          <div className="py-[50px] text-center text-[#939db0]">
             <div className="mb-1 text-[15px] font-semibold">ไม่พบช่องที่ตรงกับเงื่อนไข</div>
             <div className="text-[13px]">ลองล้างตัวกรองหรือคำค้นหา</div>
           </div>
@@ -329,10 +329,10 @@ export function MapLocation({
 
 function StatCard({ dot, label, value }: { dot: string; label: string; value: number }) {
   return (
-    <div className="min-w-[128px] flex-1 rounded-[12px] border border-[#e5ede6] bg-[#f4f8f3] px-4 py-2.5">
+    <div className="min-w-[128px] flex-1 rounded-[12px] border border-[#e5edf3] bg-[#f4f8fc] px-4 py-2.5">
       <div className="flex items-center gap-1.5">
         <span className="h-2 w-2 rounded-full" style={{ background: dot }} />
-        <span className="text-[12px] font-medium text-[#4f5c52]">{label}</span>
+        <span className="text-[12px] font-medium text-[#4f5a68]">{label}</span>
       </div>
       <div className="font-num mt-0.5 text-[22px] font-bold">{value}</div>
     </div>
@@ -347,7 +347,7 @@ function Chip({ active, onClick, label, tone }: { active: boolean; onClick: () =
       style={{
         borderColor: active ? ACCENT : "#e4e7f1",
         background: active ? "#e6f4ec" : "#fff",
-        color: active ? ACCENT : "#4f5c52",
+        color: active ? ACCENT : "#4f5a68",
       }}
     >
       {tone && <span className="h-2 w-2 rounded-full" style={{ background: tone }} />}
@@ -361,19 +361,19 @@ function ZoneHeader({ tag, title, sub, used, cap }: { tag: string; title: string
   return (
     <div className="mb-4 flex flex-wrap items-center gap-4">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-[46px] items-center justify-center rounded-[11px] bg-[#e6f4ec] text-[13px] font-bold text-[#2f8f5b]">
+        <div className="flex h-10 w-[46px] items-center justify-center rounded-[11px] bg-[#e6f4ec] text-[13px] font-bold text-[#2f86cf]">
           {tag}
         </div>
         <div>
           <div className="text-[15px] font-bold">{title}</div>
-          <div className="text-[11.5px] text-[#7c8b80]">{sub}</div>
+          <div className="text-[11.5px] text-[#7a8798]">{sub}</div>
         </div>
       </div>
       <div className="ml-auto flex min-w-[180px] items-center gap-2">
         <div className="h-[7px] flex-1 overflow-hidden rounded-[20px] bg-[#e9f1ea]">
           <div className="h-full rounded-[20px]" style={{ width: `${p}%`, background: p >= 100 ? STATUS.full.color : ACCENT }} />
         </div>
-        <span className="font-num whitespace-nowrap text-[12px] font-semibold text-[#4f5c52]">
+        <span className="font-num whitespace-nowrap text-[12px] font-semibold text-[#4f5a68]">
           {used}/{cap} · {p}%
         </span>
       </div>
@@ -414,7 +414,7 @@ function RackCell({
       onClick={onClick}
       title={`${cell.code} · ${cell.pallets}/${cell.capacity} พาเลท${cell.topLot ? ` · ${cell.topLot}` : ""}`}
       className="flex h-[56px] w-[62px] flex-col items-center justify-center rounded-[9px] border transition hover:brightness-95"
-      style={{ background: s.bg, borderColor: swapSel ? "#234b38" : s.border, boxShadow: swapSel ? "0 0 0 2px #234b38" : undefined }}
+      style={{ background: s.bg, borderColor: swapSel ? "#22415e" : s.border, boxShadow: swapSel ? "0 0 0 2px #22415e" : undefined }}
     >
       <span className="rounded-[4px] px-1 text-[8.5px] font-bold" style={{ background: s.color, color: "#fff" }}>
         L{cell.level}
@@ -456,20 +456,20 @@ function FloorTile({
       onClick={onClick}
       title={`${cell.code} · ${cell.pallets}/${cell.capacity} พาเลท · ซ้อนได้ ${cell.stack} ชั้น · ${cell.pallets > 0 ? c.en : "ว่าง"}`}
       className="flex h-[150px] w-full min-w-0 flex-col items-center gap-1 overflow-hidden rounded-[10px] border p-1.5 pt-2 transition hover:brightness-[.98]"
-      style={{ background: s.bg, borderColor: swapSel ? "#234b38" : s.border, boxShadow: swapSel ? "0 0 0 2px #234b38" : undefined }}
+      style={{ background: s.bg, borderColor: swapSel ? "#22415e" : s.border, boxShadow: swapSel ? "0 0 0 2px #22415e" : undefined }}
     >
       <span className="font-num whitespace-nowrap text-[11px] font-bold leading-none" style={{ color: s.color }}>
         {cell.code}
       </span>
       <span
         className="max-w-full whitespace-nowrap rounded-[4px] px-1 py-0.5 text-center text-[9px] font-bold leading-none text-white"
-        style={{ background: cell.pallets > 0 ? c.color : "#a6b1a7" }}
+        style={{ background: cell.pallets > 0 ? c.color : "#a6b0bd" }}
         title={cell.pallets > 0 ? c.en : "ว่าง"}
       >
         {cell.pallets > 0 ? c.abbr : "ว่าง"}
       </span>
       {S > 1 && cell.pallets > 0 && (
-        <div className="flex gap-[3px] text-[7px] font-bold leading-none text-[#93a096]">
+        <div className="flex gap-[3px] text-[7px] font-bold leading-none text-[#939db0]">
           {Array.from({ length: S }).map((_, c2) => (
             <span key={c2} className="w-[9px] text-center">
               {c2 + 1}
@@ -502,7 +502,7 @@ function FloorTile({
         {cell.pallets}/{cell.capacity}
       </span>
       {cell.stack > 1 && (
-        <span className="whitespace-nowrap rounded-[4px] bg-white/70 px-1 text-[8px] font-bold text-[#4f5c52]">
+        <span className="whitespace-nowrap rounded-[4px] bg-white/70 px-1 text-[8px] font-bold text-[#4f5a68]">
           ซ้อน {cell.stack}ช
         </span>
       )}
@@ -521,9 +521,9 @@ function StackMap({ cell, productColor }: { cell: MapCell; productColor: (code: 
     for (let k = 0; k < lot.pallets; k++) lotOfPallet.push(li);
   });
   const colorAt = (idx: number) => {
-    if (idx >= P) return "#dfe8df";
+    if (idx >= P) return "#dfe7f0";
     const lot = cell.lots[lotOfPallet[idx]];
-    return lot ? productColor(lot.productCode) : "#dfe8df";
+    return lot ? productColor(lot.productCode) : "#dfe7f0";
   };
   const titleAt = (idx: number) => {
     if (idx >= P) return "ว่าง";
@@ -533,16 +533,16 @@ function StackMap({ cell, productColor }: { cell: MapCell; productColor: (code: 
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between">
-        <span className="text-[12px] font-bold text-[#7c8b80]">
+        <span className="text-[12px] font-bold text-[#7a8798]">
           ผังการวางซ้อน {S > 1 ? `(ซ้อนได้ ${S} ชั้น)` : ""}
         </span>
-        <span className="font-num text-[11px] text-[#a6b1a7]">แต่ละจุด = 1 พาเลท · สีบอกสินค้า</span>
+        <span className="font-num text-[11px] text-[#a6b0bd]">แต่ละจุด = 1 พาเลท · สีบอกสินค้า</span>
       </div>
       {/* Vertical layout: each ground spot is a row going down; stack levels
           sit side by side within the row. */}
-      <div className="rounded-[12px] border border-[#e6efe7] bg-[#f8fbf7] p-3">
+      <div className="rounded-[12px] border border-[#e6eef5] bg-[#f7fbff] p-3">
         {S > 1 && (
-          <div className="mb-1 flex gap-[4px] pl-[54px] text-[9px] font-bold text-[#93a096]">
+          <div className="mb-1 flex gap-[4px] pl-[54px] text-[9px] font-bold text-[#939db0]">
             {Array.from({ length: S }).map((_, c) => (
               <span key={c} className="w-[16px] text-center">
                 ช{c + 1}
@@ -553,7 +553,7 @@ function StackMap({ cell, productColor }: { cell: MapCell; productColor: (code: 
         <div className="flex max-h-[280px] flex-col gap-[4px] overflow-y-auto">
           {Array.from({ length: Math.max(1, groundSpots) }).map((_, r) => (
             <div key={r} className="flex items-center gap-[4px]">
-              <span className="w-[50px] flex-none text-[10px] font-medium text-[#a6b1a7]">จุด {r + 1}</span>
+              <span className="w-[50px] flex-none text-[10px] font-medium text-[#a6b0bd]">จุด {r + 1}</span>
               {Array.from({ length: S }).map((_, c) => {
                 const palletIdx = c * groundSpots + r;
                 const li = palletIdx < P ? lotOfPallet[palletIdx] : -1;
@@ -573,7 +573,7 @@ function StackMap({ cell, productColor }: { cell: MapCell; productColor: (code: 
         </div>
       </div>
       {S > 1 && (
-        <div className="font-num mt-1.5 text-[11.5px] text-[#7c8b80]">
+        <div className="font-num mt-1.5 text-[11.5px] text-[#7a8798]">
           วาง {P} พาเลท บน {groundSpots} จุด · ซ้อนสูงสุด {S} ชั้น
         </div>
       )}
@@ -633,7 +633,7 @@ function Drawer({
     <div>
       <div onClick={onClose} className="fixed inset-0 z-40 bg-[rgba(20,25,40,.28)]" />
       <aside className="fixed bottom-0 right-0 top-0 z-[41] flex w-[414px] max-w-[94vw] flex-col bg-white shadow-[-8px_0_30px_rgba(20,25,40,.14)]">
-        <div className="flex items-start gap-3 border-b border-[#e5ede6] px-[22px] py-[18px]">
+        <div className="flex items-start gap-3 border-b border-[#e5edf3] px-[22px] py-[18px]">
           <div className="min-w-0">
             <div className="flex items-center gap-2.5">
               <span className="font-num text-[22px] font-bold tracking-[.3px]">{cell.code}</span>
@@ -644,13 +644,13 @@ function Drawer({
                 {s.label}
               </span>
             </div>
-            <div className="mt-1 text-[12.5px] text-[#7c8b80]">
+            <div className="mt-1 text-[12.5px] text-[#7a8798]">
               โซน {cell.zone} · {cell.kind === "rack" ? `Rack ชั้น L${cell.level}` : "พื้นวางซ้อน"} · {cell.width}×{cell.length} ม.
             </div>
           </div>
           <button
             onClick={onClose}
-            className="ml-auto h-[30px] w-[30px] rounded-[8px] bg-[#f2f4fa] text-[16px] text-[#6a7189] hover:bg-[#dfe8df]"
+            className="ml-auto h-[30px] w-[30px] rounded-[8px] bg-[#f2f4fa] text-[16px] text-[#6a7189] hover:bg-[#dfe7f0]"
           >
             ✕
           </button>
@@ -658,20 +658,20 @@ function Drawer({
 
         <div className="flex flex-1 flex-col gap-[15px] overflow-y-auto px-[22px] py-4">
           {/* capacity */}
-          <div className="rounded-[14px] border border-[#e6efe7] bg-[#f4f8f3] px-[15px] py-3">
+          <div className="rounded-[14px] border border-[#e6eef5] bg-[#f4f8fc] px-[15px] py-3">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-[12px] font-bold text-[#7c8b80]">ความจุ (คิดจากพื้นที่)</span>
-              <span className="font-num text-[12px] font-semibold text-[#4f5c52]">
+              <span className="text-[12px] font-bold text-[#7a8798]">ความจุ (คิดจากพื้นที่)</span>
+              <span className="font-num text-[12px] font-semibold text-[#4f5a68]">
                 ว่างอีก {Math.max(0, Math.round((cell.areaCap - cell.areaUsed) * 10) / 10)} ตร.ม.
               </span>
             </div>
-            <div className="mb-2 h-[8px] overflow-hidden rounded-[20px] bg-[#dfe8df]">
+            <div className="mb-2 h-[8px] overflow-hidden rounded-[20px] bg-[#dfe7f0]">
               <div className="h-full rounded-[20px]" style={{ width: `${p}%`, background: p >= 100 ? STATUS.full.color : ACCENT }} />
             </div>
-            <div className="text-[13px] text-[#4f5c52]">
-              <b className="font-num text-[18px] text-[#22302a]">{cell.areaUsed}</b> / {cell.areaCap} ตร.ม. ({p}%)
+            <div className="text-[13px] text-[#4f5a68]">
+              <b className="font-num text-[18px] text-[#1f2a35]">{cell.areaUsed}</b> / {cell.areaCap} ตร.ม. ({p}%)
             </div>
-            <div className="font-num mt-1 text-[12px] text-[#7c8b80]">
+            <div className="font-num mt-1 text-[12px] text-[#7a8798]">
               วางแล้ว {cell.pallets} พาเลท · ยังใส่ได้อีก ~{Math.max(0, cell.capacity - cell.pallets)} พาเลท (ตามขนาดที่วางอยู่)
             </div>
           </div>
@@ -686,9 +686,9 @@ function Drawer({
 
           {/* lots */}
           <div>
-            <div className="mb-2 text-[12px] font-bold text-[#7c8b80]">ลอตที่จัดเก็บ ({cell.lots.length})</div>
+            <div className="mb-2 text-[12px] font-bold text-[#7a8798]">ลอตที่จัดเก็บ ({cell.lots.length})</div>
             {cell.lots.length === 0 ? (
-              <div className="rounded-[12px] border-[1.5px] border-dashed border-[#dfe3ef] p-4 text-center text-[13px] text-[#93a096]">
+              <div className="rounded-[12px] border-[1.5px] border-dashed border-[#dfe3ef] p-4 text-center text-[13px] text-[#939db0]">
                 ช่องนี้ว่าง — รับเข้า/ย้ายของมาที่ช่องนี้ได้ที่หน้า Receive / Transfer
               </div>
             ) : (
@@ -696,7 +696,7 @@ function Drawer({
                 {cell.lots.map((lot, i) => {
                   const c = containerDef(lot.containerType);
                   return (
-                    <div key={i} className="rounded-[12px] border border-[#e5ede6] p-[11px_13px]">
+                    <div key={i} className="rounded-[12px] border border-[#e5edf3] p-[11px_13px]">
                       <div className="flex items-start gap-2.5">
                         <span
                           className="mt-0.5 flex h-4 w-4 flex-none items-center justify-center rounded-[5px] text-[9px] font-bold text-white"
@@ -707,13 +707,13 @@ function Drawer({
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-[13.5px] font-semibold">{lot.name}</div>
-                          <div className="font-num text-[11.5px] text-[#7c8b80]">{lot.productCode}</div>
+                          <div className="font-num text-[11.5px] text-[#7a8798]">{lot.productCode}</div>
                         </div>
                         <span className="rounded-[5px] px-1.5 py-0.5 text-[9.5px] font-semibold text-white" style={{ background: c.color }}>
                           {c.en}
                         </span>
                       </div>
-                      <div className="mt-2 flex flex-wrap gap-x-3.5 gap-y-1.5 text-[12px] text-[#4f5c52]">
+                      <div className="mt-2 flex flex-wrap gap-x-3.5 gap-y-1.5 text-[12px] text-[#4f5a68]">
                         <span>
                           Lot: <b className="font-num">{lot.lotNo}</b>
                         </span>
@@ -722,7 +722,7 @@ function Drawer({
                           {lot.qty.toLocaleString()} {lot.unit}
                         </span>
                       </div>
-                      <div className="mt-1 flex flex-wrap gap-x-3.5 gap-y-1 text-[11.5px] text-[#7c8b80]">
+                      <div className="mt-1 flex flex-wrap gap-x-3.5 gap-y-1 text-[11.5px] text-[#7a8798]">
                         <span>เข้า {lot.inDate}</span>
                         {lot.expDate && (
                           <span style={{ color: lot.expired ? "#c0453f" : undefined }}>หมดอายุ {lot.expDate}</span>
@@ -736,18 +736,18 @@ function Drawer({
                             onChange={(e) => setMoveTo(e.target.value)}
                             list="allLocs"
                             placeholder="พิมพ์ช่องปลายทาง เช่น A44"
-                            className="min-w-0 flex-1 rounded-[8px] border border-[#cdd8ce] px-2 py-1.5 font-num text-[12.5px] outline-none focus:border-[#2f8f5b]"
+                            className="min-w-0 flex-1 rounded-[8px] border border-[#cdd6e2] px-2 py-1.5 font-num text-[12.5px] outline-none focus:border-[#2f86cf]"
                           />
                           <button
                             onClick={() => doMove(lot)}
                             disabled={busy || !moveTo.trim()}
-                            className="flex-none rounded-[8px] bg-[#2f8f5b] px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+                            className="flex-none rounded-[8px] bg-[#2f86cf] px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
                           >
                             ย้าย
                           </button>
                           <button
                             onClick={() => { setMoveLotId(null); setMoveTo(""); }}
-                            className="flex-none rounded-[8px] border border-[#d8e2d9] px-2 py-1.5 text-[12px] text-[#647065]"
+                            className="flex-none rounded-[8px] border border-[#d8e2ee] px-2 py-1.5 text-[12px] text-[#64708a]"
                           >
                             ✕
                           </button>
@@ -755,7 +755,7 @@ function Drawer({
                       ) : (
                         <button
                           onClick={() => { setMoveLotId(lot.id); setMoveTo(""); }}
-                          className="mt-2.5 w-full rounded-[8px] border border-[#d8e2d9] py-1.5 text-[12px] font-semibold text-[#2f8f5b] hover:bg-[#f5f6ff]"
+                          className="mt-2.5 w-full rounded-[8px] border border-[#d8e2ee] py-1.5 text-[12px] font-semibold text-[#2f86cf] hover:bg-[#f5f6ff]"
                         >
                           ↔ ย้ายลอตนี้ไปช่องอื่น
                         </button>
@@ -769,20 +769,20 @@ function Drawer({
 
           {/* swap this bin with another */}
           {cell.lots.length > 0 && (
-            <div className="rounded-[12px] border border-dashed border-[#cfd6ea] bg-[#f8fbf7] p-3">
-              <div className="mb-2 text-[12px] font-bold text-[#7c8b80]">สลับของทั้งช่องกับอีกช่อง</div>
+            <div className="rounded-[12px] border border-dashed border-[#cfd6ea] bg-[#f7fbff] p-3">
+              <div className="mb-2 text-[12px] font-bold text-[#7a8798]">สลับของทั้งช่องกับอีกช่อง</div>
               <div className="flex items-center gap-1.5">
                 <input
                   value={swapTo}
                   onChange={(e) => setSwapTo(e.target.value)}
                   list="allLocs"
                   placeholder={`สลับ ${cell.code} ↔ ช่อง…`}
-                  className="min-w-0 flex-1 rounded-[8px] border border-[#cdd8ce] px-2 py-1.5 font-num text-[12.5px] outline-none focus:border-[#2f8f5b]"
+                  className="min-w-0 flex-1 rounded-[8px] border border-[#cdd6e2] px-2 py-1.5 font-num text-[12.5px] outline-none focus:border-[#2f86cf]"
                 />
                 <button
                   onClick={doSwap}
                   disabled={busy || !swapTo.trim()}
-                  className="flex-none rounded-[8px] bg-[#234b38] px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+                  className="flex-none rounded-[8px] bg-[#22415e] px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
                 >
                   สลับ
                 </button>
