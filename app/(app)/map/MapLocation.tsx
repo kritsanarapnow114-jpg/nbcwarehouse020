@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import { containerDef } from "@/lib/containerTypes";
-import { moveLotAction, swapLocationsAction, setMapOrderAction, setBinSlotMapAction, setBinExtrasAction } from "@/lib/actions/mapMove";
+import { moveLotAction, swapLocationsAction, setMapOrderAction, setBinSlotMapAction, setBinExtrasAction, setBinStackAction } from "@/lib/actions/mapMove";
 import { showToast } from "@/components/ui/Toast";
 import type { RackZone, FloorZone, MapSummary, MapCell, MapLot, SlotEntry } from "@/lib/views/mapLocation";
 
@@ -880,6 +880,19 @@ function Drawer({
     showToast("ลบของอื่น ๆ แล้ว");
   }
 
+  async function setStack(n: number) {
+    if (busy) return;
+    setBusy(true);
+    const res = await setBinStackAction(cell.code, n);
+    setBusy(false);
+    if (res.error) {
+      showToast(res.error);
+      return;
+    }
+    showToast(`ตั้งซ้อนจริง ${n} ชั้นแล้ว`);
+    router.refresh();
+  }
+
   async function doMove(lot: MapLot) {
     if (!moveTo.trim() || busy) return;
     setBusy(true);
@@ -955,6 +968,40 @@ function Drawer({
               วางแล้ว {cell.pallets} พาเลท · ยังใส่ได้อีก ~{Math.max(0, cell.capacity - cell.pallets)} พาเลท (ตามขนาดที่วางอยู่)
             </div>
           </div>
+
+          {/* actual stack height (some bins can stack 3 but aren't stacked 3) */}
+          {cell.stackMax > 1 && (
+            <div className="rounded-[12px] border border-[#e6eef5] bg-[#f7fbff] px-[13px] py-2.5">
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-[12px] font-bold text-[#7a8798]">ซ้อนจริงในช่องนี้</span>
+                <span className="text-[11px] text-[#a6b0bd]">ซ้อนได้สูงสุด {cell.stackMax} ชั้น</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {Array.from({ length: cell.stackMax }).map((_, i) => {
+                  const n = i + 1;
+                  const active = cell.stack === n;
+                  return (
+                    <button
+                      key={n}
+                      onClick={() => setStack(n)}
+                      disabled={busy}
+                      className="rounded-[8px] border px-3 py-1 text-[12.5px] font-semibold transition disabled:opacity-50"
+                      style={{
+                        borderColor: active ? ACCENT : "#dbe4ee",
+                        background: active ? "#e6f0fb" : "#fff",
+                        color: active ? ACCENT : "#64708a",
+                      }}
+                    >
+                      {n} ชั้น
+                    </button>
+                  );
+                })}
+                <span className="ml-1 text-[11px] text-[#a6b0bd]">
+                  เลือกจำนวนชั้นที่วางซ้อนจริง แล้วผังจะกระจายพาเลทตามนั้น
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* position map — coloured by product so you can see what each pallet is */}
           <StackMap cell={cell} productColor={productColor} />

@@ -40,7 +40,8 @@ export type MapCell = {
   areaUsed: number; // area occupied by stored pallets (m²)
   capacity: number; // pallet capacity — depends on the pallet size stored
   pallets: number;
-  stack: number; // how many pallets high the stored product stacks (ซ้อน 1-3)
+  stack: number; // actual pallets-high used in this bin (ซ้อนจริง 1-3)
+  stackMax: number; // how high the product COULD stack (capability)
   status: "free" | "partial" | "full";
   containerType: string; // dominant
   topLot: string | null;
@@ -201,6 +202,11 @@ export async function getMapLocationData() {
     let dom = "OTHER";
     let best = -1;
     for (const [t, n] of byType) if (n > best) ((best = n), (dom = t));
+    // Stacking: stackMax = how high the product COULD stack; actualStack =
+    // what's really stacked in this bin (user override, ≤ max).
+    const stackMax = Math.max(1, stackByLoc.get(loc.code) ?? 1);
+    const actualStack =
+      loc.stackUsed != null ? Math.min(stackMax, Math.max(1, loc.stackUsed)) : stackMax;
     cells.push({
       id: loc.code,
       code: loc.code,
@@ -215,7 +221,8 @@ export async function getMapLocationData() {
       areaUsed: Math.round(areaUsed * 10) / 10,
       capacity,
       pallets,
-      stack: stackByLoc.get(loc.code) ?? 1,
+      stack: actualStack,
+      stackMax,
       status: pallets === 0 ? "free" : freeArea < footPerPallet ? "full" : "partial",
       containerType: dom,
       topLot: cellLots[0]?.name ?? null,

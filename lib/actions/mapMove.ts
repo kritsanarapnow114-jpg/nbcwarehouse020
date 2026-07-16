@@ -105,6 +105,28 @@ export async function setBinExtrasAction(
   return {};
 }
 
+/** Set the actual pallet-stack height used in a bin (may be lower than the
+ *  product's max). Pass null to go back to "stack to the max". Display only. */
+export async function setBinStackAction(
+  code: string,
+  stackUsed: number | null
+): Promise<{ error?: string }> {
+  try {
+    await requireWrite();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Not allowed" };
+  }
+  const c = code.trim();
+  if (!c) return { error: "ไม่พบช่อง" };
+  const val =
+    stackUsed == null || !Number.isFinite(stackUsed)
+      ? null
+      : Math.max(1, Math.min(20, Math.trunc(stackUsed)));
+  await db.location.update({ where: { code: c }, data: { stackUsed: val } });
+  revalidatePath("/map");
+  return {};
+}
+
 /** Swap the contents of two bins (all lots in A ↔ all lots in B). */
 export async function swapLocationsAction(
   codeA: string,
