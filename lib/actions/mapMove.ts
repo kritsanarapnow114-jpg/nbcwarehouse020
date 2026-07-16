@@ -102,6 +102,7 @@ export async function setBinExtrasAction(
   await db.location.update({ where: { code: c }, data: { extraItems: clean } });
   revalidatePath("/map");
   revalidatePath("/locations");
+  revalidatePath("/dashboard");
   return {};
 }
 
@@ -124,6 +125,8 @@ export async function setBinStackAction(
       : Math.max(1, Math.min(20, Math.trunc(stackUsed)));
   await db.location.update({ where: { code: c }, data: { stackUsed: val } });
   revalidatePath("/map");
+  revalidatePath("/locations");
+  revalidatePath("/dashboard");
   return {};
 }
 

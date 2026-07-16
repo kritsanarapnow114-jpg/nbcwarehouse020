@@ -73,7 +73,14 @@ export function LocationsTable({
                   onClick={() => setSelected(r)}
                   className="cursor-pointer border-t border-[#eef1f5] align-top hover:bg-[#f7f9fb]"
                 >
-                  <Td className="font-num text-[12px] text-[#3a4658]">{r.code}</Td>
+                  <Td className="font-num text-[12px] text-[#3a4658]">
+                    {r.code}
+                    {r.stackUsed != null && r.stackUsed < r.stackMax && (
+                      <div className="mt-1 inline-block rounded-[5px] bg-[#eaf1fb] px-1.5 py-0.5 text-[10px] font-semibold text-[#2f6f9e]">
+                        ซ้อนจริง ×{r.stackUsed}
+                      </div>
+                    )}
+                  </Td>
                   <Td className="text-[#69748a]">
                     Zone {r.zone}
                     <div className="text-[11px] text-[#9aa4b4]">
@@ -101,8 +108,13 @@ export function LocationsTable({
                               </span>
                             </div>
                             <div className="font-num pl-3.5 text-[11px] text-[#9aa4b4]">
-                              {c.qty.toLocaleString()} {c.unit} · {c.area.toFixed(2)} m² (stack ×
-                              {c.stackLevels})
+                              {c.qty.toLocaleString()} {c.unit} · {c.area.toFixed(2)} m² (ซ้อน ×
+                              {c.isExtra
+                                ? c.stackLevels
+                                : r.stackUsed != null
+                                  ? Math.min(c.stackLevels, r.stackUsed)
+                                  : c.stackLevels}
+                              )
                             </div>
                           </div>
                         ))}

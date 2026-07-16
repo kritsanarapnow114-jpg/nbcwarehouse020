@@ -54,6 +54,8 @@ export type LocationRow = {
   barColor: string;
   tone: BinTone;
   contents: BinContent[];
+  stackUsed: number | null; // actual stack set by the user (null = stack to max)
+  stackMax: number; // how high the product could stack
 };
 
 async function loadAllRows(): Promise<LocationRow[]> {
@@ -160,6 +162,8 @@ async function loadAllRows(): Promise<LocationRow[]> {
       barColor: BAR_TONE_COLOR[occupancyBarTone(pct)],
       tone,
       contents,
+      stackUsed: loc.stackUsed ?? null,
+      stackMax,
     };
   });
 }
