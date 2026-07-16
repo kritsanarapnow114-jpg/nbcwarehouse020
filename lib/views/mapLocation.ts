@@ -32,6 +32,7 @@ export type MapCell = {
   level: number; // rack level (1..n); floor = 0
   width: number;
   length: number;
+  mapOrder: number | null; // custom layout order (drag to arrange); null = auto
   areaCap: number; // bin floor area (m²)
   areaUsed: number; // area occupied by stored pallets (m²)
   capacity: number; // pallet capacity — depends on the pallet size stored
@@ -151,6 +152,7 @@ export async function getMapLocationData() {
       level: parsed.level,
       width: loc.width,
       length: loc.length,
+      mapOrder: loc.mapOrder ?? null,
       areaCap: Math.round(areaCap * 10) / 10,
       areaUsed: Math.round(areaUsed * 10) / 10,
       capacity,
@@ -173,14 +175,27 @@ export async function getMapLocationData() {
     );
   }
 
+  // Effective layout order within a zone: honour the user's saved drag order
+  // (mapOrder) and fall back to natural numeric-code order for anything unset.
+  const byCode = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
+
   const racks: RackZone[] = [...rackZones.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([zone, zcells]) => {
       const bayMap = new Map<string, MapCell[]>();
       for (const c of zcells) bayMap.set(c.bayCode, [...(bayMap.get(c.bayCode) ?? []), c]);
+      // natural rank of each bay by code, used when no custom order is set
+      const naturalBays = [...bayMap.keys()].sort(byCode);
+      const bayRank = new Map(naturalBays.map((code, i) => [code, i]));
+      // a bay's order = the smallest mapOrder among its levels (they share it
+      // after a reorder), else its natural rank
+      const bayOrder = (bayCode: string, lv: MapCell[]) => {
+        const set = lv.map((c) => c.mapOrder).filter((n): n is number => n != null);
+        return set.length ? Math.min(...set) : bayRank.get(bayCode) ?? 0;
+      };
       const bays = [...bayMap.entries()]
-        .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
-        .map(([bayCode, lv]) => ({ bayCode, levels: lv.sort((a, b) => b.level - a.level) }));
+        .map(([bayCode, lv]) => ({ bayCode, levels: lv.sort((a, b) => b.level - a.level) }))
+        .sort((a, b) => bayOrder(a.bayCode, a.levels) - bayOrder(b.bayCode, b.levels));
       const cap = zcells.reduce((s, c) => s + c.capacity, 0);
       const used = zcells.reduce((s, c) => s + c.pallets, 0);
       return { zone, kind: "rack" as const, cap, used, bays };
@@ -188,13 +203,20 @@ export async function getMapLocationData() {
 
   const floors: FloorZone[] = [...floorZones.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([zone, zcells]) => ({
-      zone,
-      kind: "floor" as const,
-      cap: zcells.reduce((s, c) => s + c.capacity, 0),
-      used: zcells.reduce((s, c) => s + c.pallets, 0),
-      tiles: zcells.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true })),
-    }));
+    .map(([zone, zcells]) => {
+      const naturalTiles = [...zcells].sort((a, b) => byCode(a.code, b.code));
+      const tileRank = new Map(naturalTiles.map((c, i) => [c.code, i]));
+      const tiles = [...zcells].sort(
+        (a, b) => (a.mapOrder ?? tileRank.get(a.code)!) - (b.mapOrder ?? tileRank.get(b.code)!)
+      );
+      return {
+        zone,
+        kind: "floor" as const,
+        cap: zcells.reduce((s, c) => s + c.capacity, 0),
+        used: zcells.reduce((s, c) => s + c.pallets, 0),
+        tiles,
+      };
+    });
 
   let free = 0;
   let partial = 0;

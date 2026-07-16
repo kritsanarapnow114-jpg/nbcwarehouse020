@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import { containerDef } from "@/lib/containerTypes";
-import { moveLotAction, swapLocationsAction } from "@/lib/actions/mapMove";
+import { moveLotAction, swapLocationsAction, setMapOrderAction } from "@/lib/actions/mapMove";
 import { showToast } from "@/components/ui/Toast";
 import type { RackZone, FloorZone, MapSummary, MapCell, MapLot } from "@/lib/views/mapLocation";
 
@@ -62,8 +62,62 @@ export function MapLocation({
   const [swapMode, setSwapMode] = useState(false);
   const [swapSrc, setSwapSrc] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Arrange (drag-to-reorder the layout) mode
+  const [arrangeMode, setArrangeMode] = useState(false);
+  const [layout, setLayout] = useState<Record<string, string[]>>({});
+  const [dragKey, setDragKey] = useState<string | null>(null);
+  const [dragZoneId, setDragZoneId] = useState<string | null>(null);
+
+  // Map each rack bay to its member location codes, so saving a bay order can
+  // expand into the underlying location codes.
+  const bayMembers = useMemo(() => {
+    const m: Record<string, string[]> = {};
+    for (const r of racks) for (const b of r.bays) m[b.bayCode] = b.levels.map((c) => c.code);
+    return m;
+  }, [racks]);
+
+  // Seed the working layout from the (server-sorted) data whenever it changes.
+  useEffect(() => {
+    const next: Record<string, string[]> = {};
+    for (const f of floors) next[`floor:${f.zone}`] = f.tiles.map((t) => t.code);
+    for (const r of racks) next[`rack:${r.zone}`] = r.bays.map((b) => b.bayCode);
+    setLayout(next);
+  }, [racks, floors]);
+
+  async function persistOrder(zoneId: string, keys: string[]) {
+    const orderedCodes = zoneId.startsWith("floor:")
+      ? keys
+      : keys.flatMap((bc) => bayMembers[bc] ?? []);
+    setBusy(true);
+    const res = await setMapOrderAction(orderedCodes);
+    setBusy(false);
+    if (res.error) showToast(res.error);
+    else {
+      showToast("บันทึกผังแล้ว");
+      router.refresh();
+    }
+  }
+
+  function handleDrop(zoneId: string, targetKey: string) {
+    if (!dragKey || dragZoneId !== zoneId || dragKey === targetKey) {
+      setDragKey(null);
+      setDragZoneId(null);
+      return;
+    }
+    const cur = layout[zoneId] ?? [];
+    const arr = cur.filter((k) => k !== dragKey);
+    const idx = arr.indexOf(targetKey);
+    arr.splice(idx < 0 ? arr.length : idx, 0, dragKey);
+    setLayout((L) => ({ ...L, [zoneId]: arr }));
+    const moved = dragKey;
+    setDragKey(null);
+    setDragZoneId(null);
+    persistOrder(zoneId, arr);
+    void moved;
+  }
 
   async function handleTileClick(code: string) {
+    if (arrangeMode) return; // in arrange mode, clicks don't open the drawer
     if (!swapMode) {
       setSelId(code);
       return;
@@ -121,18 +175,35 @@ export function MapLocation({
     return null;
   }, [selId, racks, floors]);
 
+  // In arrange mode, ignore status/search filters (only the zone chip applies)
+  // so a whole zone can be reordered; otherwise honour every filter.
+  const cellPass = (c: MapCell) => (arrangeMode ? true : matchCell(c));
+  const orderBays = (zoneId: string, bays: RackZone["bays"]) => {
+    const ord = layout[zoneId];
+    if (!ord) return bays;
+    return [...bays].sort((a, b) => ord.indexOf(a.bayCode) - ord.indexOf(b.bayCode));
+  };
+  const orderTiles = (zoneId: string, tiles: MapCell[]) => {
+    const ord = layout[zoneId];
+    if (!ord) return tiles;
+    return [...tiles].sort((a, b) => ord.indexOf(a.code) - ord.indexOf(b.code));
+  };
+
   const visRacks = racks
     .filter((r) => zone === "all" || r.zone === zone)
     .map((r) => ({
       ...r,
-      bays: r.bays
-        .map((b) => ({ ...b, levels: b.levels.filter(matchCell) }))
-        .filter((b) => b.levels.length > 0),
+      bays: orderBays(
+        `rack:${r.zone}`,
+        r.bays
+          .map((b) => ({ ...b, levels: b.levels.filter(cellPass) }))
+          .filter((b) => b.levels.length > 0)
+      ),
     }))
     .filter((r) => r.bays.length > 0);
   const visFloors = floors
     .filter((f) => zone === "all" || f.zone === zone)
-    .map((f) => ({ ...f, tiles: f.tiles.filter(matchCell) }))
+    .map((f) => ({ ...f, tiles: orderTiles(`floor:${f.zone}`, f.tiles.filter(cellPass)) }))
     .filter((f) => f.tiles.length > 0);
   const noResults = visRacks.length === 0 && visFloors.length === 0;
 
@@ -205,7 +276,18 @@ export function MapLocation({
           </div>
           <div className="ml-auto flex items-center gap-2">
             <button
-              onClick={() => { setSwapMode((v) => !v); setSwapSrc(null); }}
+              onClick={() => { setArrangeMode((v) => !v); setSwapMode(false); setSwapSrc(null); setSelId(null); }}
+              className="rounded-[9px] border px-3 py-1.5 text-[12.5px] font-semibold transition"
+              style={{
+                borderColor: arrangeMode ? "#2f6f3e" : "#e4e7f1",
+                background: arrangeMode ? "#2f6f3e" : "#fff",
+                color: arrangeMode ? "#fff" : "#4f5a68",
+              }}
+            >
+              ⠿ {arrangeMode ? "โหมดจัดผัง: เปิด" : "จัดผัง (ลากสลับที่)"}
+            </button>
+            <button
+              onClick={() => { setSwapMode((v) => !v); setArrangeMode(false); setSwapSrc(null); }}
               className="rounded-[9px] border px-3 py-1.5 text-[12.5px] font-semibold transition"
               style={{
                 borderColor: swapMode ? "#22415e" : "#e4e7f1",
@@ -213,10 +295,23 @@ export function MapLocation({
                 color: swapMode ? "#fff" : "#4f5a68",
               }}
             >
-              ↔ {swapMode ? "โหมดสลับ: เปิด" : "สลับตำแหน่ง"}
+              ↔ {swapMode ? "โหมดสลับ: เปิด" : "สลับของ"}
             </button>
           </div>
         </div>
+        {arrangeMode && (
+          <div className="flex items-center gap-2 rounded-[10px] bg-[#2f6f3e] px-4 py-2 text-[12.5px] text-white">
+            <span className="text-[14px]">⠿</span>
+            จัดผังให้ตรงกับคลังจริง — <b className="mx-1">ลากช่อง (หรือแถว rack) ไปวางตำแหน่งที่ต้องการ</b>
+            การจัดผังนี้เปลี่ยนแค่การแสดงผล ไม่ได้ย้ายของจริง
+            <button
+              onClick={() => setArrangeMode(false)}
+              className="ml-auto rounded-[7px] bg-[#255831] px-2.5 py-1 text-[12px] text-[#d6ecdb]"
+            >
+              ปิดโหมด
+            </button>
+          </div>
+        )}
         {swapMode && (
           <div className="flex items-center gap-2 rounded-[10px] bg-[#22415e] px-4 py-2 text-[12.5px] text-white">
             <span className="h-2 w-2 rounded-full bg-[#5ca8e0]" />
@@ -279,16 +374,34 @@ export function MapLocation({
                   ))}
                   <div className="h-[22px]" />
                 </div>
-                {r.bays.map((bay) => (
-                  <div key={bay.bayCode} className="flex flex-none flex-col gap-1.5">
-                    {bay.levels.map((c) => (
-                      <RackCell key={c.id} cell={c} productColor={productColor} swapSel={swapSrc === c.id} onClick={() => handleTileClick(c.id)} />
-                    ))}
-                    <div className="flex h-[22px] items-center justify-center text-[10px] font-bold text-[#4f5a68]">
-                      {bay.bayCode}
+                {r.bays.map((bay) => {
+                  const zoneId = `rack:${r.zone}`;
+                  const dragging = arrangeMode && dragKey === bay.bayCode && dragZoneId === zoneId;
+                  return (
+                    <div
+                      key={bay.bayCode}
+                      draggable={arrangeMode}
+                      onDragStart={() => { setDragKey(bay.bayCode); setDragZoneId(zoneId); }}
+                      onDragOver={(e) => { if (arrangeMode && dragZoneId === zoneId) e.preventDefault(); }}
+                      onDrop={() => handleDrop(zoneId, bay.bayCode)}
+                      className="flex flex-none flex-col gap-1.5 rounded-[10px]"
+                      style={{
+                        cursor: arrangeMode ? "grab" : undefined,
+                        opacity: dragging ? 0.4 : 1,
+                        boxShadow: arrangeMode ? "0 0 0 1.5px #bcdcc6" : undefined,
+                        padding: arrangeMode ? 4 : 0,
+                      }}
+                    >
+                      {bay.levels.map((c) => (
+                        <RackCell key={c.id} cell={c} productColor={productColor} swapSel={swapSrc === c.id} onClick={() => handleTileClick(c.id)} />
+                      ))}
+                      <div className="flex h-[22px] items-center justify-center text-[10px] font-bold text-[#4f5a68]">
+                        {arrangeMode && <span className="mr-1 text-[#6aa678]">⠿</span>}
+                        {bay.bayCode}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -305,9 +418,23 @@ export function MapLocation({
               className="grid items-start gap-2 overflow-x-auto pb-1"
               style={{ gridTemplateColumns: "repeat(30, minmax(34px, 1fr))" }}
             >
-              {f.tiles.map((c) => (
-                <FloorTile key={c.id} cell={c} productColor={productColor} swapSel={swapSrc === c.id} onClick={() => handleTileClick(c.id)} />
-              ))}
+              {f.tiles.map((c) => {
+                const zoneId = `floor:${f.zone}`;
+                return (
+                  <FloorTile
+                    key={c.id}
+                    cell={c}
+                    productColor={productColor}
+                    swapSel={swapSrc === c.id}
+                    onClick={() => handleTileClick(c.id)}
+                    arrange={arrangeMode}
+                    dragging={arrangeMode && dragKey === c.code && dragZoneId === zoneId}
+                    onDragStart={() => { setDragKey(c.code); setDragZoneId(zoneId); }}
+                    onDragOver={(e) => { if (arrangeMode && dragZoneId === zoneId) e.preventDefault(); }}
+                    onDrop={() => handleDrop(zoneId, c.code)}
+                  />
+                );
+              })}
             </div>
           </section>
         ))}
@@ -433,11 +560,21 @@ function FloorTile({
   onClick,
   swapSel,
   productColor,
+  arrange,
+  dragging,
+  onDragStart,
+  onDragOver,
+  onDrop,
 }: {
   cell: MapCell;
   onClick: () => void;
   swapSel?: boolean;
   productColor: (code: string) => string;
+  arrange?: boolean;
+  dragging?: boolean;
+  onDragStart?: () => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: () => void;
 }) {
   const s = STATUS[cell.status];
   const c = containerDef(cell.containerType);
@@ -454,9 +591,19 @@ function FloorTile({
   return (
     <button
       onClick={onClick}
+      draggable={arrange}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
       title={`${cell.code} · ${cell.pallets}/${cell.capacity} พาเลท · ซ้อนได้ ${cell.stack} ชั้น · ${cell.pallets > 0 ? c.en : "ว่าง"}`}
       className="flex h-[150px] w-full min-w-0 flex-col items-center gap-1 overflow-hidden rounded-[10px] border p-1.5 pt-2 transition hover:brightness-[.98]"
-      style={{ background: s.bg, borderColor: swapSel ? "#22415e" : s.border, boxShadow: swapSel ? "0 0 0 2px #22415e" : undefined }}
+      style={{
+        background: s.bg,
+        borderColor: swapSel ? "#22415e" : arrange ? "#bcdcc6" : s.border,
+        boxShadow: swapSel ? "0 0 0 2px #22415e" : arrange ? "0 0 0 1.5px #bcdcc6" : undefined,
+        cursor: arrange ? "grab" : undefined,
+        opacity: dragging ? 0.4 : 1,
+      }}
     >
       <span className="font-num whitespace-nowrap text-[11px] font-bold leading-none" style={{ color: s.color }}>
         {cell.code}

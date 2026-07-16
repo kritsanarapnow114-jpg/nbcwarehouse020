@@ -94,10 +94,11 @@ model Product {
 }
 
 model Location {
-  code   String @id
-  zone   Zone
-  width  Float // m
-  length Float // m
+  code     String @id
+  zone     Zone
+  width    Float // m
+  length   Float // m
+  mapOrder Int? // custom display order within its zone on the Map page (drag to arrange)
 
   lots Lot[]
 

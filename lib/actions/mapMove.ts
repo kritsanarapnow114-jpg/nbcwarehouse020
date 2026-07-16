@@ -31,6 +31,26 @@ export async function moveLotAction(
   return {};
 }
 
+/** Save the map layout order for a zone. `orderedCodes` is the full list of the
+ *  zone's location codes in the desired left-to-right order; each gets mapOrder
+ *  = its index. This only changes how the map is drawn — it never moves any
+ *  stock. */
+export async function setMapOrderAction(orderedCodes: string[]): Promise<{ error?: string }> {
+  try {
+    await requireWrite();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Not allowed" };
+  }
+  const codes = orderedCodes.map((c) => c.trim()).filter(Boolean);
+  if (codes.length === 0) return { error: "ไม่มีช่องให้จัดเรียง" };
+  await db.$transaction(
+    codes.map((code, i) => db.location.update({ where: { code }, data: { mapOrder: i } }))
+  );
+  revalidatePath("/map");
+  revalidatePath("/locations");
+  return {};
+}
+
 /** Swap the contents of two bins (all lots in A ↔ all lots in B). */
 export async function swapLocationsAction(
   codeA: string,
