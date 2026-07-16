@@ -114,7 +114,10 @@ function parseSlotMap(raw: unknown): SlotEntry[] {
   return out;
 }
 
-function parseCode(code: string): { kind: "rack" | "floor"; zone: string; bayCode: string; level: number } | null {
+function parseCode(
+  code: string,
+  fallbackZone: string
+): { kind: "rack" | "floor"; zone: string; bayCode: string; level: number } {
   const c = code.trim().toUpperCase();
   const r = c.match(RACK_RE);
   if (r) {
@@ -126,7 +129,11 @@ function parseCode(code: string): { kind: "rack" | "floor"; zone: string; bayCod
   if (f) {
     return { kind: "floor", zone: f[1], bayCode: c, level: 0 };
   }
-  return null;
+  // Unknown code format — never drop it. Show it as a floor tile grouped under
+  // its assigned zone (best-effort: leading letters, else the DB zone).
+  const lead = c.match(/^[A-Z]+/);
+  const zone = lead ? lead[0] : fallbackZone || "อื่นๆ";
+  return { kind: "floor", zone, bayCode: c, level: 0 };
 }
 
 export async function getMapLocationData() {
@@ -165,8 +172,7 @@ export async function getMapLocationData() {
 
   const cells: MapCell[] = [];
   for (const loc of locations) {
-    const parsed = parseCode(loc.code);
-    if (!parsed) continue;
+    const parsed = parseCode(loc.code, loc.zone);
     const realLots = (lotsByLoc.get(loc.code) ?? []).sort((a, b) => b.pallets - a.pallets);
     // Non-stock items placed here (Reuse material, empty pallets…) become
     // pseudo-lots so they show on the map and occupy space, but are flagged.
