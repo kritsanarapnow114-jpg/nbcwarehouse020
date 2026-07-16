@@ -7,7 +7,8 @@ import { Modal, ModalHeader } from "./Modal";
 import { buttonClass } from "./Button";
 import { showToast } from "./Toast";
 import { fmtDateBE, fmtDateISO } from "@/lib/calc/date";
-import { reverseDocumentAction, ReversibleKind } from "@/lib/actions/reverse";
+import { reverseDocumentAction, deleteDocumentAction, ReversibleKind } from "@/lib/actions/reverse";
+import { updateDocMetaAction, MetaEditableKind } from "@/lib/actions/docMeta";
 import { getRedoTemplateAction } from "@/lib/actions/redo";
 import { stashRedo } from "@/lib/redoTemplate";
 import { printTable, printCountSheet } from "@/lib/calc/printClient";
@@ -32,6 +33,9 @@ export type DocHistoryRow = {
   lineCount: number;
   lines: DocHistoryLine[];
   reversedAt?: string | null;
+  // Editable SAP metadata (receipts & issues only).
+  materialDoc?: string;
+  remark?: string;
 };
 
 
@@ -79,11 +83,33 @@ export function DocHistory({
   const [reversing, setReversing] = useState(false);
   const [reverseError, setReverseError] = useState<string | null>(null);
   const [filterDate, setFilterDate] = useState("");
+  // SAP metadata editing (receipts & issues)
+  const [matDoc, setMatDoc] = useState("");
+  const [remark, setRemark] = useState("");
+  const [savingMeta, setSavingMeta] = useState(false);
+  const [metaError, setMetaError] = useState<string | null>(null);
+  // Delete
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const canEditMeta = reverseKind === "receipt" || reverseKind === "issue";
+
+  function openRow(r: DocHistoryRow) {
+    setSelected(r);
+    setConfirming(false);
+    setDeleteConfirming(false);
+    setReverseError(null);
+    setMetaError(null);
+    setMatDoc(r.materialDoc ?? "");
+    setRemark(r.remark ?? "");
+  }
 
   function closeModal() {
     setSelected(null);
     setConfirming(false);
+    setDeleteConfirming(false);
     setReverseError(null);
+    setMetaError(null);
   }
 
   async function handleReverse() {
@@ -106,6 +132,50 @@ export function DocHistory({
     }
   }
 
+  async function handleDelete() {
+    if (!selected || !reverseKind) return;
+    setDeleting(true);
+    setReverseError(null);
+    try {
+      const res = await deleteDocumentAction(reverseKind, selected.id);
+      if (res.error) {
+        setReverseError(res.error);
+        return;
+      }
+      showToast(`Document ${selected.docNo} deleted (ลบเอกสารแล้ว)`);
+      closeModal();
+      router.refresh();
+    } catch (e) {
+      setReverseError(e instanceof Error ? e.message : "Failed to delete document.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function handleSaveMeta() {
+    if (!selected || !canEditMeta) return;
+    setSavingMeta(true);
+    setMetaError(null);
+    try {
+      const res = await updateDocMetaAction(reverseKind as MetaEditableKind, selected.id, {
+        materialDoc: matDoc,
+        remark,
+      });
+      if (res.error) {
+        setMetaError(res.error);
+        return;
+      }
+      showToast(`บันทึกแล้ว · saved (${selected.docNo})`);
+      // Reflect saved values on the open row so it stays consistent.
+      setSelected({ ...selected, materialDoc: matDoc.trim(), remark: remark.trim() });
+      router.refresh();
+    } catch (e) {
+      setMetaError(e instanceof Error ? e.message : "Failed to save.");
+    } finally {
+      setSavingMeta(false);
+    }
+  }
+
   async function handleRedo() {
     if (!selected || !reverseKind) return;
     setReversing(true);
@@ -124,6 +194,11 @@ export function DocHistory({
   const visibleRows = filterDate
     ? rows.filter((r) => fmtDateISO(new Date(r.docDate)) === filterDate)
     : rows;
+
+  const metaDirty =
+    !!selected &&
+    (matDoc.trim() !== (selected.materialDoc ?? "").trim() ||
+      remark.trim() !== (selected.remark ?? "").trim());
 
   return (
     <Card className="mt-4">
@@ -159,7 +234,7 @@ export function DocHistory({
           {visibleRows.map((r) => (
             <button
               key={r.id}
-              onClick={() => setSelected(r)}
+              onClick={() => openRow(r)}
               className="flex items-center gap-3 border-t border-[#eef1f5] py-2.5 text-left text-[13px] first:border-t-0 hover:bg-[#f7f9fb]"
             >
               <span
@@ -235,6 +310,50 @@ export function DocHistory({
                   ))}
                 </tbody>
               </table>
+
+              {canEditMeta && (
+                <div className="mt-4 rounded-[10px] border border-[#e7ebf1] bg-[#fafbfc] p-3">
+                  <div className="mb-2 text-[11.5px] font-semibold text-[#69748a]">
+                    เพิ่ม/แก้ไขภายหลัง · Material Document (SAP) &amp; Remark
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] text-[#8a92a8]">
+                        Material Document (เลขจาก SAP)
+                      </span>
+                      <input
+                        value={matDoc}
+                        onChange={(e) => setMatDoc(e.target.value)}
+                        placeholder="เช่น 4900012345"
+                        className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[12.5px] outline-none focus:border-[#2f86cf]"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-[11px] text-[#8a92a8]">Remark (หมายเหตุ)</span>
+                      <input
+                        value={remark}
+                        onChange={(e) => setRemark(e.target.value)}
+                        placeholder="หมายเหตุเพิ่มเติม"
+                        className="rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[12.5px] outline-none focus:border-[#2f86cf]"
+                      />
+                    </label>
+                    {metaError && (
+                      <div className="rounded-[8px] bg-[#fbe9e9] px-3 py-2 text-[12px] text-[#c53f3f]">
+                        {metaError}
+                      </div>
+                    )}
+                    <div className="flex justify-end">
+                      <button
+                        onClick={handleSaveMeta}
+                        disabled={savingMeta || !metaDirty}
+                        className="rounded-[8px] bg-[#2f86cf] px-3.5 py-1.5 text-[12.5px] font-semibold text-white hover:bg-[#1f66a6] disabled:opacity-50"
+                      >
+                        {savingMeta ? "กำลังบันทึก…" : "บันทึก · Save"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {reverseKind && !selected.reversedAt && (
@@ -301,6 +420,48 @@ export function DocHistory({
                     {reversing ? "กำลังเตรียม…" : "↻ ทำซ้ำ (Redo)"}
                   </button>
                 </div>
+              </div>
+            )}
+
+            {reverseKind && (
+              <div className="border-t border-[#eef1f5] bg-[#fdf5f5] px-5 py-3">
+                {!deleteConfirming ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[12px] text-[#a06a6a]">
+                      ลบเอกสารถาวร — {selected.reversedAt ? "ลบออกจากประวัติ" : "คืนสต็อกกลับแล้วลบทิ้ง"}{" "}
+                      (delete permanently)
+                    </span>
+                    <button
+                      onClick={() => setDeleteConfirming(true)}
+                      className="flex-none rounded-[8px] border border-[#e2b4b4] bg-white px-3 py-1.5 text-[12.5px] font-semibold text-[#c0453f] hover:bg-[#fbe9e9]"
+                    >
+                      🗑 ลบเอกสาร (Delete)
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[12.5px] font-medium text-[#3a4658]">
+                      ยืนยันลบเอกสาร {selected.docNo}? ลบแล้วกู้คืนไม่ได้
+                      {!selected.reversedAt && " · สต็อกจะถูกคืนกลับก่อนลบ"}
+                    </span>
+                    <div className="flex flex-none gap-2">
+                      <button
+                        onClick={() => setDeleteConfirming(false)}
+                        disabled={deleting}
+                        className={buttonClass("secondary")}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleDelete}
+                        disabled={deleting}
+                        className="rounded-[8px] bg-[#c0453f] px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-[#a83b36] disabled:opacity-60"
+                      >
+                        {deleting ? "กำลังลบ…" : "ยืนยันลบ"}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </>

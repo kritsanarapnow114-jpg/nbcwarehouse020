@@ -19,6 +19,8 @@ export default async function ReceivePage() {
           : "By PO · No PO"
         : "From Production",
     reversedAt: r.reversedAt,
+    materialDoc: r.materialDoc,
+    remark: r.remark,
     lineCount: r.lineCount,
     lines: r.lines.map((l) => ({
       code: l.code,
