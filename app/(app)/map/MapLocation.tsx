@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import { containerDef } from "@/lib/containerTypes";
-import { moveLotAction, swapLocationsAction, setMapOrderAction } from "@/lib/actions/mapMove";
+import { moveLotAction, swapLocationsAction, setMapOrderAction, setBinSlotMapAction } from "@/lib/actions/mapMove";
 import { showToast } from "@/components/ui/Toast";
-import type { RackZone, FloorZone, MapSummary, MapCell, MapLot } from "@/lib/views/mapLocation";
+import type { RackZone, FloorZone, MapSummary, MapCell, MapLot, SlotEntry } from "@/lib/views/mapLocation";
 
 // Build a stable, well-spread colour per product so each product reads as its
 // own colour across the whole map (golden-angle hue spacing = distinct hues).
@@ -658,25 +658,90 @@ function FloorTile({
 }
 
 function StackMap({ cell, productColor }: { cell: MapCell; productColor: (code: string) => string }) {
+  const router = useRouter();
   const S = Math.max(1, cell.stack);
   const P = cell.pallets;
   const groundSpots = Math.max(1, Math.ceil(P / S));
-  // map each pallet position → the lot sitting there, so cells are coloured by
-  // the product (and the tooltip says which product / lot it is)
-  const lotOfPallet: number[] = [];
-  cell.lots.forEach((lot, li) => {
-    for (let k = 0; k < lot.pallets; k++) lotOfPallet.push(li);
-  });
-  const colorAt = (idx: number) => {
-    if (idx >= P) return "#dfe7f0";
-    const lot = cell.lots[lotOfPallet[idx]];
-    return lot ? productColor(lot.productCode) : "#dfe7f0";
+
+  // Local (optimistic) arrangement; re-seed when the bin or its pallet count changes.
+  const [slots, setSlots] = useState<SlotEntry[]>(cell.slotMap ?? []);
+  const [dragRC, setDragRC] = useState<{ r: number; c: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    setSlots(cell.slotMap ?? []);
+    setDragRC(null);
+  }, [cell.code, P, S]);
+
+  const lotIndex = useMemo(() => {
+    const m = new Map<string, number>();
+    cell.lots.forEach((l, i) => m.set(l.id, i));
+    return m;
+  }, [cell.lots]);
+
+  // Reconcile the saved arrangement against the pallets actually in the bin:
+  // honour saved slots that still have a matching pallet, then auto-fill the
+  // rest into the remaining cells (bottom level first, then stacking up).
+  const grid = useMemo(() => {
+    const pool = new Map<string, number>();
+    cell.lots.forEach((l) => pool.set(l.id, (pool.get(l.id) ?? 0) + l.pallets));
+    const g: (string | null)[][] = Array.from({ length: groundSpots }, () => Array(S).fill(null));
+    const taken = new Set<string>();
+    for (const sl of slots) {
+      if (sl.s < 0 || sl.s >= groundSpots || sl.l < 0 || sl.l >= S) continue;
+      if (taken.has(`${sl.s},${sl.l}`)) continue;
+      if ((pool.get(sl.lot) ?? 0) <= 0) continue;
+      g[sl.s][sl.l] = sl.lot;
+      taken.add(`${sl.s},${sl.l}`);
+      pool.set(sl.lot, (pool.get(sl.lot) ?? 0) - 1);
+    }
+    const remaining: string[] = [];
+    for (const [lot, n] of pool) for (let k = 0; k < n; k++) remaining.push(lot);
+    let ri = 0;
+    for (let c = 0; c < S && ri < remaining.length; c++)
+      for (let r = 0; r < groundSpots && ri < remaining.length; r++)
+        if (g[r][c] === null) g[r][c] = remaining[ri++];
+    return g;
+  }, [cell.lots, slots, groundSpots, S]);
+
+  function gridToSlots(g: (string | null)[][]): SlotEntry[] {
+    const out: SlotEntry[] = [];
+    for (let r = 0; r < g.length; r++)
+      for (let c = 0; c < g[r].length; c++) if (g[r][c]) out.push({ s: r, l: c, lot: g[r][c]! });
+    return out;
+  }
+
+  async function persist(next: SlotEntry[]) {
+    setBusy(true);
+    const res = await setBinSlotMapAction(cell.code, next);
+    setBusy(false);
+    if (res.error) showToast(res.error);
+    else {
+      showToast("บันทึกผังการวางแล้ว");
+      router.refresh();
+    }
+  }
+
+  function onDropCell(r2: number, c2: number) {
+    const from = dragRC;
+    setDragRC(null);
+    if (!from || (from.r === r2 && from.c === c2)) return;
+    const g = grid.map((row) => row.slice());
+    const tmp = g[r2][c2];
+    g[r2][c2] = g[from.r][from.c];
+    g[from.r][from.c] = tmp; // swap (move if the target was empty)
+    const next = gridToSlots(g);
+    setSlots(next);
+    persist(next);
+  }
+
+  const cellInfo = (lotId: string | null) => {
+    if (!lotId) return null;
+    const i = lotIndex.get(lotId);
+    if (i == null) return null;
+    const lot = cell.lots[i];
+    return { num: i + 1, color: productColor(lot.productCode), title: `${lot.name} · Lot ${lot.lotNo}` };
   };
-  const titleAt = (idx: number) => {
-    if (idx >= P) return "ว่าง";
-    const lot = cell.lots[lotOfPallet[idx]];
-    return lot ? `${lot.name} · Lot ${lot.lotNo}` : "";
-  };
+
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between">
@@ -685,33 +750,47 @@ function StackMap({ cell, productColor }: { cell: MapCell; productColor: (code: 
         </span>
         <span className="font-num text-[11px] text-[#a6b0bd]">แต่ละจุด = 1 พาเลท · สีบอกสินค้า</span>
       </div>
+      {P > 0 && (
+        <div className="mb-1.5 flex items-center gap-1.5 rounded-[8px] bg-[#eef7f1] px-2.5 py-1 text-[11px] text-[#2f7d4e]">
+          <span>⠿</span> ลากพาเลทไปวางจุด/ชั้นที่ต้องการ ให้ตรงกับของจริง · บันทึกอัตโนมัติ
+        </div>
+      )}
       {/* Vertical layout: each ground spot is a row going down; stack levels
-          sit side by side within the row. */}
+          sit side by side within the row. Drag a pallet to another cell. */}
       <div className="rounded-[12px] border border-[#e6eef5] bg-[#f7fbff] p-3">
         {S > 1 && (
           <div className="mb-1 flex gap-[4px] pl-[54px] text-[9px] font-bold text-[#939db0]">
             {Array.from({ length: S }).map((_, c) => (
-              <span key={c} className="w-[16px] text-center">
+              <span key={c} className="w-[26px] text-center">
                 ช{c + 1}
               </span>
             ))}
           </div>
         )}
-        <div className="flex max-h-[280px] flex-col gap-[4px] overflow-y-auto">
-          {Array.from({ length: Math.max(1, groundSpots) }).map((_, r) => (
+        <div className="flex max-h-[300px] flex-col gap-[5px] overflow-y-auto">
+          {grid.map((row, r) => (
             <div key={r} className="flex items-center gap-[4px]">
               <span className="w-[50px] flex-none text-[10px] font-medium text-[#a6b0bd]">จุด {r + 1}</span>
-              {Array.from({ length: S }).map((_, c) => {
-                const palletIdx = c * groundSpots + r;
-                const li = palletIdx < P ? lotOfPallet[palletIdx] : -1;
+              {row.map((lotId, c) => {
+                const info = cellInfo(lotId);
+                const isDragging = dragRC?.r === r && dragRC?.c === c;
                 return (
                   <span
                     key={c}
-                    title={titleAt(palletIdx)}
-                    className="flex h-[15px] w-[16px] items-center justify-center rounded-[3px] text-[8px] font-bold text-white"
-                    style={{ background: colorAt(palletIdx) }}
+                    draggable={!!info && !busy}
+                    onDragStart={() => info && setDragRC({ r, c })}
+                    onDragOver={(e) => { if (dragRC) e.preventDefault(); }}
+                    onDrop={() => onDropCell(r, c)}
+                    title={info?.title ?? "ว่าง — ลากพาเลทมาวางได้"}
+                    className="flex h-[24px] w-[26px] items-center justify-center rounded-[4px] text-[9px] font-bold text-white transition"
+                    style={{
+                      background: info ? info.color : "#e2e8f2",
+                      cursor: info ? "grab" : "default",
+                      opacity: isDragging ? 0.4 : 1,
+                      outline: isDragging ? "2px solid #2f6f3e" : undefined,
+                    }}
                   >
-                    {li >= 0 ? li + 1 : ""}
+                    {info ? info.num : ""}
                   </span>
                 );
               })}

@@ -51,6 +51,34 @@ export async function setMapOrderAction(orderedCodes: string[]): Promise<{ error
   return {};
 }
 
+/** Save the custom pallet arrangement inside one bin (drag pallets to their
+ *  real spot/level). Purely a display preference — never moves stock. */
+export async function setBinSlotMapAction(
+  code: string,
+  slots: { s: number; l: number; lot: string }[]
+): Promise<{ error?: string }> {
+  try {
+    await requireWrite();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Not allowed" };
+  }
+  const c = code.trim();
+  if (!c) return { error: "ไม่พบช่อง" };
+  const clean = (Array.isArray(slots) ? slots : [])
+    .filter(
+      (s) =>
+        s &&
+        Number.isFinite(s.s) &&
+        Number.isFinite(s.l) &&
+        typeof s.lot === "string" &&
+        s.lot.length > 0
+    )
+    .map((s) => ({ s: Math.trunc(s.s), l: Math.trunc(s.l), lot: s.lot }));
+  await db.location.update({ where: { code: c }, data: { slotMap: clean } });
+  revalidatePath("/map");
+  return {};
+}
+
 /** Swap the contents of two bins (all lots in A ↔ all lots in B). */
 export async function swapLocationsAction(
   codeA: string,

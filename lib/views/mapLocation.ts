@@ -42,7 +42,11 @@ export type MapCell = {
   containerType: string; // dominant
   topLot: string | null;
   lots: MapLot[];
+  slotMap: SlotEntry[]; // saved pallet arrangement inside the bin
 };
+
+// One placed pallet in a bin's custom arrangement: spot (row) + level (col) + lot.
+export type SlotEntry = { s: number; l: number; lot: string };
 
 export type RackZone = {
   zone: string;
@@ -73,6 +77,23 @@ export type MapSummary = {
 
 const RACK_RE = /^(PAC[AB]|SEM[ABCD])[-_ ]*0*(\d+)[-_ ]*L0*(\d+)$/i;
 const FLOOR_RE = /^([A-Z]+)[-_ ]*0*(\d+)$/;
+
+function parseSlotMap(raw: unknown): SlotEntry[] {
+  if (!Array.isArray(raw)) return [];
+  const out: SlotEntry[] = [];
+  for (const e of raw) {
+    if (
+      e &&
+      typeof e === "object" &&
+      typeof (e as SlotEntry).s === "number" &&
+      typeof (e as SlotEntry).l === "number" &&
+      typeof (e as SlotEntry).lot === "string"
+    ) {
+      out.push({ s: (e as SlotEntry).s, l: (e as SlotEntry).l, lot: (e as SlotEntry).lot });
+    }
+  }
+  return out;
+}
 
 function parseCode(code: string): { kind: "rack" | "floor"; zone: string; bayCode: string; level: number } | null {
   const c = code.trim().toUpperCase();
@@ -162,6 +183,7 @@ export async function getMapLocationData() {
       containerType: dom,
       topLot: cellLots[0]?.name ?? null,
       lots: cellLots,
+      slotMap: parseSlotMap(loc.slotMap),
     });
   }
 

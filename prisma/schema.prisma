@@ -99,6 +99,7 @@ model Location {
   width    Float // m
   length   Float // m
   mapOrder Int? // custom display order within its zone on the Map page (drag to arrange)
+  slotMap  Json? // custom pallet arrangement inside the bin: [{s:spot,l:level,lot:lotId}]
 
   lots Lot[]
 
