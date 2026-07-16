@@ -79,6 +79,32 @@ export async function setBinSlotMapAction(
   return {};
 }
 
+/** Replace the list of non-stock items (Reuse material, empty pallets…) placed
+ *  in a bin. Display only — these are not tracked inventory. */
+export async function setBinExtrasAction(
+  code: string,
+  items: { id: string; label: string; pallets: number }[]
+): Promise<{ error?: string }> {
+  try {
+    await requireWrite();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Not allowed" };
+  }
+  const c = code.trim();
+  if (!c) return { error: "ไม่พบช่อง" };
+  const clean = (Array.isArray(items) ? items : [])
+    .map((it) => ({
+      id: String(it?.id ?? "").trim(),
+      label: String(it?.label ?? "").trim(),
+      pallets: Math.max(1, Math.trunc(Number(it?.pallets))),
+    }))
+    .filter((it) => it.id && it.label && Number.isFinite(it.pallets));
+  await db.location.update({ where: { code: c }, data: { extraItems: clean } });
+  revalidatePath("/map");
+  revalidatePath("/locations");
+  return {};
+}
+
 /** Swap the contents of two bins (all lots in A ↔ all lots in B). */
 export async function swapLocationsAction(
   codeA: string,

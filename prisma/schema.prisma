@@ -98,8 +98,9 @@ model Location {
   zone     Zone
   width    Float // m
   length   Float // m
-  mapOrder Int? // custom display order within its zone on the Map page (drag to arrange)
-  slotMap  Json? // custom pallet arrangement inside the bin: [{s:spot,l:level,lot:lotId}]
+  mapOrder   Int? // custom display order within its zone on the Map page (drag to arrange)
+  slotMap    Json? // custom pallet arrangement inside the bin: [{s:spot,l:level,lot:lotId}]
+  extraItems Json? // non-stock items placed here (Reuse, empty pallets…): [{id,label,pallets}]
 
   lots Lot[]
 

@@ -21,7 +21,10 @@ export type MapLot = {
   containerType: string;
   inDate: string;
   expDate: string | null;
+  isExtra?: boolean; // non-stock item (Reuse, empty pallets…), not a real lot
 };
+
+export type ExtraItem = { id: string; label: string; pallets: number };
 
 export type MapCell = {
   id: string; // location code (unique)
@@ -77,6 +80,21 @@ export type MapSummary = {
 
 const RACK_RE = /^(PAC[AB]|SEM[ABCD])[-_ ]*0*(\d+)[-_ ]*L0*(\d+)$/i;
 const FLOOR_RE = /^([A-Z]+)[-_ ]*0*(\d+)$/;
+
+function parseExtras(raw: unknown): ExtraItem[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ExtraItem[] = [];
+  for (const e of raw) {
+    if (e && typeof e === "object") {
+      const label = typeof (e as ExtraItem).label === "string" ? (e as ExtraItem).label : "";
+      const pallets = Number((e as ExtraItem).pallets);
+      const id = typeof (e as ExtraItem).id === "string" ? (e as ExtraItem).id : "";
+      if (label && id && Number.isFinite(pallets) && pallets > 0)
+        out.push({ id, label, pallets: Math.max(1, Math.trunc(pallets)) });
+    }
+  }
+  return out;
+}
 
 function parseSlotMap(raw: unknown): SlotEntry[] {
   if (!Array.isArray(raw)) return [];
@@ -148,12 +166,31 @@ export async function getMapLocationData() {
   for (const loc of locations) {
     const parsed = parseCode(loc.code);
     if (!parsed) continue;
-    const cellLots = (lotsByLoc.get(loc.code) ?? []).sort((a, b) => b.pallets - a.pallets);
+    const realLots = (lotsByLoc.get(loc.code) ?? []).sort((a, b) => b.pallets - a.pallets);
+    // Non-stock items placed here (Reuse material, empty pallets…) become
+    // pseudo-lots so they show on the map and occupy space, but are flagged.
+    const extras: MapLot[] = parseExtras(loc.extraItems).map((e) => ({
+      id: `extra:${e.id}`,
+      productCode: "—",
+      name: e.label,
+      lotNo: "—",
+      pallets: e.pallets,
+      qty: e.pallets,
+      unit: "พาเลท",
+      status: "OK" as const,
+      expired: false,
+      containerType: "OTHER",
+      inDate: "—",
+      expDate: null,
+      isExtra: true,
+    }));
+    const cellLots = [...realLots, ...extras];
     const pallets = cellLots.reduce((s, l) => s + l.pallets, 0);
     // Measure by real floor area (m²). How many pallets fit depends on the
     // pallet size actually stored — small pallets take less area, so more fit.
     const areaCap = binCapacity(loc.width, loc.length);
-    const areaUsed = areaByLoc.get(loc.code) ?? 0;
+    const extraArea = extras.reduce((s, e) => s + e.pallets, 0) * DEFAULT_PALLET_M2;
+    const areaUsed = (areaByLoc.get(loc.code) ?? 0) + extraArea;
     const footPerPallet = pallets > 0 ? areaUsed / pallets : DEFAULT_PALLET_M2;
     const freeArea = Math.max(0, areaCap - areaUsed);
     const freeSlots = footPerPallet > 0 ? Math.floor(freeArea / footPerPallet) : 0;

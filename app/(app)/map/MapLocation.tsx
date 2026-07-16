@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import { containerDef } from "@/lib/containerTypes";
-import { moveLotAction, swapLocationsAction, setMapOrderAction, setBinSlotMapAction } from "@/lib/actions/mapMove";
+import { moveLotAction, swapLocationsAction, setMapOrderAction, setBinSlotMapAction, setBinExtrasAction } from "@/lib/actions/mapMove";
 import { showToast } from "@/components/ui/Toast";
 import type { RackZone, FloorZone, MapSummary, MapCell, MapLot, SlotEntry } from "@/lib/views/mapLocation";
 
@@ -13,10 +13,17 @@ type ProductColors = {
   colorOf: (code: string) => string;
   products: { code: string; name: string; color: string }[];
 };
+// Neutral / earth tones for non-stock "extra" items so they read as clearly
+// different from the colourful product pallets.
+const EXTRA_COLORS = ["#8a6d5a", "#6d7f8a", "#7a8a6d", "#8a7a5a", "#7d6d8a", "#5a7a7a"];
+function extraColor(i: number) {
+  return EXTRA_COLORS[((i % EXTRA_COLORS.length) + EXTRA_COLORS.length) % EXTRA_COLORS.length];
+}
+
 function buildProductColors(racks: RackZone[], floors: FloorZone[]): ProductColors {
   const names = new Map<string, string>();
-  for (const r of racks) for (const b of r.bays) for (const c of b.levels) for (const l of c.lots) names.set(l.productCode, l.name);
-  for (const f of floors) for (const c of f.tiles) for (const l of c.lots) names.set(l.productCode, l.name);
+  for (const r of racks) for (const b of r.bays) for (const c of b.levels) for (const l of c.lots) if (!l.isExtra) names.set(l.productCode, l.name);
+  for (const f of floors) for (const c of f.tiles) for (const l of c.lots) if (!l.isExtra) names.set(l.productCode, l.name);
   const map = new Map<string, string>();
   const products = [...names.keys()].sort().map((code, i) => {
     const hue = Math.round((i * 137.508) % 360);
@@ -636,9 +643,9 @@ function FloorTile({
               return (
                 <span
                   key={col}
-                  title={lot ? `${lot.name} · Lot ${lot.lotNo}` : undefined}
+                  title={lot ? (lot.isExtra ? `${lot.name} (ของอื่น ๆ)` : `${lot.name} · Lot ${lot.lotNo}`) : undefined}
                   className="h-[6px] w-[9px] rounded-[2px]"
-                  style={{ background: lot ? productColor(lot.productCode) : "#e0e4ee" }}
+                  style={{ background: lot ? (lot.isExtra ? "#8a6d5a" : productColor(lot.productCode)) : "#e0e4ee" }}
                 />
               );
             })}
@@ -734,12 +741,17 @@ function StackMap({ cell, productColor }: { cell: MapCell; productColor: (code: 
     persist(next);
   }
 
+  const extraLots = useMemo(() => cell.lots.filter((l) => l.isExtra), [cell.lots]);
   const cellInfo = (lotId: string | null) => {
     if (!lotId) return null;
     const i = lotIndex.get(lotId);
     if (i == null) return null;
     const lot = cell.lots[i];
-    return { num: i + 1, color: productColor(lot.productCode), title: `${lot.name} · Lot ${lot.lotNo}` };
+    if (lot.isExtra) {
+      const ei = extraLots.findIndex((l) => l.id === lotId);
+      return { num: `R${ei + 1}`, color: extraColor(ei), title: `${lot.name} (ของอื่น ๆ)`, isExtra: true };
+    }
+    return { num: `${i + 1}`, color: productColor(lot.productCode), title: `${lot.name} · Lot ${lot.lotNo}`, isExtra: false };
   };
 
   return (
@@ -825,6 +837,48 @@ function Drawer({
   const [moveTo, setMoveTo] = useState("");
   const [swapTo, setSwapTo] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Real product lots vs. non-stock "extra" items (Reuse, empty pallets…)
+  const realLots = cell.lots.filter((l) => !l.isExtra);
+  const extraLots = cell.lots.filter((l) => l.isExtra);
+  const [newExtraLabel, setNewExtraLabel] = useState("");
+  const [newExtraQty, setNewExtraQty] = useState("1");
+
+  function currentExtras() {
+    return extraLots.map((l) => ({
+      id: l.id.replace(/^extra:/, ""),
+      label: l.name,
+      pallets: l.pallets,
+    }));
+  }
+
+  async function saveExtras(next: { id: string; label: string; pallets: number }[]) {
+    setBusy(true);
+    const res = await setBinExtrasAction(cell.code, next);
+    setBusy(false);
+    if (res.error) {
+      showToast(res.error);
+      return;
+    }
+    router.refresh();
+  }
+
+  async function addExtra() {
+    const label = newExtraLabel.trim();
+    const qty = Math.max(1, Math.trunc(Number(newExtraQty) || 1));
+    if (!label || busy) return;
+    const id = `x${Date.now().toString(36)}`;
+    await saveExtras([...currentExtras(), { id, label, pallets: qty }]);
+    setNewExtraLabel("");
+    setNewExtraQty("1");
+    showToast(`เพิ่ม “${label}” แล้ว`);
+  }
+
+  async function removeExtra(rawId: string) {
+    if (busy) return;
+    await saveExtras(currentExtras().filter((e) => e.id !== rawId));
+    showToast("ลบของอื่น ๆ แล้ว");
+  }
 
   async function doMove(lot: MapLot) {
     if (!moveTo.trim() || busy) return;
@@ -912,14 +966,14 @@ function Drawer({
 
           {/* lots */}
           <div>
-            <div className="mb-2 text-[12px] font-bold text-[#7a8798]">ลอตที่จัดเก็บ ({cell.lots.length})</div>
-            {cell.lots.length === 0 ? (
+            <div className="mb-2 text-[12px] font-bold text-[#7a8798]">ลอตที่จัดเก็บ ({realLots.length})</div>
+            {realLots.length === 0 ? (
               <div className="rounded-[12px] border-[1.5px] border-dashed border-[#dfe3ef] p-4 text-center text-[13px] text-[#939db0]">
-                ช่องนี้ว่าง — รับเข้า/ย้ายของมาที่ช่องนี้ได้ที่หน้า Receive / Transfer
+                ไม่มีสินค้าในระบบในช่องนี้ — รับเข้า/ย้ายของมาที่ช่องนี้ได้ที่หน้า Receive / Transfer
               </div>
             ) : (
               <div className="flex flex-col gap-2.5">
-                {cell.lots.map((lot, i) => {
+                {realLots.map((lot, i) => {
                   const c = containerDef(lot.containerType);
                   return (
                     <div key={i} className="rounded-[12px] border border-[#e5edf3] p-[11px_13px]">
@@ -993,8 +1047,73 @@ function Drawer({
             )}
           </div>
 
+          {/* non-stock items placed here (Reuse material, empty pallets…) */}
+          <div className="rounded-[12px] border border-[#e7e0d6] bg-[#faf7f2] p-3">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="text-[13px]">♻️</span>
+              <span className="text-[12px] font-bold text-[#7a6a55]">
+                ของอื่น ๆ ในช่องนี้ ({extraLots.length})
+              </span>
+              <span className="text-[10.5px] text-[#a99a86]">ไม่ใช่สินค้าในระบบ · เช่น Reuse, พาเลทเปล่า</span>
+            </div>
+            {extraLots.length > 0 && (
+              <div className="mb-2 flex flex-col gap-1.5">
+                {extraLots.map((lot, i) => (
+                  <div
+                    key={lot.id}
+                    className="flex items-center gap-2 rounded-[9px] border border-[#ece3d6] bg-white px-2.5 py-1.5"
+                  >
+                    <span
+                      className="flex h-4 w-4 flex-none items-center justify-center rounded-[5px] text-[8.5px] font-bold text-white"
+                      style={{ background: extraColor(i) }}
+                    >
+                      R{i + 1}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-[#5f5340]">
+                      {lot.name}
+                    </span>
+                    <span className="font-num flex-none text-[11.5px] text-[#a2937d]">
+                      {lot.pallets} พาเลท
+                    </span>
+                    <button
+                      onClick={() => removeExtra(lot.id.replace(/^extra:/, ""))}
+                      disabled={busy}
+                      className="flex-none rounded-[6px] border border-[#e2d6c6] px-1.5 py-0.5 text-[11px] text-[#a5795f] hover:bg-[#f3ece2] disabled:opacity-50"
+                      title="ลบ"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-1.5">
+              <input
+                value={newExtraLabel}
+                onChange={(e) => setNewExtraLabel(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") addExtra(); }}
+                placeholder="ชื่อของ เช่น Reuse / พาเลทเปล่า / อุปกรณ์"
+                className="min-w-0 flex-1 rounded-[8px] border border-[#dccfbd] bg-white px-2 py-1.5 text-[12.5px] outline-none focus:border-[#b79a72]"
+              />
+              <input
+                value={newExtraQty}
+                onChange={(e) => setNewExtraQty(e.target.value.replace(/[^0-9]/g, ""))}
+                inputMode="numeric"
+                title="จำนวนพาเลท/จุดที่วาง"
+                className="font-num w-[52px] flex-none rounded-[8px] border border-[#dccfbd] bg-white px-2 py-1.5 text-center text-[12.5px] outline-none focus:border-[#b79a72]"
+              />
+              <button
+                onClick={addExtra}
+                disabled={busy || !newExtraLabel.trim()}
+                className="flex-none rounded-[8px] bg-[#9a7b52] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[#846943] disabled:opacity-50"
+              >
+                + เพิ่ม
+              </button>
+            </div>
+          </div>
+
           {/* swap this bin with another */}
-          {cell.lots.length > 0 && (
+          {realLots.length > 0 && (
             <div className="rounded-[12px] border border-dashed border-[#cfd6ea] bg-[#f7fbff] p-3">
               <div className="mb-2 text-[12px] font-bold text-[#7a8798]">สลับของทั้งช่องกับอีกช่อง</div>
               <div className="flex items-center gap-1.5">
