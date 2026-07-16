@@ -144,12 +144,16 @@ export async function getMapLocationData() {
   const today = todayBangkok();
 
   const lotsByLoc = new Map<string, MapLot[]>();
-  const areaByLoc = new Map<string, number>(); // m² occupied per location
+  // per-lot floor-area inputs, so a bin's used area can be recomputed at the
+  // bin's ACTUAL stack height (not just the product's max)
+  type AreaInput = { qty: number; w: number; l: number; stack: number; pallet: number };
+  const areaInputsByLoc = new Map<string, AreaInput[]>();
   const stackByLoc = new Map<string, number>(); // max pallets-high stored per location
   for (const l of lots) {
     const pallets = Math.max(1, Math.ceil(l.qty / Math.max(1, l.product.pallet)));
-    const area = lotFloorArea(l.qty, l.product.width, l.product.length, l.product.stackLevels, l.product.pallet);
-    areaByLoc.set(l.locationCode, (areaByLoc.get(l.locationCode) ?? 0) + area);
+    const arrIn = areaInputsByLoc.get(l.locationCode) ?? [];
+    arrIn.push({ qty: l.qty, w: l.product.width, l: l.product.length, stack: l.product.stackLevels, pallet: l.product.pallet });
+    areaInputsByLoc.set(l.locationCode, arrIn);
     stackByLoc.set(l.locationCode, Math.max(stackByLoc.get(l.locationCode) ?? 1, l.product.stackLevels || 1));
     const entry: MapLot = {
       id: l.id,
@@ -193,11 +197,20 @@ export async function getMapLocationData() {
     }));
     const cellLots = [...realLots, ...extras];
     const pallets = cellLots.reduce((s, l) => s + l.pallets, 0);
-    // Measure by real floor area (m²). How many pallets fit depends on the
-    // pallet size actually stored — small pallets take less area, so more fit.
+    // Stacking: stackMax = how high the product COULD stack; actualStack =
+    // what's really stacked in this bin (user override, ≤ max).
+    const stackMax = Math.max(1, stackByLoc.get(loc.code) ?? 1);
+    const actualStack =
+      loc.stackUsed != null ? Math.min(stackMax, Math.max(1, loc.stackUsed)) : stackMax;
+    // Measure by real floor area (m²), computed at the ACTUAL stack height —
+    // stacking fewer levels than the max spreads the load over more floor.
     const areaCap = binCapacity(loc.width, loc.length);
+    const realArea = (areaInputsByLoc.get(loc.code) ?? []).reduce(
+      (s, li) => s + lotFloorArea(li.qty, li.w, li.l, Math.min(li.stack, actualStack), li.pallet),
+      0
+    );
     const extraArea = extras.reduce((s, e) => s + e.pallets, 0) * DEFAULT_PALLET_M2;
-    const areaUsed = (areaByLoc.get(loc.code) ?? 0) + extraArea;
+    const areaUsed = realArea + extraArea;
     const footPerPallet = pallets > 0 ? areaUsed / pallets : DEFAULT_PALLET_M2;
     const freeArea = Math.max(0, areaCap - areaUsed);
     const freeSlots = footPerPallet > 0 ? Math.floor(freeArea / footPerPallet) : 0;
@@ -208,11 +221,6 @@ export async function getMapLocationData() {
     let dom = "OTHER";
     let best = -1;
     for (const [t, n] of byType) if (n > best) ((best = n), (dom = t));
-    // Stacking: stackMax = how high the product COULD stack; actualStack =
-    // what's really stacked in this bin (user override, ≤ max).
-    const stackMax = Math.max(1, stackByLoc.get(loc.code) ?? 1);
-    const actualStack =
-      loc.stackUsed != null ? Math.min(stackMax, Math.max(1, loc.stackUsed)) : stackMax;
     cells.push({
       id: loc.code,
       code: loc.code,

@@ -22,7 +22,25 @@ export type BinContent = {
   stackLevels: number;
   lotStatus: "OK" | "QC";
   expired: boolean;
+  isExtra?: boolean; // non-stock item (Reuse, empty pallets…)
 };
+
+// Footprint of one non-stock pallet (matches the map's estimate).
+const DEFAULT_PALLET_M2 = 0.96;
+
+function parseExtraItems(raw: unknown): { label: string; pallets: number }[] {
+  if (!Array.isArray(raw)) return [];
+  const out: { label: string; pallets: number }[] = [];
+  for (const e of raw) {
+    if (e && typeof e === "object") {
+      const label = typeof (e as { label?: unknown }).label === "string" ? (e as { label: string }).label : "";
+      const pallets = Number((e as { pallets?: unknown }).pallets);
+      if (label && Number.isFinite(pallets) && pallets > 0)
+        out.push({ label, pallets: Math.max(1, Math.trunc(pallets)) });
+    }
+  }
+  return out;
+}
 
 export type LocationRow = {
   code: string;
@@ -46,33 +64,81 @@ async function loadAllRows(): Promise<LocationRow[]> {
   ]);
 
   const today = todayBangkok();
-  const contentsByLoc = new Map<string, BinContent[]>();
+  type RawLot = {
+    productCode: string;
+    nameEn: string;
+    lotNo: string;
+    qty: number;
+    unit: string;
+    width: number;
+    length: number;
+    stackLevels: number;
+    pallet: number;
+    lotStatus: "OK" | "QC";
+    expired: boolean;
+  };
+  const rawByLoc = new Map<string, RawLot[]>();
+  const stackMaxByLoc = new Map<string, number>();
   for (const l of lots) {
-    const area = lotFloorArea(
-      l.qty,
-      l.product.width,
-      l.product.length,
-      l.product.stackLevels,
-      l.product.pallet
-    );
-    const entry: BinContent = {
+    const arr = rawByLoc.get(l.locationCode) ?? [];
+    arr.push({
       productCode: l.product.code,
       nameEn: l.product.nameEn,
       lotNo: l.lotNo,
       qty: l.qty,
       unit: l.product.unit,
-      area: Math.round(area * 100) / 100,
+      width: l.product.width,
+      length: l.product.length,
       stackLevels: l.product.stackLevels,
+      pallet: l.product.pallet,
       lotStatus: l.status,
       expired: !!(l.expDate && l.expDate < today),
-    };
-    const arr = contentsByLoc.get(l.locationCode) ?? [];
-    arr.push(entry);
-    contentsByLoc.set(l.locationCode, arr);
+    });
+    rawByLoc.set(l.locationCode, arr);
+    stackMaxByLoc.set(
+      l.locationCode,
+      Math.max(stackMaxByLoc.get(l.locationCode) ?? 1, l.product.stackLevels || 1)
+    );
   }
 
   return locations.map((loc) => {
-    const contents = contentsByLoc.get(loc.code) ?? [];
+    const raw = rawByLoc.get(loc.code) ?? [];
+    // Actual stack really used in this bin (may be less than the product max),
+    // so stacking fewer levels shows a higher % used — same model as the map.
+    const stackMax = Math.max(1, stackMaxByLoc.get(loc.code) ?? 1);
+    const actualStack =
+      loc.stackUsed != null ? Math.min(stackMax, Math.max(1, loc.stackUsed)) : stackMax;
+
+    const contents: BinContent[] = raw.map((r) => {
+      const area = lotFloorArea(r.qty, r.width, r.length, Math.min(r.stackLevels, actualStack), r.pallet);
+      return {
+        productCode: r.productCode,
+        nameEn: r.nameEn,
+        lotNo: r.lotNo,
+        qty: r.qty,
+        unit: r.unit,
+        area: Math.round(area * 100) / 100,
+        stackLevels: r.stackLevels,
+        lotStatus: r.lotStatus,
+        expired: r.expired,
+      };
+    });
+    // Non-stock items (Reuse, empty pallets…) also occupy floor space.
+    for (const e of parseExtraItems(loc.extraItems)) {
+      contents.push({
+        productCode: "—",
+        nameEn: `${e.label} (ของอื่น ๆ)`,
+        lotNo: "—",
+        qty: e.pallets,
+        unit: "พาเลท",
+        area: Math.round(e.pallets * DEFAULT_PALLET_M2 * 100) / 100,
+        stackLevels: 1,
+        lotStatus: "OK",
+        expired: false,
+        isExtra: true,
+      });
+    }
+
     const capArea = binCapacity(loc.width, loc.length);
     const usedArea = contents.reduce((s, c) => s + c.area, 0);
     const pct = occupancyPct(usedArea, capArea);
