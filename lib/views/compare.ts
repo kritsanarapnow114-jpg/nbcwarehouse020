@@ -1,6 +1,15 @@
 import "server-only";
 import { getReportData } from "./reports";
-import { getInventoryStats, getMovementDetail, getTopVendors, Range } from "./dashboard";
+import {
+  getInventoryStats,
+  getMovementDetail,
+  getMovementBuckets,
+  getTopVendors,
+  MovementBucket,
+  Range,
+} from "./dashboard";
+
+export type { MovementBucket };
 
 export type CompareMetric = {
   key: string;
@@ -16,7 +25,7 @@ export type MoverRow = { code: string; name: string; qty: number };
 export type VendorRow = { name: string; value: number; docs: number };
 
 export async function getPeriodComparison(a: Range, b: Range) {
-  const [ra, rb, sa, sb, ma, mb, va, vb] = await Promise.all([
+  const [ra, rb, sa, sb, ma, mb, va, vb, mva, mvb] = await Promise.all([
     getReportData(a),
     getReportData(b),
     getInventoryStats(a),
@@ -25,6 +34,8 @@ export async function getPeriodComparison(a: Range, b: Range) {
     getMovementDetail(b, 5),
     getTopVendors(a, 5),
     getTopVendors(b, 5),
+    getMovementBuckets(a),
+    getMovementBuckets(b),
   ]);
 
   const metrics: CompareMetric[] = [
@@ -43,5 +54,6 @@ export async function getPeriodComparison(a: Range, b: Range) {
     receivedTop: { a: ma.received, b: mb.received },
     issuedTop: { a: ma.issued, b: mb.issued },
     vendors: { a: va, b: vb },
+    movement: { a: mva, b: mvb },
   };
 }

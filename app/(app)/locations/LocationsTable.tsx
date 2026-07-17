@@ -8,6 +8,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Modal, ModalHeader } from "@/components/ui/Modal";
 import { Tone } from "@/components/ui/tone";
 import { deleteLocationAction } from "@/lib/actions/locations";
+import { setBinExtrasAction } from "@/lib/actions/mapMove";
 import { showToast } from "@/components/ui/Toast";
 import { EditLocationModal } from "./EditLocationModal";
 
@@ -36,6 +37,35 @@ export function LocationsTable({
   const router = useRouter();
   const [selected, setSelected] = useState<LocationRow | null>(null);
   const [editing, setEditing] = useState<LocationRow | null>(null);
+  const [newLabel, setNewLabel] = useState("");
+  const [newQty, setNewQty] = useState("1");
+  const [busyExtra, setBusyExtra] = useState(false);
+
+  async function saveExtras(code: string, next: { id: string; label: string; pallets: number }[]) {
+    setBusyExtra(true);
+    const res = await setBinExtrasAction(code, next);
+    setBusyExtra(false);
+    if (res.error) {
+      showToast(res.error);
+      return;
+    }
+    router.refresh();
+  }
+  async function addExtra(cur: LocationRow) {
+    const label = newLabel.trim();
+    const qty = Math.max(1, Math.trunc(Number(newQty) || 1));
+    if (!label || busyExtra) return;
+    const id = `x${Date.now().toString(36)}`;
+    await saveExtras(cur.code, [...cur.extras, { id, label, pallets: qty }]);
+    setNewLabel("");
+    setNewQty("1");
+    showToast(`เพิ่ม “${label}” แล้ว`);
+  }
+  async function removeExtra(cur: LocationRow, id: string) {
+    if (busyExtra) return;
+    await saveExtras(cur.code, cur.extras.filter((e) => e.id !== id));
+    showToast("ลบของอื่น ๆ แล้ว");
+  }
 
   async function handleDelete(e: React.MouseEvent, row: LocationRow) {
     e.stopPropagation();
@@ -172,18 +202,21 @@ export function LocationsTable({
       </div>
 
       <Modal open={!!selected} onClose={() => setSelected(null)} width={640}>
-        {selected && (
+        {selected && (() => {
+          // Use the freshest row so the panel updates after add/remove.
+          const cur = rows.find((r) => r.code === selected.code) ?? selected;
+          return (
           <>
             <ModalHeader
               title={
                 <span>
-                  <span className="font-num text-[12px] text-[#9aa4b4]">{selected.code}</span>{" "}
-                  Zone {selected.zone} · Bin Contents
+                  <span className="font-num text-[12px] text-[#9aa4b4]">{cur.code}</span>{" "}
+                  Zone {cur.zone} · Bin Contents
                 </span>
               }
               onClose={() => setSelected(null)}
             />
-            <div className="max-h-[420px] overflow-auto px-5 py-3">
+            <div className="max-h-[300px] overflow-auto px-5 py-3">
               <table className="w-full border-collapse text-[12.5px]">
                 <thead>
                   <tr className="text-left text-[#9aa4b4]">
@@ -195,7 +228,7 @@ export function LocationsTable({
                   </tr>
                 </thead>
                 <tbody>
-                  {selected.contents.map((c, i) => (
+                  {cur.contents.map((c, i) => (
                     <tr key={i} className="border-t border-[#eef1f5]">
                       <td className="py-2 font-medium">{c.nameEn}</td>
                       <td className="font-num py-2">{c.productCode}</td>
@@ -206,7 +239,7 @@ export function LocationsTable({
                       <td className="font-num py-2 text-right">{c.area.toFixed(2)}</td>
                     </tr>
                   ))}
-                  {selected.contents.length === 0 && (
+                  {cur.contents.length === 0 && (
                     <tr>
                       <td colSpan={5} className="py-6 text-center text-[#9aa4b4]">
                         Empty bin (ว่าง)
@@ -216,8 +249,61 @@ export function LocationsTable({
                 </tbody>
               </table>
             </div>
+
+            {/* Non-stock items (Reuse, empty pallets…) */}
+            <div className="border-t border-[#eef1f5] bg-[#faf7f2] px-5 py-3">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-[13px]">♻️</span>
+                <span className="text-[12px] font-bold text-[#7a6a55]">
+                  ของอื่น ๆ ในช่องนี้ ({cur.extras.length})
+                </span>
+                <span className="text-[10.5px] text-[#a99a86]">ไม่ใช่สินค้าในระบบ · เช่น Reuse, พาเลทเปล่า</span>
+              </div>
+              {cur.extras.length > 0 && (
+                <div className="mb-2 flex flex-col gap-1.5">
+                  {cur.extras.map((e) => (
+                    <div key={e.id} className="flex items-center gap-2 rounded-[9px] border border-[#ece3d6] bg-white px-2.5 py-1.5">
+                      <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-[#5f5340]">{e.label}</span>
+                      <span className="font-num flex-none text-[11.5px] text-[#a2937d]">{e.pallets} พาเลท</span>
+                      <button
+                        onClick={() => removeExtra(cur, e.id)}
+                        disabled={busyExtra}
+                        className="flex-none rounded-[6px] border border-[#e2d6c6] px-1.5 py-0.5 text-[11px] text-[#a5795f] hover:bg-[#f3ece2] disabled:opacity-50"
+                        title="ลบ"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-1.5">
+                <input
+                  value={newLabel}
+                  onChange={(ev) => setNewLabel(ev.target.value)}
+                  onKeyDown={(ev) => { if (ev.key === "Enter") addExtra(cur); }}
+                  placeholder="ชื่อของ เช่น Reuse / พาเลทเปล่า / อุปกรณ์"
+                  className="min-w-0 flex-1 rounded-[8px] border border-[#dccfbd] bg-white px-2 py-1.5 text-[12.5px] outline-none focus:border-[#b79a72]"
+                />
+                <input
+                  value={newQty}
+                  onChange={(ev) => setNewQty(ev.target.value.replace(/[^0-9]/g, ""))}
+                  inputMode="numeric"
+                  title="จำนวนพาเลท/จุดที่วาง"
+                  className="font-num w-[52px] flex-none rounded-[8px] border border-[#dccfbd] bg-white px-2 py-1.5 text-center text-[12.5px] outline-none focus:border-[#b79a72]"
+                />
+                <button
+                  onClick={() => addExtra(cur)}
+                  disabled={busyExtra || !newLabel.trim()}
+                  className="flex-none rounded-[8px] bg-[#9a7b52] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[#846943] disabled:opacity-50"
+                >
+                  + เพิ่ม
+                </button>
+              </div>
+            </div>
           </>
-        )}
+          );
+        })()}
       </Modal>
 
       {editing && (

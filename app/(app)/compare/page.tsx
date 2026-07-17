@@ -2,6 +2,7 @@ import { getPeriodComparison, CompareMetric, MoverRow, VendorRow } from "@/lib/v
 import { todayBangkok, parseISO, fmtDateISO, fmtDateBE } from "@/lib/calc/date";
 import { Money } from "@/components/ui/Currency";
 import { ComparePeriods as ComparePeriodsClient } from "./ComparePeriods";
+import { MovementCompare } from "./CompareCharts";
 
 function addDays(d: Date, n: number) {
   const x = new Date(d);
@@ -50,7 +51,11 @@ export default async function ComparePage({
         ))}
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="mt-5">
+        <MovementCompare a={cmp.movement.a} b={cmp.movement.b} />
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <MoverPanel title="รับเข้าสูงสุด · Top received" a={cmp.receivedTop.a} b={cmp.receivedTop.b} accent="#1f66a6" />
         <MoverPanel title="จ่ายออกสูงสุด · Top issued" a={cmp.issuedTop.a} b={cmp.issuedTop.b} accent="#c9821f" />
       </div>
@@ -77,6 +82,9 @@ function MetricCard({ m }: { m: CompareMetric }) {
   const arrow = same ? "＝" : up ? "▲" : "▼";
   const val = (v: number) =>
     m.money ? <Money value={v} /> : <span>{Math.round(v).toLocaleString()}</span>;
+  const mx = Math.max(Math.abs(m.a), Math.abs(m.b), 1);
+  const aw = (Math.abs(m.a) / mx) * 100;
+  const bw = (Math.abs(m.b) / mx) * 100;
 
   return (
     <div className="rounded-[13px] border border-[#e7ebf1] bg-white p-4 shadow-[0_1px_2px_rgba(20,30,48,.04)]">
@@ -87,6 +95,21 @@ function MetricCard({ m }: { m: CompareMetric }) {
         <span className="font-num text-[12px] font-bold" style={{ color }}>
           {arrow} {pc === null ? "ใหม่" : `${pc >= 0 ? "+" : ""}${pc.toFixed(0)}%`}
         </span>
+      </div>
+      {/* A vs B mini bars */}
+      <div className="mt-2.5 flex flex-col gap-1">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 text-[9px] font-bold text-[#2f86cf]">A</span>
+          <div className="h-[6px] flex-1 overflow-hidden rounded-full bg-[#eef2f7]">
+            <div className="h-full rounded-full bg-[#2f86cf]" style={{ width: `${aw}%` }} />
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 text-[9px] font-bold text-[#8a94a6]">B</span>
+          <div className="h-[6px] flex-1 overflow-hidden rounded-full bg-[#eef2f7]">
+            <div className="h-full rounded-full bg-[#8a94a6]" style={{ width: `${bw}%` }} />
+          </div>
+        </div>
       </div>
     </div>
   );

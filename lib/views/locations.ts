@@ -28,15 +28,18 @@ export type BinContent = {
 // Footprint of one non-stock pallet (matches the map's estimate).
 const DEFAULT_PALLET_M2 = 0.96;
 
-function parseExtraItems(raw: unknown): { label: string; pallets: number }[] {
+export type ExtraItemRow = { id: string; label: string; pallets: number };
+
+function parseExtraItems(raw: unknown): ExtraItemRow[] {
   if (!Array.isArray(raw)) return [];
-  const out: { label: string; pallets: number }[] = [];
+  const out: ExtraItemRow[] = [];
   for (const e of raw) {
     if (e && typeof e === "object") {
       const label = typeof (e as { label?: unknown }).label === "string" ? (e as { label: string }).label : "";
+      const id = typeof (e as { id?: unknown }).id === "string" ? (e as { id: string }).id : "";
       const pallets = Number((e as { pallets?: unknown }).pallets);
-      if (label && Number.isFinite(pallets) && pallets > 0)
-        out.push({ label, pallets: Math.max(1, Math.trunc(pallets)) });
+      if (label && id && Number.isFinite(pallets) && pallets > 0)
+        out.push({ id, label, pallets: Math.max(1, Math.trunc(pallets)) });
     }
   }
   return out;
@@ -54,6 +57,7 @@ export type LocationRow = {
   barColor: string;
   tone: BinTone;
   contents: BinContent[];
+  extras: ExtraItemRow[]; // non-stock items placed here (Reuse, empty pallets…)
   stackUsed: number | null; // actual stack set by the user (null = stack to max)
   stackMax: number; // how high the product could stack
 };
@@ -126,7 +130,8 @@ async function loadAllRows(): Promise<LocationRow[]> {
       };
     });
     // Non-stock items (Reuse, empty pallets…) also occupy floor space.
-    for (const e of parseExtraItems(loc.extraItems)) {
+    const extras = parseExtraItems(loc.extraItems);
+    for (const e of extras) {
       contents.push({
         productCode: "—",
         nameEn: `${e.label} (ของอื่น ๆ)`,
@@ -162,6 +167,7 @@ async function loadAllRows(): Promise<LocationRow[]> {
       barColor: BAR_TONE_COLOR[occupancyBarTone(pct)],
       tone,
       contents,
+      extras,
       stackUsed: loc.stackUsed ?? null,
       stackMax,
     };
