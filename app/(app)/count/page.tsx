@@ -1,14 +1,27 @@
 import { getRecentCounts, getLotOptions, getProductOptions, getLocationCodes } from "@/lib/views/docCommon";
+import { getZonesInUse } from "@/lib/views/locations";
+import { getAppSettings } from "@/lib/views/settings";
+import { zoneLabelKey } from "@/lib/settingsKeys";
+import { ZONE_LABEL } from "@/components/ui/tone";
 import { CountForm } from "./CountForm";
 import { DocHistory, DocHistoryRow } from "@/components/ui/DocHistory";
 
 export default async function CountPage() {
-  const [counts, lots, products, locations] = await Promise.all([
+  const [counts, lots, products, locations, zonesInUse, settings] = await Promise.all([
     getRecentCounts(),
     getLotOptions(),
     getProductOptions(),
     getLocationCodes(),
+    getZonesInUse(),
+    getAppSettings(),
   ]);
+
+  // Every zone that actually holds bins, with the user's custom label, so the
+  // count "pull by zone" dropdown reaches all stock (not just A/B/C).
+  const zones = zonesInUse.map((z) => ({
+    code: z,
+    label: settings[zoneLabelKey(z)] ?? ZONE_LABEL[z as keyof typeof ZONE_LABEL] ?? "",
+  }));
 
   const rows: DocHistoryRow[] = counts.map((c) => ({
     id: c.id,
@@ -34,7 +47,7 @@ export default async function CountPage() {
 
   return (
     <div className="max-w-[1240px] p-[22px_26px]">
-      <CountForm lots={lots} products={products} locations={locations} />
+      <CountForm lots={lots} products={products} locations={locations} zones={zones} />
       <DocHistory title="Recent Counts (ประวัติการนับสต็อก)" rows={rows} accentColor="#2f86cf" reverseKind="count" printSheet="count" />
     </div>
   );

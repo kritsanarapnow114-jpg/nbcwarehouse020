@@ -22,15 +22,14 @@ export type ConfirmCountInput = {
   offSystemLines?: OffSystemLineInput[];
 };
 
-const ZONE_LABEL_MAP: Record<string, Zone | null> = {
-  "All zones": null,
-  "Zone A — Raw Material": "A",
-  "Zone B — Liquids": "B",
-  "Zone C — Packaging": "C",
-};
+const VALID_ZONES: Zone[] = ["A", "B", "C", "D", "E"];
 
-export async function getLotsByZoneAction(pullZone: string, asOfDate?: string) {
-  const zone = ZONE_LABEL_MAP[pullZone] ?? null;
+/** `zoneCode` is a zone letter (A–E) or "ALL"/"" for every zone. (Older callers
+ *  passed the label string; anything that isn't a valid zone letter falls back
+ *  to "all zones", so nothing silently returns empty.) */
+export async function getLotsByZoneAction(zoneCode: string, asOfDate?: string) {
+  const code = (zoneCode || "").trim().toUpperCase();
+  const zone = (VALID_ZONES as string[]).includes(code) ? (code as Zone) : null;
   // With an as-of date we must consider every lot in the zone (some empty now may
   // have had stock then; some with stock now may not have existed yet), so we
   // don't pre-filter on current qty — we filter on the as-of quantity instead.

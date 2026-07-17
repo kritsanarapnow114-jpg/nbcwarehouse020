@@ -12,12 +12,7 @@ import { downloadExcel } from "@/lib/calc/csvClient";
 import { printCountSheet } from "@/lib/calc/printClient";
 import { fmtDateISO } from "@/lib/calc/date";
 
-const ZONES = [
-  "All zones",
-  "Zone A — Raw Material",
-  "Zone B — Liquids",
-  "Zone C — Packaging",
-];
+type ZoneOpt = { code: string; label: string };
 
 type Row = Awaited<ReturnType<typeof getLotsByZoneAction>>[number] & { counted: string };
 type OffRow = {
@@ -34,13 +29,21 @@ export function CountForm({
   lots,
   products,
   locations,
+  zones,
 }: {
   lots: LotOption[];
   products: ProductOption[];
   locations: string[];
+  zones: ZoneOpt[];
 }) {
   const router = useRouter();
-  const [pullZone, setPullZone] = useState(ZONES[0]);
+  // Options: "ALL" + every zone in use (with the user's custom label).
+  const ZONE_OPTS: ZoneOpt[] = [
+    { code: "ALL", label: "ทุกโซน (All zones)" },
+    ...zones.map((z) => ({ code: z.code, label: `โซน ${z.code}${z.label ? ` · ${z.label}` : ""}` })),
+  ];
+  const zoneLabelOf = (code: string) => ZONE_OPTS.find((z) => z.code === code)?.label ?? code;
+  const [pullZone, setPullZone] = useState("ALL");
   const [asOfDate, setAsOfDate] = useState(""); // empty = today's live stock
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Row[]>([]);
@@ -62,7 +65,11 @@ export function CountForm({
       offSystemLines: { productCode: string; lotNo: string; locationCode: string; counted: string }[];
     }>("count");
     if (!p) return;
-    if (p.pullZone) setPullZone(p.pullZone);
+    // stored pullZone is a display label; only re-select it if it maps to a code
+    if (p.pullZone) {
+      const match = ZONE_OPTS.find((z) => z.label === p.pullZone || z.code === p.pullZone);
+      if (match) setPullZone(match.code);
+    }
     setLines(
       p.lines
         .map((pl) => {
@@ -166,7 +173,7 @@ export function CountForm({
     setError(null);
     try {
       const res = await confirmCountAction({
-        pullZone,
+        pullZone: zoneLabelOf(pullZone),
         docDate,
         lines: lines.map((l) => ({
           lotId: l.id,
@@ -240,9 +247,9 @@ export function CountForm({
               onChange={(e) => setPullZone(e.target.value)}
               className="rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
             >
-              {ZONES.map((z) => (
-                <option key={z} value={z}>
-                  {z}
+              {ZONE_OPTS.map((z) => (
+                <option key={z.code} value={z.code}>
+                  {z.label}
                 </option>
               ))}
             </select>
