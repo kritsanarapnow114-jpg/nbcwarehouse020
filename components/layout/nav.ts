@@ -21,6 +21,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "count", href: "/count", icon: "☑", en: "Stock Count", th: "นับสต็อก" },
   { key: "abc", href: "/abc", icon: "◧", en: "ABC Analysis", th: "วิเคราะห์ ABC" },
   { key: "reports", href: "/reports", icon: "▥", en: "Reports", th: "รายงานสรุป" },
+  { key: "compare", href: "/compare", icon: "⇌", en: "Compare Periods", th: "เทียบช่วงเวลา" },
 ];
 
 export const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
@@ -40,4 +41,5 @@ export const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
   "/reports": { title: "Reports", sub: "รายงานสรุป · Receiving, Issuing, Loss, Production, PO, Transfer, Stock Card" },
   "/settings": { title: "Settings", sub: "ตั้งค่า · Data management" },
   "/search": { title: "Search", sub: "ค้นหา · สินค้า / PO / Invoice / SAP Material Document / Lot" },
+  "/compare": { title: "Compare Periods", sub: "เทียบช่วงเวลา · เทียบข้อมูล 2 ช่วงเวลา (รับ/จ่าย/มูลค่า/ท็อป)" },
 };

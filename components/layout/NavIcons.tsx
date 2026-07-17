@@ -109,6 +109,11 @@ const PATHS: Record<string, ReactNode> = {
       <rect x="15.8" y="13.5" width="3.2" height="4.5" rx="1" />
     </>
   ),
+  compare: (
+    <>
+      <path d="M4 8h13l-3-3M20 16H7l3 3" />
+    </>
+  ),
   settings: (
     <>
       <circle cx="12" cy="12" r="3.4" />
