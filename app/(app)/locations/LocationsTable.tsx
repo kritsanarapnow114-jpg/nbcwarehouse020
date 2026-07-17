@@ -236,7 +236,7 @@ function Th({
 }) {
   return (
     <th
-      className={`p-[11px_16px] text-[11.5px] font-medium ${align === "right" ? "text-right" : "text-left"}`}
+      className={`p-[11px_9px] text-[11.5px] font-medium ${align === "right" ? "text-right" : "text-left"}`}
     >
       {children}
     </th>
@@ -254,7 +254,7 @@ function Td({
 }) {
   return (
     <td
-      className={`p-[12px_16px] ${align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left"} ${className}`}
+      className={`p-[12px_9px] ${align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left"} ${className}`}
     >
       {children}
     </td>

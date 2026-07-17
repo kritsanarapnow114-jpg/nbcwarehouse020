@@ -102,8 +102,8 @@ export function PoTable({ rows, products = [] }: { rows: PoRow[]; products?: PoP
 
   return (
     <>
-      <div className="overflow-hidden rounded-[14px] border border-[#e7ebf1] bg-white shadow-[0_1px_2px_rgba(20,30,48,.04),0_6px_18px_rgba(20,30,48,.035)]">
-        <table className="w-full border-collapse text-[13px]">
+      <div className="overflow-x-auto rounded-[14px] border border-[#e7ebf1] bg-white shadow-[0_1px_2px_rgba(20,30,48,.04),0_6px_18px_rgba(20,30,48,.035)]">
+        <table className="w-full min-w-[820px] border-collapse text-[13px]">
           <thead>
             <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
               <Th>PO No.</Th>
@@ -426,7 +426,7 @@ function Th({
 }) {
   return (
     <th
-      className={`p-[11px_16px] text-[11.5px] font-medium ${align === "right" ? "text-right" : "text-left"}`}
+      className={`p-[11px_9px] text-[11.5px] font-medium ${align === "right" ? "text-right" : "text-left"}`}
     >
       {children}
     </th>
@@ -444,7 +444,7 @@ function Td({
 }) {
   return (
     <td
-      className={`p-[12px_16px] ${align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left"} ${className}`}
+      className={`p-[12px_9px] ${align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left"} ${className}`}
     >
       {children}
     </td>
