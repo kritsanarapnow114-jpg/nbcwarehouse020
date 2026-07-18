@@ -15,7 +15,7 @@ export type ConfirmAdjustInput = {
 };
 
 function revalidateAll() {
-  safeRevalidate(["/adjust", "/dashboard", "/products", "/aging", "/locations"]);
+  safeRevalidate(["/adjust", "/dashboard", "/products", "/aging", "/locations", "/map"]);
 }
 
 export async function confirmAdjustAction(input: ConfirmAdjustInput) {

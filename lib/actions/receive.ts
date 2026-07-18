@@ -35,7 +35,7 @@ export type ConfirmReceiptInput = {
 };
 
 function revalidateAll() {
-  safeRevalidate(["/receive", "/dashboard", "/products", "/po", "/aging", "/locations"]);
+  safeRevalidate(["/receive", "/dashboard", "/products", "/po", "/aging", "/locations", "/map"]);
 }
 
 export async function confirmReceiptAction(

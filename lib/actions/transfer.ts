@@ -13,7 +13,7 @@ export type ConfirmTransferInput = {
 };
 
 function revalidateAll() {
-  safeRevalidate(["/transfer", "/dashboard", "/products", "/locations"]);
+  safeRevalidate(["/transfer", "/dashboard", "/products", "/locations", "/aging", "/map"]);
 }
 
 export async function confirmTransferAction(input: ConfirmTransferInput) {

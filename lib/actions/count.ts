@@ -121,6 +121,6 @@ export async function confirmCountAction(input: ConfirmCountInput) {
     }
   });
 
-  safeRevalidate(["/count", "/dashboard", "/products", "/aging", "/locations"]);
+  safeRevalidate(["/count", "/dashboard", "/products", "/aging", "/locations", "/map"]);
   return { docNo };
 }

@@ -21,7 +21,7 @@ export type ConfirmIssueInput = {
 };
 
 function revalidateAll() {
-  safeRevalidate(["/issue", "/dashboard", "/products", "/aging", "/locations"]);
+  safeRevalidate(["/issue", "/dashboard", "/products", "/aging", "/locations", "/map"]);
 }
 
 export async function confirmIssueAction(
