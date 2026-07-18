@@ -71,11 +71,15 @@ export function LocationsTable({
     e.stopPropagation();
     if (!confirm(`Delete bin ${row.code}? (ลบที่เก็บนี้?)`)) return;
     try {
-      await deleteLocationAction(row.code);
-      showToast("Location deleted");
+      const res = await deleteLocationAction(row.code);
+      if (res?.error) {
+        showToast(res.error);
+        return;
+      }
+      showToast(`ลบที่เก็บ ${row.code} แล้ว`);
       router.refresh();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to delete location.");
+    } catch {
+      showToast("ลบที่เก็บไม่สำเร็จ (failed to delete location)");
     }
   }
 

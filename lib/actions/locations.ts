@@ -53,13 +53,22 @@ export async function updateLocationAction(
   revalidateLocationPaths();
 }
 
-export async function deleteLocationAction(code: string) {
-  const lotCount = await db.lot.count({ where: { locationCode: code } });
-  if (lotCount > 0) {
-    throw new Error(
-      `Cannot delete ${code} — it still has ${lotCount} lot(s) stored (ลบไม่ได้ ยังมีสินค้าอยู่ในที่เก็บนี้)`
-    );
+export async function deleteLocationAction(code: string): Promise<{ error?: string }> {
+  // Block deletion while the bin still holds stock (would orphan the lots).
+  const activeLots = await db.lot.count({ where: { locationCode: code, qty: { gt: 0 } } });
+  if (activeLots > 0) {
+    return {
+      error: `ลบไม่ได้ — ช่อง ${code} ยังมีสินค้าอยู่ ${activeLots} ล็อต · ย้าย/จ่ายออกให้หมดก่อน (still has stock)`,
+    };
   }
-  await db.location.delete({ where: { code } });
+  try {
+    await db.location.delete({ where: { code } });
+  } catch {
+    // e.g. depleted (qty 0) lots still reference this bin as history.
+    return {
+      error: `ลบไม่ได้ — ช่อง ${code} ผูกกับประวัติล็อต/เอกสารเดิมอยู่ (linked to past lots/documents)`,
+    };
+  }
   revalidateLocationPaths();
+  return {};
 }
