@@ -55,7 +55,7 @@ export async function getInventoryStats(range: Range) {
 /** Dashboard's Storage Utilization widget only shows zones A-C (the active zone set — legacy D/E bins, if any, still count toward the total). */
 export async function getStorageUtilization(asOf: Date) {
   const [locations, products, snapshot] = await Promise.all([
-    db.location.findMany(),
+    db.location.findMany({ where: { archivedAt: null } }),
     db.product.findMany(),
     getLotsAsOf(asOf),
   ]);

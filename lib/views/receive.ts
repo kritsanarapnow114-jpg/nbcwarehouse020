@@ -16,7 +16,7 @@ export async function getReceiveFormData() {
       include: { lines: { include: { product: true } } },
       orderBy: { no: "asc" },
     }),
-    db.location.findMany({ orderBy: { code: "asc" } }),
+    db.location.findMany({ where: { archivedAt: null }, orderBy: { code: "asc" } }),
     db.lot.findMany({ select: { lotNo: true }, distinct: ["lotNo"] }),
     db.bom.findMany({ include: { lines: { include: { materialProduct: true } } } }),
     peekNextDocNumber("RC"),

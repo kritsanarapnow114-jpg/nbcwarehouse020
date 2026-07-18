@@ -26,7 +26,7 @@ export async function getLotOptions() {
 export type LotOption = Awaited<ReturnType<typeof getLotOptions>>[number];
 
 export async function getLocationCodes() {
-  const locs = await db.location.findMany({ orderBy: { code: "asc" } });
+  const locs = await db.location.findMany({ where: { archivedAt: null }, orderBy: { code: "asc" } });
   return locs.map((l) => l.code);
 }
 

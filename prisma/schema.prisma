@@ -102,6 +102,7 @@ model Location {
   stackUsed  Int? // actual pallet-stack height used in this bin (may be < product's max)
   slotMap    Json? // custom pallet arrangement inside the bin: [{s:spot,l:level,lot:lotId}]
   extraItems Json? // non-stock items placed here (Reuse, empty pallets…): [{id,label,pallets}]
+  archivedAt DateTime? // soft-delete: hidden from all views but kept for lot history
 
   lots Lot[]
 

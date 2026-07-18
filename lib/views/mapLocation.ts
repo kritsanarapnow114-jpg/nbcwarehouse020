@@ -138,7 +138,7 @@ function parseCode(
 
 export async function getMapLocationData() {
   const [locations, lots] = await Promise.all([
-    db.location.findMany({ orderBy: { code: "asc" } }),
+    db.location.findMany({ where: { archivedAt: null }, orderBy: { code: "asc" } }),
     db.lot.findMany({ where: { qty: { gt: 0 } }, include: { product: true } }),
   ]);
   const today = todayBangkok();

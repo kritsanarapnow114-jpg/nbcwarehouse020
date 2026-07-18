@@ -9,6 +9,8 @@ export type FormState = { error?: string };
 function revalidateLocationPaths() {
   revalidatePath("/locations");
   revalidatePath("/dashboard");
+  revalidatePath("/map");
+  revalidatePath("/receive");
 }
 
 export async function createLocationAction(
@@ -30,13 +32,19 @@ export async function createLocationAction(
   }
 
   const existing = await db.location.findUnique({ where: { code } });
-  if (existing) {
+  if (existing && !existing.archivedAt) {
     return { error: `Bin ${code} already exists (รหัสที่เก็บนี้มีอยู่แล้ว)` };
   }
 
-  await db.location.create({
-    data: { code, zone, width, length },
-  });
+  if (existing) {
+    // Re-adding a code that was archived → bring it back with the new dimensions.
+    await db.location.update({
+      where: { code },
+      data: { zone, width, length, archivedAt: null },
+    });
+  } else {
+    await db.location.create({ data: { code, zone, width, length } });
+  }
 
   revalidateLocationPaths();
   return {};
@@ -61,13 +69,13 @@ export async function deleteLocationAction(code: string): Promise<{ error?: stri
       error: `ลบไม่ได้ — ช่อง ${code} ยังมีสินค้าอยู่ ${activeLots} ล็อต · ย้าย/จ่ายออกให้หมดก่อน (still has stock)`,
     };
   }
+  // No active stock. Try a clean hard delete (bins with no lot history at all);
+  // if depleted (qty 0) lots still reference it, soft-delete instead so the lot
+  // history stays intact but the bin disappears from every view.
   try {
     await db.location.delete({ where: { code } });
   } catch {
-    // e.g. depleted (qty 0) lots still reference this bin as history.
-    return {
-      error: `ลบไม่ได้ — ช่อง ${code} ผูกกับประวัติล็อต/เอกสารเดิมอยู่ (linked to past lots/documents)`,
-    };
+    await db.location.update({ where: { code }, data: { archivedAt: new Date() } });
   }
   revalidateLocationPaths();
   return {};

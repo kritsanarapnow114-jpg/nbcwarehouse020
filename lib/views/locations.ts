@@ -64,7 +64,7 @@ export type LocationRow = {
 
 async function loadAllRows(): Promise<LocationRow[]> {
   const [locations, lots] = await Promise.all([
-    db.location.findMany({ orderBy: { code: "asc" } }),
+    db.location.findMany({ where: { archivedAt: null }, orderBy: { code: "asc" } }),
     // Depleted lots (qty 0) don't occupy the bin — leave them out of contents.
     db.lot.findMany({ where: { qty: { gt: 0 } }, include: { product: true } }),
   ]);
@@ -182,7 +182,7 @@ export async function getLocationRows(opts?: { zone?: string }): Promise<Locatio
 
 /** Distinct zones that currently have at least one bin, in order. */
 export async function getZonesInUse(): Promise<string[]> {
-  const locs = await db.location.findMany({ select: { zone: true }, distinct: ["zone"] });
+  const locs = await db.location.findMany({ where: { archivedAt: null }, select: { zone: true }, distinct: ["zone"] });
   return locs.map((l) => l.zone).sort();
 }
 
