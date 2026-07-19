@@ -65,26 +65,26 @@ export function printCountSheet(opts: {
 
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>WEEKLY CYCLE COUNT</title>
 <style>
-  @page { size: portrait; margin: 8mm; }
+  @page { size: portrait; margin: 7mm; }
   * { box-sizing: border-box; }
   body { font-family:'Aptos Narrow',Arial,sans-serif; color:#16202e; margin:0; padding:0; }
-  .hdr { display:flex; align-items:center; gap:14px; border-bottom:2px solid #16202e; padding-bottom:6px; margin-bottom:6px; }
-  .hdr img { height:42px; width:auto; }
-  .hdr .nw { height:38px; }
+  .hdr { display:flex; align-items:center; gap:10px; border-bottom:1.5px solid #16202e; padding-bottom:4px; margin-bottom:5px; }
+  .hdr img { height:30px; width:auto; }
+  .hdr .nw { height:26px; }
   .hdr .ttl { flex:1; text-align:center; }
-  .hdr .ttl h1 { margin:0; font-size:19px; letter-spacing:1px; }
-  .hdr .ttl .m { color:#5a6675; font-size:10.5px; margin-top:2px; }
+  .hdr .ttl h1 { margin:0; font-size:15px; letter-spacing:.5px; }
+  .hdr .ttl .m { color:#5a6675; font-size:9px; margin-top:1px; }
   table { width:100%; border-collapse:collapse; }
   thead { display:table-header-group; }
   tr { page-break-inside:avoid; }
-  th { background:#12557e; color:#fff; border:1px solid #9fb0c3; padding:0 5px; text-align:left; font-size:11pt; line-height:1; white-space:nowrap; }
-  td { border:1px solid #b9c2cd; padding:0 5px; font-size:11pt; line-height:1; height:0.37cm; white-space:nowrap; }
+  th { background:#12557e; color:#fff; border:1px solid #9fb0c3; padding:1px 3px; text-align:left; font-size:8pt; line-height:1.05; white-space:nowrap; }
+  td { border:1px solid #b9c2cd; padding:1px 3px; font-size:8pt; line-height:1.05; height:0.3cm; white-space:nowrap; }
   th.wrap, td.wrap { white-space:normal; }
-  td.write { min-width:60px; }
-  tbody tr { height:0.37cm; }
+  td.write { min-width:52px; }
+  tbody tr { height:0.3cm; }
   tbody tr:nth-child(even) td { background:#f2f6f9; }
-  .sig { margin-top:22px; display:flex; justify-content:space-around; gap:30px; page-break-inside:avoid; }
-  .sig div { flex:1; max-width:30%; border-top:1px solid #333; padding-top:5px; text-align:center; font-size:10.5px; color:#3a4658; }
+  .sig { margin-top:12px; display:flex; justify-content:space-around; gap:24px; page-break-inside:avoid; }
+  .sig div { flex:1; max-width:30%; border-top:1px solid #333; padding-top:4px; text-align:center; font-size:9px; color:#3a4658; }
 </style></head><body>
 <div class="hdr">
   <img src="${FLS_LOGO}" alt="FLS"/>
