@@ -42,8 +42,13 @@ export function printCountSheet(opts: {
   ];
   // Only the Material Description column (index 2) may wrap, so the table fits
   // the page width; every other column stays on one line at row height 0.37cm.
+  // Fixed column widths so the SAP column stays narrow (its data is just an
+  // 8-digit code) and the Description column gets the room.
+  const widths = showSys
+    ? ["5%", "11%", "25%", "13%", "8%", "9%", "14%", "15%"]
+    : ["5%", "12%", "29%", "14%", "9%", "16%", "15%"];
   const head = headCells
-    .map((h, i) => `<th${i === 2 ? ' class="wrap"' : ""}>${esc(h)}</th>`)
+    .map((h, i) => `<th style="width:${widths[i] ?? ""}"${i === 2 ? ' class="wrap"' : ""}>${esc(h)}</th>`)
     .join("");
   const body = opts.rows.length
     ? opts.rows
@@ -76,6 +81,7 @@ export function printCountSheet(opts: {
 <style>
   @page { size: portrait; margin: 7mm; }
   * { box-sizing: border-box; }
+  html, body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   body { font-family:'Aptos Narrow',Arial,sans-serif; color:#16202e; margin:0; padding:0; }
   .hdr { display:flex; align-items:center; gap:10px; border-bottom:1.5px solid #16202e; padding-bottom:4px; margin-bottom:5px; }
   .hdr img { height:30px; width:auto; }
@@ -83,11 +89,11 @@ export function printCountSheet(opts: {
   .hdr .ttl { flex:1; text-align:center; }
   .hdr .ttl h1 { margin:0; font-size:15px; letter-spacing:.5px; }
   .hdr .ttl .m { color:#5a6675; font-size:9px; margin-top:1px; }
-  table { width:100%; border-collapse:collapse; }
+  table { width:100%; border-collapse:collapse; table-layout:fixed; }
   thead { display:table-header-group; }
   tr { page-break-inside:avoid; }
-  th { background:#12557e; color:#fff; border:1px solid #9fb0c3; padding:2px 3px; text-align:center; vertical-align:middle; font-size:8pt; line-height:1.1; white-space:normal; text-transform:uppercase; font-weight:bold; }
-  td { border:1px solid #b9c2cd; padding:1px 3px; font-size:8pt; line-height:1.05; height:0.3cm; white-space:nowrap; }
+  th { background:#12557e; color:#fff; border:1px solid #9fb0c3; padding:2px 3px; text-align:center; vertical-align:middle; font-size:8pt; line-height:1.1; white-space:normal; text-transform:uppercase; font-weight:bold; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  td { border:1px solid #b9c2cd; padding:1px 3px; font-size:8pt; line-height:1.05; height:0.3cm; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   th.wrap, td.wrap { white-space:normal; }
   td.write { min-width:52px; }
   tbody tr { height:0.3cm; }
@@ -150,6 +156,7 @@ export function printTable(opts: {
 <style>
   @page { size: ${orientation}; margin: ${margin}; }
   * { box-sizing: border-box; }
+  html, body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   body { font-family:'Aptos Narrow',Arial,sans-serif; color:#16202e; margin:0; padding:${compact ? "10px 12px" : "18px 22px"}; }
   h2 { margin:0 0 4px; font-size:${compact ? "16px" : "20px"}; }
   .sub { color:#5a6675; font-size:${compact ? "11px" : "12.5px"}; margin-bottom:${compact ? "8px" : "14px"}; }
