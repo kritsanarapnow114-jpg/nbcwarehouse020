@@ -80,8 +80,8 @@ export function printCountSheet(opts: {
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>${esc(sheetTitle)}</title>
 <style>
   @page { size: portrait; margin: 7mm; }
-  * { box-sizing: border-box; }
-  html, body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  * { box-sizing: border-box; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
+  html, body { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
   body { font-family:'Aptos Narrow',Arial,sans-serif; color:#16202e; margin:0; padding:0; }
   .hdr { display:flex; align-items:center; gap:10px; border-bottom:1.5px solid #16202e; padding-bottom:4px; margin-bottom:5px; }
   .hdr img { height:30px; width:auto; }
@@ -99,6 +99,10 @@ export function printCountSheet(opts: {
   tbody tr { height:0.3cm; }
   tbody tr:nth-child(even) td { background:#f2f6f9; }
   tr.pbr { break-after:page; page-break-after:always; }
+  @media print {
+    th { background:#12557e !important; color:#fff !important; }
+    tbody tr:nth-child(even) td { background:#f2f6f9 !important; }
+  }
   .sig { margin-top:30px; display:flex; justify-content:space-around; gap:26px; page-break-inside:avoid; }
   .sig > div { flex:1; max-width:30%; text-align:center; font-size:9.5px; color:#3a4658; }
   .sig .wl { height:46px; border-bottom:1px solid #333; margin-bottom:5px; }
@@ -155,9 +159,10 @@ export function printTable(opts: {
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>${esc(opts.title)}</title>
 <style>
   @page { size: ${orientation}; margin: ${margin}; }
-  * { box-sizing: border-box; }
-  html, body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  * { box-sizing: border-box; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
+  html, body { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
   body { font-family:'Aptos Narrow',Arial,sans-serif; color:#16202e; margin:0; padding:${compact ? "10px 12px" : "18px 22px"}; }
+  @media print { th { background:#12557e !important; color:#fff !important; } tr:nth-child(even) td { background:#eef4f8 !important; } }
   h2 { margin:0 0 4px; font-size:${compact ? "16px" : "20px"}; }
   .sub { color:#5a6675; font-size:${compact ? "11px" : "12.5px"}; margin-bottom:${compact ? "8px" : "14px"}; }
   table { width:100%; border-collapse:collapse; }
