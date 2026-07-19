@@ -45,8 +45,8 @@ export function printCountSheet(opts: {
   // Fixed column widths so the SAP column stays narrow (its data is just an
   // 8-digit code) and the Description column gets the room.
   const widths = showSys
-    ? ["5%", "11%", "25%", "13%", "8%", "9%", "14%", "15%"]
-    : ["5%", "12%", "29%", "14%", "9%", "16%", "15%"];
+    ? ["5%", "10%", "30%", "12%", "8%", "9%", "13%", "13%"]
+    : ["5%", "11%", "34%", "13%", "8%", "15%", "14%"];
   const head = headCells
     .map((h, i) => `<th style="width:${widths[i] ?? ""}"${i === 2 ? ' class="wrap"' : ""}>${esc(h)}</th>`)
     .join("");
@@ -67,9 +67,8 @@ export function printCountSheet(opts: {
           const brk = (i + 1) % rowsPerPage === 0 && i < opts.rows.length - 1 ? " pbr" : "";
           return `<tr${brk ? ` class="${brk.trim()}"` : ""}>${cells
             .map((c, ci) => {
-              const cls = [ci === 2 ? "wrap" : "", ci >= cells.length - 2 ? "write" : ""]
-                .filter(Boolean)
-                .join(" ");
+              // Description (col 2) stays on one line now (no wrap); write cols keep min width.
+              const cls = [ci >= cells.length - 2 ? "write" : ""].filter(Boolean).join(" ");
               return `<td${cls ? ` class="${cls}"` : ""}>${esc(c)}</td>`;
             })
             .join("")}</tr>`;
