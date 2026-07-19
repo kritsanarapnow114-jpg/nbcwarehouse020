@@ -215,11 +215,13 @@ export function CountForm({
     );
   }
 
-  function handlePrint() {
+  function handlePrint(cycle: "WEEKLY" | "MONTHLY") {
     // Blank count sheet: the "Count" column is always empty (to write by hand);
-    // the System (on-hand) column is optional.
+    // the System (on-hand) column is optional. 60 rows per printed page.
     printCountSheet({
-      meta: [`Pull: ${pullZone}`, `Date: ${docDate}`, `${lines.length} lines`],
+      sheetTitle: `${cycle} CYCLE COUNT`,
+      rowsPerPage: 60,
+      meta: [`Pull: ${zoneLabelOf(pullZone)}`, `Date: ${docDate}`, `${lines.length} lines`],
       showSys: printShowSys,
       rows: lines.map((l) => [
         l.productCode,
@@ -432,11 +434,20 @@ export function CountForm({
             โชว์จำนวนระบบตอนปริ้น
           </label>
           <button
-            onClick={handlePrint}
+            onClick={() => handlePrint("WEEKLY")}
             disabled={lines.length === 0}
             className={buttonClass("secondary")}
+            title="พิมพ์ใบนับรายสัปดาห์ (60 บรรทัด/หน้า)"
           >
-            ⎙ Print ใบนับ
+            ⎙ Weekly
+          </button>
+          <button
+            onClick={() => handlePrint("MONTHLY")}
+            disabled={lines.length === 0}
+            className={buttonClass("secondary")}
+            title="พิมพ์ใบนับรายเดือน (60 บรรทัด/หน้า)"
+          >
+            ⎙ Monthly
           </button>
           <button
             onClick={() => setPopup({ kind: "draft", message: "Draft saved locally (not yet posted)." })}

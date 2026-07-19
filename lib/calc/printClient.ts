@@ -14,6 +14,11 @@ function esc(v: string | number): string {
 export function printCountSheet(opts: {
   meta?: string[];
   showSys?: boolean;
+  /** Big heading & tab title. Default "WEEKLY CYCLE COUNT" (e.g. pass
+   *  "MONTHLY CYCLE COUNT" for the monthly sheet). */
+  sheetTitle?: string;
+  /** Force a page break after this many data rows (default 60). */
+  rowsPerPage?: number;
   /** rows: [sapCode, description, lot, location, sysQtyText, countText?].
    *  countText fills the Count column (for a completed/history record); omit or
    *  "" for a blank sheet to write by hand. */
@@ -21,6 +26,8 @@ export function printCountSheet(opts: {
 }) {
   const w = window.open("", "_blank", "width=1000,height=900");
   if (!w) { alert("เบราว์เซอร์บล็อกหน้าต่างพิมพ์ — กรุณาอนุญาต pop-up (ป๊อปอัพ) สำหรับเว็บนี้ แล้วลองกดพิมพ์อีกครั้ง"); return; }
+  const sheetTitle = opts.sheetTitle ?? "WEEKLY CYCLE COUNT";
+  const rowsPerPage = Math.max(1, opts.rowsPerPage ?? 60);
   const showSys = opts.showSys ?? false;
   const meta = (opts.meta ?? []).map((m) => esc(m)).join(" &nbsp;·&nbsp; ");
   const headCells = [
@@ -51,7 +58,9 @@ export function printCountSheet(opts: {
             r[5] ?? "", // Count — value for a record, blank to write by hand
             "", // Remark — blank to write
           ];
-          return `<tr>${cells
+          // Force a fresh page every `rowsPerPage` rows (but not after the last).
+          const brk = (i + 1) % rowsPerPage === 0 && i < opts.rows.length - 1 ? " pbr" : "";
+          return `<tr${brk ? ` class="${brk.trim()}"` : ""}>${cells
             .map((c, ci) => {
               const cls = [ci === 2 ? "wrap" : "", ci >= cells.length - 2 ? "write" : ""]
                 .filter(Boolean)
@@ -63,7 +72,7 @@ export function printCountSheet(opts: {
         .join("")
     : `<tr><td colspan="${headCells.length}">—</td></tr>`;
 
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>WEEKLY CYCLE COUNT</title>
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"/><title>${esc(sheetTitle)}</title>
 <style>
   @page { size: portrait; margin: 7mm; }
   * { box-sizing: border-box; }
@@ -77,19 +86,20 @@ export function printCountSheet(opts: {
   table { width:100%; border-collapse:collapse; }
   thead { display:table-header-group; }
   tr { page-break-inside:avoid; }
-  th { background:#12557e; color:#fff; border:1px solid #9fb0c3; padding:1px 3px; text-align:left; font-size:8pt; line-height:1.05; white-space:nowrap; }
+  th { background:#12557e; color:#fff; border:1px solid #9fb0c3; padding:2px 3px; text-align:center; vertical-align:middle; font-size:8pt; line-height:1.1; white-space:normal; text-transform:uppercase; font-weight:bold; }
   td { border:1px solid #b9c2cd; padding:1px 3px; font-size:8pt; line-height:1.05; height:0.3cm; white-space:nowrap; }
   th.wrap, td.wrap { white-space:normal; }
   td.write { min-width:52px; }
   tbody tr { height:0.3cm; }
   tbody tr:nth-child(even) td { background:#f2f6f9; }
+  tr.pbr { break-after:page; page-break-after:always; }
   .sig { margin-top:30px; display:flex; justify-content:space-around; gap:26px; page-break-inside:avoid; }
   .sig > div { flex:1; max-width:30%; text-align:center; font-size:9.5px; color:#3a4658; }
   .sig .wl { height:46px; border-bottom:1px solid #333; margin-bottom:5px; }
 </style></head><body>
 <div class="hdr">
   <img src="${FLS_LOGO}" alt="FLS"/>
-  <div class="ttl"><h1>WEEKLY CYCLE COUNT</h1>${meta ? `<div class="m">${meta}</div>` : ""}</div>
+  <div class="ttl"><h1>${esc(sheetTitle)}</h1>${meta ? `<div class="m">${meta}</div>` : ""}</div>
   <img class="nw" src="${NATUREWORKS_LOGO}" alt="NatureWorks"/>
 </div>
 <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>
