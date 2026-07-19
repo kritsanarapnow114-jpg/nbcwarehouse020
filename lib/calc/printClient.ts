@@ -47,10 +47,10 @@ export function printCountSheet(opts: {
   const widths = showSys
     ? ["5%", "10%", "30%", "12%", "8%", "9%", "13%", "13%"]
     : ["5%", "11%", "34%", "13%", "8%", "15%", "14%"];
-  // Per-column data alignment: No + SAP centred, Lot + System right, rest left.
+  // Per-column data alignment: No + SAP + Location centred, Lot + System right, rest left.
   const aligns = showSys
-    ? ["center", "center", "left", "right", "left", "right", "left", "left"]
-    : ["center", "center", "left", "right", "left", "left", "left"];
+    ? ["center", "center", "left", "right", "center", "right", "left", "left"]
+    : ["center", "center", "left", "right", "center", "left", "left"];
   const head = headCells
     .map((h, i) => `<th style="width:${widths[i] ?? ""}"${i === 2 ? ' class="wrap"' : ""}>${esc(h)}</th>`)
     .join("");
