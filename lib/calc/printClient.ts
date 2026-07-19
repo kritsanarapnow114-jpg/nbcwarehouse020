@@ -20,7 +20,7 @@ export function printCountSheet(opts: {
   rows: [string, string, string, string, string, string?][];
 }) {
   const w = window.open("", "_blank", "width=1000,height=900");
-  if (!w) return;
+  if (!w) { alert("เบราว์เซอร์บล็อกหน้าต่างพิมพ์ — กรุณาอนุญาต pop-up (ป๊อปอัพ) สำหรับเว็บนี้ แล้วลองกดพิมพ์อีกครั้ง"); return; }
   const showSys = opts.showSys ?? false;
   const meta = (opts.meta ?? []).map((m) => esc(m)).join(" &nbsp;·&nbsp; ");
   const headCells = [
@@ -83,8 +83,9 @@ export function printCountSheet(opts: {
   td.write { min-width:52px; }
   tbody tr { height:0.3cm; }
   tbody tr:nth-child(even) td { background:#f2f6f9; }
-  .sig { margin-top:12px; display:flex; justify-content:space-around; gap:24px; page-break-inside:avoid; }
-  .sig div { flex:1; max-width:30%; border-top:1px solid #333; padding-top:4px; text-align:center; font-size:9px; color:#3a4658; }
+  .sig { margin-top:30px; display:flex; justify-content:space-around; gap:26px; page-break-inside:avoid; }
+  .sig > div { flex:1; max-width:30%; text-align:center; font-size:9.5px; color:#3a4658; }
+  .sig .wl { height:46px; border-bottom:1px solid #333; margin-bottom:5px; }
 </style></head><body>
 <div class="hdr">
   <img src="${FLS_LOGO}" alt="FLS"/>
@@ -92,11 +93,18 @@ export function printCountSheet(opts: {
   <img class="nw" src="${NATUREWORKS_LOGO}" alt="NatureWorks"/>
 </div>
 <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>
-<div class="sig"><div>Counted by (ผู้นับ)</div><div>Checked by (ผู้ตรวจ)</div><div>Approved by (ผู้อนุมัติ)</div></div>
+<div class="sig">
+  <div><div class="wl"></div>Counted by (ผู้นับ)</div>
+  <div><div class="wl"></div>Checked by (ผู้ตรวจ)</div>
+  <div><div class="wl"></div>Approved by (ผู้อนุมัติ)</div>
+</div>
+<script>
+  function _print(){ try { window.focus(); window.print(); } catch(e){} }
+  if (document.readyState === 'complete') setTimeout(_print, 300);
+  else window.addEventListener('load', function(){ setTimeout(_print, 200); });
+</script>
 </body></html>`);
   w.document.close();
-  w.focus();
-  w.print();
 }
 
 /**
@@ -116,7 +124,7 @@ export function printTable(opts: {
   compact?: boolean;
 }) {
   const w = window.open("", "_blank", "width=1000,height=900");
-  if (!w) return;
+  if (!w) { alert("เบราว์เซอร์บล็อกหน้าต่างพิมพ์ — กรุณาอนุญาต pop-up (ป๊อปอัพ) สำหรับเว็บนี้ แล้วลองกดพิมพ์อีกครั้ง"); return; }
   const orientation = opts.orientation ?? "landscape";
   const compact = opts.compact ?? false;
   const meta = (opts.meta ?? []).map((m) => esc(m)).join(" &nbsp;·&nbsp; ");
@@ -150,8 +158,11 @@ export function printTable(opts: {
 ${meta ? `<div class="sub">${meta}</div>` : ""}
 <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>
 ${opts.signatures && opts.signatures.length ? `<div class="sig">${opts.signatures.map((s) => `<div>${esc(s)}</div>`).join("")}</div>` : ""}
+<script>
+  function _print(){ try { window.focus(); window.print(); } catch(e){} }
+  if (document.readyState === 'complete') setTimeout(_print, 300);
+  else window.addEventListener('load', function(){ setTimeout(_print, 200); });
+</script>
 </body></html>`);
   w.document.close();
-  w.focus();
-  w.print();
 }
