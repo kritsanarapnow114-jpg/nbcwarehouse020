@@ -47,6 +47,10 @@ export function printCountSheet(opts: {
   const widths = showSys
     ? ["5%", "10%", "30%", "12%", "8%", "9%", "13%", "13%"]
     : ["5%", "11%", "34%", "13%", "8%", "15%", "14%"];
+  // Per-column data alignment: No + SAP centred, Lot + System right, rest left.
+  const aligns = showSys
+    ? ["center", "center", "left", "right", "left", "right", "left", "left"]
+    : ["center", "center", "left", "right", "left", "left", "left"];
   const head = headCells
     .map((h, i) => `<th style="width:${widths[i] ?? ""}"${i === 2 ? ' class="wrap"' : ""}>${esc(h)}</th>`)
     .join("");
@@ -69,7 +73,8 @@ export function printCountSheet(opts: {
             .map((c, ci) => {
               // Description (col 2) stays on one line now (no wrap); write cols keep min width.
               const cls = [ci >= cells.length - 2 ? "write" : ""].filter(Boolean).join(" ");
-              return `<td${cls ? ` class="${cls}"` : ""}>${esc(c)}</td>`;
+              const al = aligns[ci] && aligns[ci] !== "left" ? ` style="text-align:${aligns[ci]}"` : "";
+              return `<td${cls ? ` class="${cls}"` : ""}${al}>${esc(c)}</td>`;
             })
             .join("")}</tr>`;
         })
