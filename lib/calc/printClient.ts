@@ -45,8 +45,8 @@ export function printCountSheet(opts: {
   // Fixed column widths so the SAP column stays narrow (its data is just an
   // 8-digit code) and the Description column gets the room.
   const widths = showSys
-    ? ["5%", "10%", "30%", "12%", "8%", "9%", "13%", "13%"]
-    : ["5%", "11%", "34%", "13%", "8%", "15%", "14%"];
+    ? ["4%", "12%", "28%", "12%", "9%", "8%", "13.5%", "13.5%"]
+    : ["4%", "13%", "31%", "13%", "10%", "14.5%", "14.5%"];
   // Per-column data alignment: No + SAP + Location centred, Lot + System right, rest left.
   const aligns = showSys
     ? ["center", "center", "left", "right", "center", "right", "left", "left"]
@@ -97,10 +97,10 @@ export function printCountSheet(opts: {
   thead { display:table-header-group; }
   tr { page-break-inside:avoid; }
   th { background:#12557e; color:#fff; border:1px solid #9fb0c3; padding:2px 3px; text-align:center; vertical-align:middle; font-size:8pt; line-height:1.1; white-space:normal; text-transform:uppercase; font-weight:bold; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  td { border:1px solid #b9c2cd; padding:1px 3px; font-size:8pt; line-height:1.05; height:0.3cm; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  td { border:1px solid #b9c2cd; padding:2px 4px; font-size:8.5pt; line-height:1.15; height:0.32cm; white-space:normal; word-break:break-word; overflow-wrap:anywhere; vertical-align:middle; }
   th.wrap, td.wrap { white-space:normal; }
   td.write { min-width:52px; }
-  tbody tr { height:0.3cm; }
+  tbody tr { height:0.32cm; }
   tbody tr:nth-child(even) td { background:#f2f6f9; }
   tr.pbr { break-after:page; page-break-after:always; }
   @media print {
