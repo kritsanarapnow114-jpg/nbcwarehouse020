@@ -109,13 +109,24 @@ async function loadAllRows(): Promise<LocationRow[]> {
 
   return locations.map((loc) => {
     const raw = rawByLoc.get(loc.code) ?? [];
+    // Same lot received more than once lands in the bin as separate stock
+    // records — merge them into one line (sum the qty) so a lot shows once.
+    // Keep status/expiry in the key so a QC-held or expired split stays visible.
+    const mergedByLot = new Map<string, RawLot>();
+    for (const r of raw) {
+      const key = `${r.productCode}||${r.lotNo}||${r.lotStatus}||${r.expired}`;
+      const ex = mergedByLot.get(key);
+      if (ex) ex.qty += r.qty;
+      else mergedByLot.set(key, { ...r });
+    }
+    const mergedRaw = [...mergedByLot.values()];
     // Actual stack really used in this bin (may be less than the product max),
     // so stacking fewer levels shows a higher % used — same model as the map.
     const stackMax = Math.max(1, stackMaxByLoc.get(loc.code) ?? 1);
     const actualStack =
       loc.stackUsed != null ? Math.min(stackMax, Math.max(1, loc.stackUsed)) : stackMax;
 
-    const contents: BinContent[] = raw.map((r) => {
+    const contents: BinContent[] = mergedRaw.map((r) => {
       const area = lotFloorArea(r.qty, r.width, r.length, Math.min(r.stackLevels, actualStack), r.pallet);
       return {
         productCode: r.productCode,
