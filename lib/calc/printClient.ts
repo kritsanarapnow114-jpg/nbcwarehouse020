@@ -40,13 +40,12 @@ export function printCountSheet(opts: {
     "Count (นับจริง)",
     "Remark",
   ];
-  // Only the Material Description column (index 2) may wrap, so the table fits
-  // the page width; every other column stays on one line at row height 0.37cm.
-  // Fixed column widths so the SAP column stays narrow (its data is just an
-  // 8-digit code) and the Description column gets the room.
+  // One line per row (so a full page really holds 60 rows). Column widths tuned
+  // against A4 portrait width so real data — 8-digit SAP code, ~36-char
+  // description, 10-char lot — fits on that one line without being cut off.
   const widths = showSys
-    ? ["4%", "12%", "28%", "12%", "9%", "8%", "13.5%", "13.5%"]
-    : ["4%", "13%", "31%", "13%", "10%", "14.5%", "14.5%"];
+    ? ["3%", "9%", "37%", "11%", "6%", "6%", "14%", "14%"]
+    : ["3%", "11%", "37%", "11%", "7%", "15.5%", "15.5%"];
   // Per-column data alignment: No + SAP + Location centred, Lot + System right, rest left.
   const aligns = showSys
     ? ["center", "center", "left", "right", "center", "right", "left", "left"]
@@ -96,11 +95,11 @@ export function printCountSheet(opts: {
   table { width:100%; border-collapse:collapse; table-layout:fixed; }
   thead { display:table-header-group; }
   tr { page-break-inside:avoid; }
-  th { background:#12557e; color:#fff; border:1px solid #9fb0c3; padding:2px 3px; text-align:center; vertical-align:middle; font-size:8pt; line-height:1.1; white-space:normal; text-transform:uppercase; font-weight:bold; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  td { border:1px solid #b9c2cd; padding:2px 4px; font-size:8.5pt; line-height:1.15; height:0.32cm; white-space:normal; word-break:break-word; overflow-wrap:anywhere; vertical-align:middle; }
-  th.wrap, td.wrap { white-space:normal; }
+  th { background:#12557e; color:#fff; border:1px solid #9fb0c3; padding:2px 3px; text-align:center; vertical-align:middle; font-size:7.5pt; line-height:1.1; white-space:normal; text-transform:uppercase; font-weight:bold; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  td { border:1px solid #b9c2cd; padding:1px 4px; font-size:8.5pt; line-height:1.05; height:0.4cm; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; vertical-align:middle; }
+  th.wrap { white-space:normal; }
   td.write { min-width:52px; }
-  tbody tr { height:0.32cm; }
+  tbody tr { height:0.4cm; }
   tbody tr:nth-child(even) td { background:#f2f6f9; }
   tr.pbr { break-after:page; page-break-after:always; }
   @media print {
