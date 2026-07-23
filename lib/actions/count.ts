@@ -41,7 +41,7 @@ export async function getLotsByZoneAction(zoneCode: string, asOfDate?: string) {
     include: { product: true },
     orderBy: [{ locationCode: "asc" }, { productCode: "asc" }],
   });
-  return lots
+  const rows = lots
     .map((l) => ({
       id: l.id,
       productCode: l.productCode,
@@ -51,6 +51,20 @@ export async function getLotsByZoneAction(zoneCode: string, asOfDate?: string) {
       sysQty: asOfMap ? Math.round((asOfMap.get(l.id) ?? 0) * 1000) / 1000 : l.qty,
     }))
     .filter((r) => r.sysQty > 0);
+
+  // The same lot in the same bin can exist as several stock records (received
+  // more than once). It's one physical pile, so show it as one line to count —
+  // merge by product + lot + bin, summing the system qty. The count only records
+  // numbers (it never moves stock), so recording against one representative lot
+  // id is safe; the merged sysQty keeps the accuracy figures correct.
+  const merged = new Map<string, (typeof rows)[number]>();
+  for (const r of rows) {
+    const key = `${r.productCode}||${r.lotNo}||${r.locationCode}`;
+    const ex = merged.get(key);
+    if (ex) ex.sysQty = Math.round((ex.sysQty + r.sysQty) * 1000) / 1000;
+    else merged.set(key, { ...r });
+  }
+  return [...merged.values()];
 }
 
 export async function confirmCountAction(input: ConfirmCountInput) {
