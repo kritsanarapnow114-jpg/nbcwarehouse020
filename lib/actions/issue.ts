@@ -4,7 +4,7 @@ import { safeRevalidate } from "./revalidate";
 import { db } from "@/lib/db";
 import { requireWrite } from "@/lib/authz";
 import { nextDocNumber } from "@/lib/calc/docNumber";
-import { fefoLotFor } from "@/lib/calc/fefo";
+import { eligibleLots, fefoLotFor } from "@/lib/calc/fefo";
 
 export type IssueLineInput = {
   productCode: string;
@@ -47,11 +47,9 @@ export async function confirmIssueAction(
 
       for (const line of input.lines) {
         if (line.qty <= 0) continue;
-        const lot = await tx.lot.findUnique({ where: { id: line.selectedLotId } });
-        if (!lot || lot.qty < line.qty) {
-          throw new Error(
-            `Not enough stock for ${line.productCode} (สต็อกไม่พอ — มี ${lot?.qty.toLocaleString() ?? 0}, ขอจ่าย ${line.qty.toLocaleString()})`
-          );
+        const sel = await tx.lot.findUnique({ where: { id: line.selectedLotId } });
+        if (!sel) {
+          throw new Error(`Not enough stock for ${line.productCode} (สต็อกไม่พอ)`);
         }
 
         const allLots = await tx.lot.findMany({ where: { productCode: line.productCode } });
@@ -66,17 +64,45 @@ export async function confirmIssueAction(
           }))
         );
 
-        await tx.lot.update({ where: { id: lot.id }, data: { qty: lot.qty - line.qty } });
+        // The dropdown shows one option per lot+location, but that can be backed
+        // by several stock records. Draw across every record of that same lot in
+        // that same location, FEFO-first, until the requested qty is met.
+        const siblings = allLots.filter(
+          (l) => l.lotNo === sel.lotNo && l.locationCode === sel.locationCode
+        );
+        const ordered = eligibleLots(
+          siblings.map((l) => ({
+            id: l.id,
+            lotNo: l.lotNo,
+            qty: l.qty,
+            status: l.status,
+            expDate: l.expDate,
+            locationCode: l.locationCode,
+          }))
+        );
+        const avail = ordered.reduce((s, l) => s + l.qty, 0);
+        if (avail < line.qty) {
+          throw new Error(
+            `Not enough stock for ${line.productCode} (สต็อกไม่พอ — มี ${avail.toLocaleString()}, ขอจ่าย ${line.qty.toLocaleString()})`
+          );
+        }
 
-        await tx.issueLine.create({
-          data: {
-            issueId: issue.id,
-            productCode: line.productCode,
-            fefoLotId: fefo?.id ?? null,
-            selectedLotId: lot.id,
-            qty: line.qty,
-          },
-        });
+        let remaining = line.qty;
+        for (const s of ordered) {
+          if (remaining <= 0) break;
+          const take = Math.min(s.qty, remaining);
+          await tx.lot.update({ where: { id: s.id }, data: { qty: s.qty - take } });
+          await tx.issueLine.create({
+            data: {
+              issueId: issue.id,
+              productCode: line.productCode,
+              fefoLotId: fefo?.id ?? null,
+              selectedLotId: s.id,
+              qty: take,
+            },
+          });
+          remaining -= take;
+        }
       }
     });
 

@@ -4,6 +4,40 @@ import { eligibleLots, fefoLotFor } from "@/lib/calc/fefo";
 import { peekNextDocNumber } from "@/lib/calc/docNumber";
 import { productLabel } from "@/lib/calc/productName";
 
+type EligibleLot = {
+  id: string;
+  lotNo: string;
+  qty: number;
+  status: "OK" | "QC";
+  expDate: Date | null;
+  locationCode: string;
+};
+
+/**
+ * The same lot in the same location can exist as several stock records (received
+ * more than once). It's one physical pile, so collapse them into ONE dropdown
+ * option (summing on-hand). The option's id is the FEFO-first record of the group
+ * (`eligible` is already FEFO-ordered, so the group's first element); confirming
+ * an issue draws across every record of the group.
+ */
+function mergeLotOptions(eligible: EligibleLot[], fefoId: string | null) {
+  const groups = new Map<string, EligibleLot[]>();
+  for (const l of eligible) {
+    const key = `${l.lotNo}||${l.locationCode}`;
+    const g = groups.get(key);
+    if (g) g.push(l);
+    else groups.set(key, [l]);
+  }
+  return [...groups.values()].map((g) => ({
+    id: g[0].id,
+    lotNo: g[0].lotNo,
+    locationCode: g[0].locationCode,
+    qty: g.reduce((s, x) => s + x.qty, 0),
+    expDate: g[0].expDate ? g[0].expDate.toISOString() : null,
+    isFefo: g.some((x) => x.id === fefoId),
+  }));
+}
+
 export async function getIssueFormData() {
   const [products, docNo] = await Promise.all([
     db.product.findMany({
@@ -42,14 +76,7 @@ export async function getIssueFormData() {
         unit: p.unit,
         price: p.price,
         fefoLotId: fefo?.id ?? null,
-        lots: eligible.map((l) => ({
-          id: l.id,
-          lotNo: l.lotNo,
-          locationCode: l.locationCode,
-          qty: l.qty,
-          expDate: l.expDate ? l.expDate.toISOString() : null,
-          isFefo: l.id === fefo?.id,
-        })),
+        lots: mergeLotOptions(eligible, fefo?.id ?? null),
       };
     })
     .filter((p) => p.lots.length > 0);
