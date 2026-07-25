@@ -24,6 +24,32 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "compare", href: "/compare", icon: "⇌", en: "Compare Periods", th: "เทียบช่วงเวลา" },
 ];
 
+/** Sidebar sections: a big heading with its sub-items, so the long menu is
+ *  easier to scan. Item keys reference NAV_ITEMS above. */
+export type NavGroup = { key: string; en: string; th: string; items: string[] };
+
+export const NAV_GROUPS: NavGroup[] = [
+  { key: "overview", en: "Overview", th: "ภาพรวม", items: ["dashboard"] },
+  {
+    key: "inventory",
+    en: "Inventory",
+    th: "สินค้าคงคลัง",
+    items: ["products", "aging", "locations", "map"],
+  },
+  {
+    key: "operations",
+    en: "Operations",
+    th: "งานประจำวัน",
+    items: ["receive", "po", "plan", "issue", "adjust", "transfer", "count"],
+  },
+  {
+    key: "analytics",
+    en: "Analytics & Reports",
+    th: "วิเคราะห์ & รายงาน",
+    items: ["abc", "reports", "compare"],
+  },
+];
+
 export const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
   "/dashboard": { title: "Dashboard", sub: "แดชบอร์ด · Warehouse overview" },
   "/products": { title: "Products", sub: "รายการสินค้า · Master catalog & on-hand" },

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_ITEMS } from "./nav";
+import { NAV_ITEMS, NAV_GROUPS } from "./nav";
 import { NavIcon } from "./NavIcons";
 import { logoutAction } from "@/lib/actions/auth";
 
@@ -55,41 +55,50 @@ export function Sidebar({
         </div>
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-auto p-3">
-          {NAV_ITEMS.map((item) => {
-            const active = pathname.startsWith(item.href);
-            const badge = item.key === "po" && poPendingCount > 0 ? poPendingCount : null;
-            return (
-              <Link
-                key={item.key}
-                href={item.href}
-                onClick={onClose}
-                className={`flex items-center gap-2.5 rounded-[9px] px-3 py-2.5 text-[13px] ${
-                  active ? "bg-white text-[#1f5f9e]" : "bg-white/[.06] text-[#e8f2fb] hover:bg-white/[.12]"
-                }`}
-              >
-                <span className={`flex w-[22px] flex-none items-center justify-center ${active ? "text-[#1f5f9e]" : "text-white/90"}`}>
-                  <NavIcon name={item.key} />
-                </span>
-                <span className="flex-1 text-left leading-tight">
-                  <span className="block">{item.en}</span>
-                  <span
-                    className={`block text-[10px] ${active ? "text-[#5fa987]" : "text-[#bfe4d1]"}`}
-                  >
-                    ({item.th})
-                  </span>
-                </span>
-                {badge !== null && (
-                  <span
-                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                      active ? "bg-[#1f5f9e]/15 text-[#1f5f9e]" : "bg-[#c53f3f] text-white"
-                    }`}
-                  >
-                    {badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+          {NAV_GROUPS.map((group) => (
+            <div key={group.key} className="mb-1.5">
+              <div className="px-2 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-white/55">
+                {group.en} <span className="font-medium normal-case tracking-normal text-white/40">· {group.th}</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                {group.items.map((key) => {
+                  const item = NAV_ITEMS.find((n) => n.key === key);
+                  if (!item) return null;
+                  const active = pathname.startsWith(item.href);
+                  const badge = item.key === "po" && poPendingCount > 0 ? poPendingCount : null;
+                  return (
+                    <Link
+                      key={item.key}
+                      href={item.href}
+                      onClick={onClose}
+                      className={`flex items-center gap-2.5 rounded-[9px] px-3 py-2 text-[13px] ${
+                        active ? "bg-white text-[#1f5f9e]" : "bg-white/[.06] text-[#e8f2fb] hover:bg-white/[.12]"
+                      }`}
+                    >
+                      <span className={`flex w-[22px] flex-none items-center justify-center ${active ? "text-[#1f5f9e]" : "text-white/90"}`}>
+                        <NavIcon name={item.key} />
+                      </span>
+                      <span className="flex-1 text-left leading-tight">
+                        <span className="block">{item.en}</span>
+                        <span className={`block text-[10px] ${active ? "text-[#5fa987]" : "text-[#bfe4d1]"}`}>
+                          ({item.th})
+                        </span>
+                      </span>
+                      {badge !== null && (
+                        <span
+                          className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                            active ? "bg-[#1f5f9e]/15 text-[#1f5f9e]" : "bg-[#c53f3f] text-white"
+                          }`}
+                        >
+                          {badge}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <Link
