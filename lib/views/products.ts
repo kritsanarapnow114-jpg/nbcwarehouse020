@@ -141,6 +141,7 @@ export type ProductDetail = ProductRow & {
   containerType: string;
   lots: {
     id: string;
+    ids: string[]; // every stock record merged into this row (same lot+loc+status)
     locationCode: string;
     lotNo: string;
     qty: number;
@@ -158,6 +159,44 @@ export async function getBomMaterialOptions() {
     orderBy: { code: "asc" },
   });
   return products.map((p) => ({ code: p.code, name: productLabel(p.nameEn, p.nameTh), unit: p.unit }));
+}
+
+type StoredLot = {
+  id: string;
+  locationCode: string;
+  lotNo: string;
+  qty: number;
+  status: "OK" | "QC";
+  expDate: Date | null;
+  mfgDate: Date | null;
+  recvDate: Date;
+};
+
+/** Collapse duplicate stock records of the same lot in the same location (and
+ *  same QC status) into one row for the drawer — summing qty and keeping every
+ *  underlying id so edit / QC-hold act on the whole group. */
+function mergeStoredLots(lots: StoredLot[]) {
+  const groups = new Map<string, StoredLot[]>();
+  for (const l of lots) {
+    const key = `${l.lotNo}||${l.locationCode}||${l.status}`;
+    const g = groups.get(key);
+    if (g) g.push(l);
+    else groups.set(key, [l]);
+  }
+  return [...groups.values()].map((g) => {
+    const first = g[0];
+    return {
+      id: first.id,
+      ids: g.map((x) => x.id),
+      locationCode: first.locationCode,
+      lotNo: first.lotNo,
+      qty: g.reduce((s, x) => s + x.qty, 0),
+      status: first.status,
+      expDate: first.expDate ? first.expDate.toISOString() : null,
+      mfgDate: first.mfgDate ? first.mfgDate.toISOString() : null,
+      recvDate: first.recvDate.toISOString(),
+    };
+  });
 }
 
 export async function getProductDetail(
@@ -199,15 +238,6 @@ export async function getProductDetail(
     autoMin: auto?.autoMin ?? 0,
     autoMax: auto?.autoMax ?? 0,
     autoSafety: auto?.safety ?? 0,
-    lots: activeLots.map((l) => ({
-      id: l.id,
-      locationCode: l.locationCode,
-      lotNo: l.lotNo,
-      qty: l.qty,
-      status: l.status,
-      expDate: l.expDate ? l.expDate.toISOString() : null,
-      mfgDate: l.mfgDate ? l.mfgDate.toISOString() : null,
-      recvDate: l.recvDate.toISOString(),
-    })),
+    lots: mergeStoredLots(activeLots),
   };
 }

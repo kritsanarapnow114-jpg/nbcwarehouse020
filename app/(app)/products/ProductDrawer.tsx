@@ -252,7 +252,9 @@ function LotRow({ lot, onChanged }: { lot: LotRowData; onChanged: () => void }) 
             <Badge tone={tone}>{label}</Badge>
             <button
               onClick={async () => {
-                await toggleLotQcAction(lot.id);
+                // This row can stand for several stock records of the same lot —
+                // hold/release them all together.
+                for (const id of lot.ids) await toggleLotQcAction(id);
                 showToast(lot.status === "QC" ? `Lot ${lot.lotNo} released` : `Lot ${lot.lotNo} held for QC`);
                 onChanged();
               }}
@@ -301,7 +303,12 @@ function LotEditModal({
   async function handleSave() {
     setSaving(true);
     setError(null);
-    const res = await updateLotAction(lot.id, { lotNo, mfgDate: mfg, expDate: exp });
+    // Apply the edit to every stock record this row represents (same lot+loc).
+    let res: { error?: string } = {};
+    for (const id of lot.ids) {
+      res = await updateLotAction(id, { lotNo, mfgDate: mfg, expDate: exp });
+      if (res.error) break;
+    }
     setSaving(false);
     if (res.error) {
       setError(res.error);
