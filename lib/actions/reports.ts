@@ -2,21 +2,7 @@
 
 import { getReportData } from "@/lib/views/reports";
 import { fmtDateBE, parseISO, todayBangkok } from "@/lib/calc/date";
-
-export type ReportRows = { cols: string[]; rows: (string | number)[][] };
-
-export const REPORT_TYPES = [
-  { value: "receiving", label: "Receiving (รับสินค้า)" },
-  { value: "issuing", label: "Issuing (จ่ายสินค้า)" },
-  { value: "loss", label: "Loss (สูญเสีย)" },
-  { value: "production", label: "Production (ผลิต)" },
-  { value: "production_loss", label: "Production material loss (สูญเสียวัตถุดิบ)" },
-  { value: "po", label: "Purchase Orders (ใบสั่งซื้อ)" },
-  { value: "transfer", label: "Transfers (ย้ายที่เก็บ)" },
-  { value: "count", label: "Stock Count (นับสต็อก)" },
-] as const;
-
-export type ReportType = (typeof REPORT_TYPES)[number]["value"];
+import { ReportType, ReportRows } from "@/lib/reportTypes";
 
 /** Load one report's rows for on-screen preview (before the user exports). The
  *  columns/values mirror the Excel export so what you see is what you get. */

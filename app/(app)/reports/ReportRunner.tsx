@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Card, CardTitle } from "@/components/ui/Card";
-import { getReportRowsAction, REPORT_TYPES, ReportType, ReportRows } from "@/lib/actions/reports";
+import { getReportRowsAction } from "@/lib/actions/reports";
+import { REPORT_TYPES, ReportType, ReportRows } from "@/lib/reportTypes";
 
 export function ReportRunner({ start, end }: { start: string; end: string }) {
   const [type, setType] = useState<ReportType>("receiving");
