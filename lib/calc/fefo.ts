@@ -1,7 +1,10 @@
 /**
  * FEFO (First-Expired-First-Out) lot selection for Issue.
- * Lots on QC hold are never eligible. Lots with no expiry date sort last.
- * Ties are broken by location code ascending.
+ * Lots on QC hold are never eligible.
+ * Ordering date per lot: expiry date if it has one; otherwise the manufacture
+ * (production) date; otherwise the receive date. This way packaging and other
+ * no-expiry items still draw oldest-first (by production, then receipt) instead
+ * of in an arbitrary order. Ties are broken by location code ascending.
  */
 
 export type FefoLot = {
@@ -10,14 +13,22 @@ export type FefoLot = {
   qty: number;
   status: "OK" | "QC";
   expDate: Date | null;
+  mfgDate?: Date | null;
+  recvDate?: Date | null;
   locationCode: string;
 };
 
+/** The date a lot is ordered by: expiry → manufacture → receive. */
+function orderDate(l: FefoLot): number {
+  const d = l.expDate ?? l.mfgDate ?? l.recvDate ?? null;
+  return d ? d.getTime() : Number.POSITIVE_INFINITY;
+}
+
 export function fefoSort<T extends FefoLot>(lots: T[]): T[] {
   return [...lots].sort((a, b) => {
-    const ae = a.expDate ? a.expDate.getTime() : Number.POSITIVE_INFINITY;
-    const be = b.expDate ? b.expDate.getTime() : Number.POSITIVE_INFINITY;
-    if (ae !== be) return ae - be;
+    const ad = orderDate(a);
+    const bd = orderDate(b);
+    if (ad !== bd) return ad - bd;
     return a.locationCode.localeCompare(b.locationCode);
   });
 }

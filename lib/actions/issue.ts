@@ -60,6 +60,8 @@ export async function confirmIssueAction(
             qty: l.qty,
             status: l.status,
             expDate: l.expDate,
+            mfgDate: l.mfgDate,
+            recvDate: l.recvDate,
             locationCode: l.locationCode,
           }))
         );
@@ -77,6 +79,8 @@ export async function confirmIssueAction(
             qty: l.qty,
             status: l.status,
             expDate: l.expDate,
+            mfgDate: l.mfgDate,
+            recvDate: l.recvDate,
             locationCode: l.locationCode,
           }))
         );
