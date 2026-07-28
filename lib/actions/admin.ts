@@ -26,8 +26,9 @@ const DEMO_LOCATION_CODES = [
 /**
  * Clear only the movement documents (Receive incl. Production, Issue, Transfer)
  * plus Non-Stock holdings/conversions, zero every lot's quantity, and reset those
- * documents' running numbers so the next ones start at 0001. Products, locations,
- * Purchase Orders, Adjust, Count and BOM master are kept.
+ * documents' running numbers so the next ones start at 0001. Purchase Orders are
+ * kept but their received progress is reset to 0 (Open again). Products,
+ * locations, Adjust, Count and BOM master are kept.
  */
 export async function clearTransactionsAction(confirmText: string): Promise<{ error?: string }> {
   if (confirmText !== "CLEAR") {
@@ -46,10 +47,12 @@ export async function clearTransactionsAction(confirmText: string): Promise<{ er
       db.issue.deleteMany(),
       db.transferLine.deleteMany(),
       db.transfer.deleteMany(),
-      db.purchaseOrderLine.deleteMany(),
-      db.purchaseOrder.deleteMany(),
+      // Keep the Purchase Orders, but reset their received progress back to 0 so
+      // the bars show 0% and they're Open again.
+      db.purchaseOrderLine.updateMany({ data: { received: 0 } }),
+      db.purchaseOrder.updateMany({ data: { status: "OPEN" } }),
       db.lot.updateMany({ data: { qty: 0 } }),
-      db.docSequence.deleteMany({ where: { prefix: { in: ["RC", "ISS", "TRF", "PO"] } } }),
+      db.docSequence.deleteMany({ where: { prefix: { in: ["RC", "ISS", "TRF"] } } }),
     ]);
   } catch (e) {
     return { error: e instanceof Error ? e.message : "ล้างไม่สำเร็จ (failed to clear)" };
