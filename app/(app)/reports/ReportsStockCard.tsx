@@ -33,7 +33,7 @@ export function ReportsStockCard({
   useEffect(() => {
     if (!code) return;
     getStockCardAction(code).then((r) => {
-      setRows(r);
+      setRows(r.entries);
       setRowsCode(code);
     });
   }, [code]);

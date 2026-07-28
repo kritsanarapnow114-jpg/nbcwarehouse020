@@ -37,7 +37,7 @@ export type ConfirmReceiptInput = {
 };
 
 function revalidateAll() {
-  safeRevalidate(["/receive", "/dashboard", "/products", "/po", "/aging", "/locations", "/map"]);
+  safeRevalidate(["/receive", "/dashboard", "/products", "/po", "/aging", "/locations", "/map", "/nonstock"]);
 }
 
 export async function confirmReceiptAction(
@@ -68,36 +68,66 @@ export async function confirmReceiptAction(
     for (const line of input.lines) {
       if (line.recvQty <= 0) continue;
 
-      let lot = await tx.lot.findFirst({
-        where: {
-          productCode: line.productCode,
-          locationCode: line.locationCode,
-          lotNo: line.lotNo || "-",
-        },
-      });
+      const lotNo = line.lotNo || "-";
+      let lotId: string | null = null;
 
-      if (lot) {
-        lot = await tx.lot.update({
-          where: { id: lot.id },
-          data: {
-            qty: lot.qty + line.recvQty,
-            mfgDate: line.mfgDate ? new Date(line.mfgDate) : lot.mfgDate,
-            expDate: line.expDate ? new Date(line.expDate) : lot.expDate,
-          },
+      if (line.stockType === "NON_STOCK") {
+        // Non-Stock: hold outside of valued inventory until a Conversion event
+        // brings a chosen quantity into real stock. Don't create a Lot.
+        const holding = await tx.nonStockHolding.findFirst({
+          where: { productCode: line.productCode, locationCode: line.locationCode, lotNo },
         });
+        if (holding) {
+          await tx.nonStockHolding.update({
+            where: { id: holding.id },
+            data: {
+              qty: holding.qty + line.recvQty,
+              mfgDate: line.mfgDate ? new Date(line.mfgDate) : holding.mfgDate,
+              expDate: line.expDate ? new Date(line.expDate) : holding.expDate,
+            },
+          });
+        } else {
+          await tx.nonStockHolding.create({
+            data: {
+              productCode: line.productCode,
+              locationCode: line.locationCode,
+              lotNo,
+              qty: line.recvQty,
+              recvDate: docDate,
+              mfgDate: line.mfgDate ? new Date(line.mfgDate) : null,
+              expDate: line.expDate ? new Date(line.expDate) : null,
+              receiptId: receipt.id,
+            },
+          });
+        }
       } else {
-        lot = await tx.lot.create({
-          data: {
-            productCode: line.productCode,
-            locationCode: line.locationCode,
-            lotNo: line.lotNo || "-",
-            qty: line.recvQty,
-            status: "OK",
-            recvDate: docDate,
-            mfgDate: line.mfgDate ? new Date(line.mfgDate) : null,
-            expDate: line.expDate ? new Date(line.expDate) : null,
-          },
+        let lot = await tx.lot.findFirst({
+          where: { productCode: line.productCode, locationCode: line.locationCode, lotNo },
         });
+        if (lot) {
+          lot = await tx.lot.update({
+            where: { id: lot.id },
+            data: {
+              qty: lot.qty + line.recvQty,
+              mfgDate: line.mfgDate ? new Date(line.mfgDate) : lot.mfgDate,
+              expDate: line.expDate ? new Date(line.expDate) : lot.expDate,
+            },
+          });
+        } else {
+          lot = await tx.lot.create({
+            data: {
+              productCode: line.productCode,
+              locationCode: line.locationCode,
+              lotNo,
+              qty: line.recvQty,
+              status: "OK",
+              recvDate: docDate,
+              mfgDate: line.mfgDate ? new Date(line.mfgDate) : null,
+              expDate: line.expDate ? new Date(line.expDate) : null,
+            },
+          });
+        }
+        lotId = lot.id;
       }
 
       await tx.receiptLine.create({
@@ -106,11 +136,11 @@ export async function confirmReceiptAction(
           productCode: line.productCode,
           orderedQty: line.orderedQty,
           recvQty: line.recvQty,
-          lotNo: line.lotNo || "-",
+          lotNo,
           locationCode: line.locationCode,
           mfgDate: line.mfgDate ? new Date(line.mfgDate) : null,
           expDate: line.expDate ? new Date(line.expDate) : null,
-          lotId: lot.id,
+          lotId,
           stockType: line.stockType ?? "STOCK",
         },
       });

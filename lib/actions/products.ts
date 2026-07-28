@@ -287,16 +287,28 @@ export async function saveBomAction(finishedProductCode: string, lines: BomLineI
 }
 
 export async function getStockCardAction(productCode: string) {
-  const entries = await buildStockCard(productCode);
-  return entries.map((e) => ({
-    date: e.date.toISOString(),
-    doc: e.doc,
-    type: e.type,
-    lot: e.lot,
-    in: e.in,
-    out: e.out,
-    balance: e.balance,
-    stockType: e.stockType ?? null,
-    convertedAt: e.convertedAt ? e.convertedAt.toISOString() : null,
-  }));
+  const [entries, holdings] = await Promise.all([
+    buildStockCard(productCode),
+    db.nonStockHolding.findMany({ where: { productCode, qty: { gt: 0 } } }),
+  ]);
+  return {
+    entries: entries.map((e) => ({
+      date: e.date.toISOString(),
+      doc: e.doc,
+      type: e.type,
+      lot: e.lot,
+      in: e.in,
+      out: e.out,
+      balance: e.balance,
+      stockType: e.stockType ?? null,
+      convertedAt: e.convertedAt ? e.convertedAt.toISOString() : null,
+    })),
+    // Non-Stock held for this product (not part of the stock balance above).
+    nonStock: holdings.map((h) => ({
+      lotNo: h.lotNo,
+      locationCode: h.locationCode,
+      qty: h.qty,
+    })),
+    nonStockTotal: holdings.reduce((s, h) => s + h.qty, 0),
+  };
 }

@@ -94,8 +94,47 @@ model Product {
   issueLines     IssueLine[]
   bom            Bom?                @relation("FinishedProduct")
   usedInBomLines BomLine[]           @relation("MaterialProduct")
+  nonStockHoldings NonStockHolding[]
+  conversions      Conversion[]
 
   @@index([category])
+}
+
+/** Goods received as Non-Stock: they occupy the warehouse but are NOT part of
+ *  valued inventory (excluded from on-hand, value, Stock Card, aging, etc.) until
+ *  a Conversion event moves a chosen quantity into real stock. */
+model NonStockHolding {
+  id           String    @id @default(cuid())
+  productCode  String
+  product      Product   @relation(fields: [productCode], references: [code])
+  lotNo        String
+  locationCode String
+  qty          Float
+  recvDate     DateTime
+  mfgDate      DateTime?
+  expDate      DateTime?
+  receiptId    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([productCode])
+}
+
+/** A Non-Stock → Stock conversion event: `qty` (which may differ from the amount
+ *  received) enters stock on `docDate`. Shown in the Stock Card as an inbound. */
+model Conversion {
+  id           String   @id @default(cuid())
+  docNo        String   @unique
+  productCode  String
+  product      Product  @relation(fields: [productCode], references: [code])
+  lotNo        String
+  locationCode String
+  qty          Float
+  docDate      DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([productCode])
+  @@index([docDate])
 }
 
 model Location {

@@ -31,9 +31,14 @@ export function StockCardModal({
   onClose: () => void;
 }) {
   const [rows, setRows] = useState<Entry[] | null>(null);
+  const [nonStockTotal, setNonStockTotal] = useState(0);
 
   useEffect(() => {
-    if (open) getStockCardAction(code).then(setRows);
+    if (open)
+      getStockCardAction(code).then((res) => {
+        setRows(res.entries);
+        setNonStockTotal(res.nonStockTotal);
+      });
   }, [open, code]);
 
   const balance = rows && rows.length > 0 ? rows[rows.length - 1].balance : 0;
@@ -112,6 +117,11 @@ export function StockCardModal({
           </tbody>
         </table>
       </div>
+      {nonStockTotal > 0 && (
+        <div className="border-t border-[#eef1f5] bg-[#faf6ec] px-5 py-2 text-[12px] text-[#8a6d1f]">
+          Non-Stock (ยังไม่เข้าสต็อก): <b className="font-num">{nonStockTotal.toLocaleString()}</b> — ไม่รวมในยอดคงเหลือด้านบน · แปลงเข้าสต็อกที่หน้า “Non-Stock”
+        </div>
+      )}
       <div className="flex items-center gap-3 border-t border-[#eef1f5] px-5 py-3 text-[12px] text-[#69748a]">
         <span>
           Balance: <b className="font-num text-[#16202e]">{balance.toLocaleString()}</b>

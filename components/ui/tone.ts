@@ -37,5 +37,6 @@ export const MOVEMENT_TYPE_TONE: Record<string, Tone> = {
   Adjust: "accent",
   Transfer: "ok",
   BOM: "warn",
+  Convert: "accent",
   Opening: "neutral",
 };

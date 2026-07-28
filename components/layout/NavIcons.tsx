@@ -101,6 +101,12 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M8.8 13.2 11 15.4l4.4-4.4" />
     </>
   ),
+  nonstock: (
+    <>
+      <rect x="3" y="6" width="9" height="12" rx="1.6" />
+      <path d="M12 12h8m0 0-3-3m3 3-3 3" />
+    </>
+  ),
   reports: (
     <>
       <path d="M3.5 21h17" />

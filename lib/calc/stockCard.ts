@@ -6,7 +6,8 @@ export type StockCardEntryType =
   | "Issue"
   | "Adjust"
   | "Transfer"
-  | "BOM";
+  | "BOM"
+  | "Convert";
 
 export type StockCardEntry = {
   date: Date;
@@ -31,10 +32,11 @@ export type StockCardEntry = {
 export async function buildStockCard(
   productCode: string
 ): Promise<StockCardEntry[]> {
-  const [receiptLines, issueLines, adjustmentLines, transferLines, bomConsumptions] =
+  const [receiptLines, issueLines, adjustmentLines, transferLines, bomConsumptions, conversions] =
     await Promise.all([
       db.receiptLine.findMany({
-        where: { productCode, receipt: { reversedAt: null } },
+        // Non-Stock receipts aren't in stock yet — they enter via a Conversion.
+        where: { productCode, stockType: "STOCK", receipt: { reversedAt: null } },
         include: { receipt: true },
       }),
       db.issueLine.findMany({
@@ -55,6 +57,8 @@ export async function buildStockCard(
         where: { lot: { productCode }, receipt: { reversedAt: null } },
         include: { receipt: true, lot: true },
       }),
+      // Non-Stock → Stock conversions bring quantity into stock on their date.
+      db.conversion.findMany({ where: { productCode } }),
     ]);
 
   const entries: StockCardEntry[] = [];
@@ -116,6 +120,17 @@ export async function buildStockCard(
       lot: c.lot.lotNo,
       in: 0,
       out: c.qty,
+      balance: 0,
+    });
+  }
+  for (const cv of conversions) {
+    entries.push({
+      date: cv.docDate,
+      doc: cv.docNo,
+      type: "Convert",
+      lot: cv.lotNo,
+      in: cv.qty,
+      out: 0,
       balance: 0,
     });
   }
