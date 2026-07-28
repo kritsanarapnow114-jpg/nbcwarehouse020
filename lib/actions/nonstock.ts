@@ -11,6 +11,75 @@ export type ConvertInput = {
   docDate: string;
 };
 
+export type MoveToNonStockInput = {
+  lotId: string;
+  qty: number;
+  docDate: string;
+};
+
+/**
+ * Move a quantity of a Stock lot OUT of inventory into a Non-Stock holding — the
+ * reverse of a conversion. Used to fix items that ended up in stock but should be
+ * Non-Stock. Recorded as a negative Conversion so the Stock Card shows the outflow.
+ */
+export async function moveToNonStockAction(
+  input: MoveToNonStockInput
+): Promise<{ docNo?: string; error?: string }> {
+  try {
+    await requireWrite();
+    const qty = Number(input.qty) || 0;
+    if (qty <= 0) return { error: "จำนวนต้องมากกว่า 0 (quantity must be > 0)" };
+    const docDate = new Date(input.docDate);
+
+    const docNo = await db.$transaction(async (tx) => {
+      const lot = await tx.lot.findUnique({ where: { id: input.lotId } });
+      if (!lot) throw new Error("ไม่พบล็อตในสต็อก (stock lot not found)");
+      if (qty > lot.qty) {
+        throw new Error(`จำนวนเกินที่มี — มี ${lot.qty.toLocaleString()}, ขอย้าย ${qty.toLocaleString()}`);
+      }
+
+      const no = await nextDocNumber("CV", docDate);
+      await tx.lot.update({ where: { id: lot.id }, data: { qty: lot.qty - qty } });
+
+      const holding = await tx.nonStockHolding.findFirst({
+        where: { productCode: lot.productCode, locationCode: lot.locationCode, lotNo: lot.lotNo },
+      });
+      if (holding) {
+        await tx.nonStockHolding.update({ where: { id: holding.id }, data: { qty: holding.qty + qty } });
+      } else {
+        await tx.nonStockHolding.create({
+          data: {
+            productCode: lot.productCode,
+            locationCode: lot.locationCode,
+            lotNo: lot.lotNo,
+            qty,
+            recvDate: docDate,
+            mfgDate: lot.mfgDate,
+            expDate: lot.expDate,
+          },
+        });
+      }
+
+      await tx.conversion.create({
+        data: {
+          docNo: no,
+          productCode: lot.productCode,
+          lotNo: lot.lotNo,
+          locationCode: lot.locationCode,
+          qty: -qty, // negative = moved OUT of stock into Non-Stock
+          docDate,
+        },
+      });
+      return no;
+    });
+
+    safeRevalidate(["/nonstock", "/dashboard", "/products", "/aging", "/locations", "/map", "/reports"]);
+    return { docNo };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "ย้ายไม่สำเร็จ (failed to move)" };
+  }
+}
+
 /**
  * Convert a quantity of a Non-Stock holding into real stock on a chosen date.
  * The quantity may be less than what's held (partial conversion). This moves the

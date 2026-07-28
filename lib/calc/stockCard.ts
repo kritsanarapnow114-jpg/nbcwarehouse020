@@ -124,13 +124,14 @@ export async function buildStockCard(
     });
   }
   for (const cv of conversions) {
+    // Positive = Non-Stock → Stock (in); negative = Stock → Non-Stock (out).
     entries.push({
       date: cv.docDate,
       doc: cv.docNo,
       type: "Convert",
       lot: cv.lotNo,
-      in: cv.qty,
-      out: 0,
+      in: cv.qty > 0 ? cv.qty : 0,
+      out: cv.qty < 0 ? -cv.qty : 0,
       balance: 0,
     });
   }

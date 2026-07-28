@@ -36,6 +36,34 @@ export async function getNonStockHoldings(): Promise<NonStockHoldingRow[]> {
   }));
 }
 
+export type MovableLotRow = {
+  id: string;
+  productCode: string;
+  name: string;
+  unit: string;
+  lotNo: string;
+  locationCode: string;
+  qty: number;
+};
+
+/** Stock lots that could be moved out to Non-Stock (reverse of a conversion). */
+export async function getMovableStockLots(): Promise<MovableLotRow[]> {
+  const lots = await db.lot.findMany({
+    where: { qty: { gt: 0 } },
+    include: { product: true },
+    orderBy: [{ productCode: "asc" }, { locationCode: "asc" }],
+  });
+  return lots.map((l) => ({
+    id: l.id,
+    productCode: l.productCode,
+    name: productLabel(l.product.nameEn, l.product.nameTh),
+    unit: l.product.unit,
+    lotNo: l.lotNo,
+    locationCode: l.locationCode,
+    qty: l.qty,
+  }));
+}
+
 export type ConversionRow = {
   docNo: string;
   productCode: string;
