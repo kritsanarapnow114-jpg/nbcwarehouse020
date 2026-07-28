@@ -16,6 +16,7 @@ export type ReceiveLineInput = {
   locationCode: string;
   mfgDate: string | null;
   expDate: string | null;
+  stockType?: "STOCK" | "NON_STOCK";
 };
 
 export type ConfirmReceiptInput = {
@@ -110,6 +111,7 @@ export async function confirmReceiptAction(
           mfgDate: line.mfgDate ? new Date(line.mfgDate) : null,
           expDate: line.expDate ? new Date(line.expDate) : null,
           lotId: lot.id,
+          stockType: line.stockType ?? "STOCK",
         },
       });
 

@@ -20,6 +20,7 @@ type Line = {
   loc: string;
   mfg: string;
   exp: string;
+  stockType: "STOCK" | "NON_STOCK";
 };
 
 export function ReceiveForm({ data }: { data: ReceiveFormData }) {
@@ -58,7 +59,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
     setLines(
       p.lines.map((l) => {
         const prod = data.products.find((x) => x.code === l.productCode);
-        return { ...l, name: prod?.name ?? l.productCode, unit: prod?.unit ?? "" };
+        return { ...l, name: prod?.name ?? l.productCode, unit: prod?.unit ?? "", stockType: "STOCK" as const };
       })
     );
     /* eslint-enable react-hooks/set-state-in-effect */
@@ -81,6 +82,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
             loc: "",
             mfg: "",
             exp: "",
+            stockType,
           }))
       );
     } else {
@@ -93,7 +95,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
     if (!p) return;
     setLines((ls) => [
       ...ls,
-      { productCode: p.code, name: p.name, unit: p.unit, ordered: null, recv: "0", lot: "", loc: "", mfg: "", exp: "" },
+      { productCode: p.code, name: p.name, unit: p.unit, ordered: null, recv: "0", lot: "", loc: "", mfg: "", exp: "", stockType },
     ]);
   }
 
@@ -170,6 +172,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
           locationCode: l.loc,
           mfgDate: l.mfg || null,
           expDate: l.exp || null,
+          stockType: l.stockType,
         })
       ),
       producedTotal: mode === "PRODUCTION" ? producedTotal : undefined,
@@ -285,13 +288,16 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
           )}
           <div className="h-[34px] w-px bg-[#e2e6ec]" />
           <div>
-            <div className="mb-1 text-[11.5px] text-[#69748a]">ประเภท (Stock / Non-Stock)</div>
+            <div className="mb-1 text-[11.5px] text-[#69748a]">ประเภทเริ่มต้น · ตั้งทุกบรรทัด</div>
             <div className="flex gap-1.5">
               {(["STOCK", "NON_STOCK"] as const).map((t) => (
                 <button
                   key={t}
                   type="button"
-                  onClick={() => setStockType(t)}
+                  onClick={() => {
+                    setStockType(t);
+                    setLines((ls) => ls.map((l) => ({ ...l, stockType: t })));
+                  }}
                   className={`rounded-[8px] border px-2.5 py-1.5 text-[12px] font-semibold ${
                     stockType === t
                       ? t === "NON_STOCK"
@@ -359,6 +365,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Location</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Mfg</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Expiry</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">Type</th>
                 <th className="w-10 p-[10px_16px]"></th>
               </tr>
             </thead>
@@ -409,6 +416,20 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                       onChange={(e) => updateLine(i, { exp: e.target.value })}
                       className="font-num rounded-[7px] border border-[#d7dce4] px-2 py-1 text-[12px]"
                     />
+                  </td>
+                  <td className="p-[11px_16px]">
+                    <button
+                      type="button"
+                      onClick={() => updateLine(i, { stockType: l.stockType === "STOCK" ? "NON_STOCK" : "STOCK" })}
+                      title="กดสลับ Stock / Non-Stock"
+                      className={`rounded-[7px] border px-2 py-1 text-[11px] font-semibold ${
+                        l.stockType === "NON_STOCK"
+                          ? "border-[#d8c48f] bg-[#efe6d3] text-[#8a6d1f]"
+                          : "border-[#a8cdea] bg-[#dcecf6] text-[#1f66a6]"
+                      }`}
+                    >
+                      {l.stockType === "NON_STOCK" ? "Non-Stock" : "Stock"}
+                    </button>
                   </td>
                   <td className="p-[11px_16px] text-center">
                     <div className="flex items-center justify-center gap-1.5">

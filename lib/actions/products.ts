@@ -296,5 +296,7 @@ export async function getStockCardAction(productCode: string) {
     in: e.in,
     out: e.out,
     balance: e.balance,
+    stockType: e.stockType ?? null,
+    convertedAt: e.convertedAt ? e.convertedAt.toISOString() : null,
   }));
 }

@@ -10,6 +10,7 @@ export type IssueLineInput = {
   productCode: string;
   selectedLotId: string;
   qty: number;
+  stockType?: "STOCK" | "NON_STOCK";
 };
 
 export type ConfirmIssueInput = {
@@ -105,6 +106,7 @@ export async function confirmIssueAction(
               fefoLotId: fefo?.id ?? null,
               selectedLotId: s.id,
               qty: take,
+              stockType: line.stockType ?? "STOCK",
             },
           });
           remaining -= take;

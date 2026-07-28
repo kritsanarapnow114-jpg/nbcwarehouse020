@@ -11,7 +11,7 @@ import { takeRedo } from "@/lib/redoTemplate";
 import { printTable } from "@/lib/calc/printClient";
 import { fmtDateISO, fmtDateBE } from "@/lib/calc/date";
 
-type Line = IssueFormData["products"][number] & { selectedLotId: string; qty: string };
+type Line = IssueFormData["products"][number] & { selectedLotId: string; qty: string; stockType: "STOCK" | "NON_STOCK" };
 
 export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issueToOptions: string[] }) {
   const router = useRouter();
@@ -42,7 +42,7 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
         .map((pl) => {
           const prod = data.products.find((x) => x.code === pl.productCode);
           if (!prod) return null;
-          return { ...prod, selectedLotId: pl.selectedLotId, qty: String(pl.qty) };
+          return { ...prod, selectedLotId: pl.selectedLotId, qty: String(pl.qty), stockType: "STOCK" as "STOCK" | "NON_STOCK" };
         })
         .filter((x): x is Line => x !== null)
     );
@@ -55,7 +55,7 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
     const defaultLot = p.lots.find((l) => l.isFefo) ?? p.lots[0];
     setLines((ls) => [
       ...ls,
-      { ...p, selectedLotId: defaultLot?.id ?? "", qty: String(defaultLot?.qty ?? 0) },
+      { ...p, selectedLotId: defaultLot?.id ?? "", qty: String(defaultLot?.qty ?? 0), stockType },
     ]);
   }
 
@@ -97,6 +97,7 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
           productCode: l.code,
           selectedLotId: l.selectedLotId,
           qty: Number(l.qty) || 0,
+          stockType: l.stockType,
         })
       ),
     };
@@ -164,13 +165,16 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
           </div>
           <div className="h-[34px] w-px bg-[#e2e6ec]" />
           <div>
-            <div className="mb-1 text-[11.5px] text-[#69748a]">ประเภท (Stock / Non-Stock)</div>
+            <div className="mb-1 text-[11.5px] text-[#69748a]">ประเภทเริ่มต้น · ตั้งทุกบรรทัด</div>
             <div className="flex gap-1.5">
               {(["STOCK", "NON_STOCK"] as const).map((t) => (
                 <button
                   key={t}
                   type="button"
-                  onClick={() => setStockType(t)}
+                  onClick={() => {
+                    setStockType(t);
+                    setLines((ls) => ls.map((l) => ({ ...l, stockType: t })));
+                  }}
                   className={`rounded-[8px] border px-2.5 py-1.5 text-[12px] font-semibold ${
                     stockType === t
                       ? t === "NON_STOCK"
@@ -234,6 +238,7 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Expiry</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">On Hand</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Issue Qty</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">Type</th>
                 <th className="w-10 p-[10px_16px]"></th>
               </tr>
             </thead>
@@ -287,6 +292,20 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
                         className="font-num w-[84px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-right text-[13px]"
                       />
                     </td>
+                    <td className="p-[11px_16px]">
+                      <button
+                        type="button"
+                        onClick={() => updateLine(i, { stockType: l.stockType === "STOCK" ? "NON_STOCK" : "STOCK" })}
+                        title="กดสลับ Stock / Non-Stock"
+                        className={`rounded-[7px] border px-2 py-1 text-[11px] font-semibold ${
+                          l.stockType === "NON_STOCK"
+                            ? "border-[#d8c48f] bg-[#efe6d3] text-[#8a6d1f]"
+                            : "border-[#a8cdea] bg-[#dcecf6] text-[#1f66a6]"
+                        }`}
+                      >
+                        {l.stockType === "NON_STOCK" ? "Non-Stock" : "Stock"}
+                      </button>
+                    </td>
                     <td className="p-[11px_16px] text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
@@ -306,7 +325,7 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
               })}
               {lines.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-[#9aa4b4]">
+                  <td colSpan={9} className="p-6 text-center text-[#9aa4b4]">
                     No lines yet — add a product below.
                   </td>
                 </tr>

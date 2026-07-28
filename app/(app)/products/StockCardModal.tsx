@@ -15,6 +15,8 @@ type Entry = {
   in: number;
   out: number;
   balance: number;
+  stockType?: "STOCK" | "NON_STOCK" | null;
+  convertedAt?: string | null;
 };
 
 export function StockCardModal({
@@ -77,6 +79,16 @@ export function StockCardModal({
                   <Badge tone={MOVEMENT_TYPE_TONE[r.type] ?? "neutral"}>
                     {r.type}
                   </Badge>
+                  {r.stockType === "NON_STOCK" && (
+                    <span className="ml-1 rounded-[4px] bg-[#efe6d3] px-1 py-0.5 text-[9.5px] font-semibold text-[#8a6d1f]">
+                      Non-Stock
+                    </span>
+                  )}
+                  {r.convertedAt && (
+                    <span className="ml-1 rounded-[4px] bg-[#e2f0e8] px-1 py-0.5 text-[9.5px] font-semibold text-[#1f9d63]">
+                      →Stock {fmtDateBE(new Date(r.convertedAt))}
+                    </span>
+                  )}
                 </td>
                 <td className="font-num py-2">{r.lot}</td>
                 <td className="font-num py-2 text-right text-[#1f66a6]">

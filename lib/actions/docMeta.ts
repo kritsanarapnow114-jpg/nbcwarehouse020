@@ -24,6 +24,20 @@ export async function updateDocMetaAction(
     if (kind === "receipt") await db.receipt.update({ where: { id }, data });
     else await db.issue.update({ where: { id }, data });
 
+    // Converting the document also flips every line to that type. When it becomes
+    // Stock, stamp the conversion date on the lines that were Non-Stock (so the
+    // Stock Card can show "→Stock <date>").
+    if (meta.stockType === "STOCK") {
+      const patch = { stockType: "STOCK" as const, stockConvertedAt: new Date() };
+      if (kind === "receipt")
+        await db.receiptLine.updateMany({ where: { receiptId: id, stockType: "NON_STOCK" }, data: patch });
+      else await db.issueLine.updateMany({ where: { issueId: id, stockType: "NON_STOCK" }, data: patch });
+    } else if (meta.stockType === "NON_STOCK") {
+      if (kind === "receipt")
+        await db.receiptLine.updateMany({ where: { receiptId: id }, data: { stockType: "NON_STOCK" } });
+      else await db.issueLine.updateMany({ where: { issueId: id }, data: { stockType: "NON_STOCK" } });
+    }
+
     safeRevalidate(["/receive", "/issue", "/reports", "/search", "/dashboard"]);
     return {};
   } catch (e) {

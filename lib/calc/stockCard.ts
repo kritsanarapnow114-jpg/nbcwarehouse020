@@ -16,6 +16,10 @@ export type StockCardEntry = {
   in: number;
   out: number;
   balance: number;
+  // Receive/Issue lines only: whether the line was Stock or Non-Stock, and when
+  // it was converted Non-Stock → Stock (if ever).
+  stockType?: "STOCK" | "NON_STOCK";
+  convertedAt?: Date | null;
 };
 
 /**
@@ -64,6 +68,8 @@ export async function buildStockCard(
       in: r.recvQty,
       out: 0,
       balance: 0,
+      stockType: r.stockType,
+      convertedAt: r.stockConvertedAt,
     });
   }
   for (const i of issueLines) {
@@ -75,6 +81,8 @@ export async function buildStockCard(
       in: 0,
       out: i.qty,
       balance: 0,
+      stockType: i.stockType,
+      convertedAt: i.stockConvertedAt,
     });
   }
   for (const a of adjustmentLines) {

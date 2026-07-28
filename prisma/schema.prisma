@@ -204,6 +204,8 @@ model ReceiptLine {
   expDate      DateTime?
   lotId        String?
   lot          Lot?      @relation(fields: [lotId], references: [id])
+  stockType        StockType @default(STOCK) // Stock vs Non-Stock, per line
+  stockConvertedAt DateTime? // when this line was converted Non-Stock → Stock
 }
 
 model Bom {
@@ -274,6 +276,8 @@ model IssueLine {
   selectedLotId String
   selectedLot   Lot     @relation("SelectedLot", fields: [selectedLotId], references: [id])
   qty           Float
+  stockType        StockType @default(STOCK) // Stock vs Non-Stock, per line
+  stockConvertedAt DateTime? // when this line was converted Non-Stock → Stock
 }
 
 model Adjustment {
