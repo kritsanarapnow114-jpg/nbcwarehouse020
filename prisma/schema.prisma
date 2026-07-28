@@ -245,6 +245,7 @@ model ReceiptLine {
   lot          Lot?      @relation(fields: [lotId], references: [id])
   stockType        StockType @default(STOCK) // Stock vs Non-Stock, per line
   stockConvertedAt DateTime? // when this line was converted Non-Stock → Stock
+  movedToNonStockAt DateTime? // set once this line's goods were pulled to a Non-Stock holding
 }
 
 model Bom {

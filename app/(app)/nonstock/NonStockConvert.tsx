@@ -8,7 +8,7 @@ import { buttonClass } from "@/components/ui/Button";
 import { showToast } from "@/components/ui/Toast";
 import { fmtDateBE, fmtDateISO } from "@/lib/calc/date";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
-import { convertToStockAction, moveToNonStockAction } from "@/lib/actions/nonstock";
+import { convertToStockAction, moveToNonStockAction, pullNonStockDocsAction } from "@/lib/actions/nonstock";
 import type { NonStockHoldingRow, ConversionRow, MovableLotRow } from "@/lib/views/nonstock";
 
 export function NonStockConvert({
@@ -37,6 +37,23 @@ export function NonStockConvert({
     setMoveQty(String(lot.qty));
     setMoveDate(fmtDateISO(new Date()));
     setError(null);
+  }
+
+  const [pulling, setPulling] = useState(false);
+  async function pullDocs() {
+    setPulling(true);
+    const res = await pullNonStockDocsAction();
+    setPulling(false);
+    if (res.error) {
+      showToast(res.error);
+      return;
+    }
+    showToast(
+      res.movedLines
+        ? `ดึงเข้า Non-Stock แล้ว ${res.movedLines} รายการ · ${(res.movedQty ?? 0).toLocaleString()} หน่วย`
+        : "ไม่มีเอกสาร Non-Stock ที่ต้องดึง (ดึงครบแล้ว)"
+    );
+    router.refresh();
   }
 
   async function confirmMove() {
@@ -80,6 +97,18 @@ export function NonStockConvert({
     <>
       <Card className="mb-4">
         <CardTitle>ย้ายของจากสต็อก → Non-Stock (แก้ของที่ค้างอยู่ในสต็อก)</CardTitle>
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-[#efe0bf] bg-[#faf6ec] px-3 py-2.5">
+          <div className="flex-1 text-[12px] text-[#8a6d1f]">
+            เอกสารที่รับไว้แบบ <b>Non-Stock</b> ก่อนหน้านี้ ของยังอยู่ในสต็อก — กดปุ่มนี้ครั้งเดียวเพื่อดึงออกเป็น Non-Stock ให้ทั้งหมด (ทำซ้ำได้ ไม่ซ้ำซ้อน)
+          </div>
+          <button
+            onClick={pullDocs}
+            disabled={pulling}
+            className="flex-none rounded-[8px] bg-[#8a6d1f] px-3.5 py-2 text-[12.5px] font-semibold text-white hover:bg-[#725a19] disabled:opacity-60"
+          >
+            {pulling ? "กำลังดึง…" : "⤵ ดึงเอกสาร Non-Stock เข้า holding"}
+          </button>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="min-w-[320px] flex-1">
             <SearchableSelect

@@ -11,6 +11,90 @@ export type ConvertInput = {
   docDate: string;
 };
 
+/**
+ * One-off cleanup: pull every receipt line marked Non-Stock (either the line or
+ * its whole document) OUT of stock into a Non-Stock holding. Older Non-Stock
+ * receipts were only *labelled* and their goods stayed in stock; this moves them
+ * to holdings. Safe to run repeatedly — each line is processed once (guarded by
+ * `movedToNonStockAt`) and never takes more than the lot currently holds.
+ */
+export async function pullNonStockDocsAction(): Promise<{
+  movedLines?: number;
+  movedQty?: number;
+  error?: string;
+}> {
+  try {
+    await requireWrite();
+    const lines = await db.receiptLine.findMany({
+      where: {
+        movedToNonStockAt: null,
+        lotId: { not: null },
+        receipt: { reversedAt: null },
+        OR: [{ stockType: "NON_STOCK" }, { receipt: { is: { stockType: "NON_STOCK" } } }],
+      },
+      include: { receipt: true },
+    });
+
+    let movedLines = 0;
+    let movedQty = 0;
+
+    await db.$transaction(async (tx) => {
+      for (const line of lines) {
+        if (!line.lotId) continue;
+        const lot = await tx.lot.findUnique({ where: { id: line.lotId } });
+        // Re-read inside the tx so lines sharing a lot don't over-draw it.
+        const avail = lot?.qty ?? 0;
+        const moveQty = Math.min(line.recvQty, avail);
+
+        if (lot && moveQty > 0) {
+          await tx.lot.update({ where: { id: lot.id }, data: { qty: lot.qty - moveQty } });
+
+          const holding = await tx.nonStockHolding.findFirst({
+            where: { productCode: line.productCode, locationCode: line.locationCode, lotNo: line.lotNo },
+          });
+          if (holding) {
+            await tx.nonStockHolding.update({ where: { id: holding.id }, data: { qty: holding.qty + moveQty } });
+          } else {
+            await tx.nonStockHolding.create({
+              data: {
+                productCode: line.productCode,
+                locationCode: line.locationCode,
+                lotNo: line.lotNo,
+                qty: moveQty,
+                recvDate: line.receipt.docDate,
+                mfgDate: line.mfgDate,
+                expDate: line.expDate,
+                receiptId: line.receiptId,
+              },
+            });
+          }
+
+          const no = await nextDocNumber("CV", line.receipt.docDate);
+          await tx.conversion.create({
+            data: {
+              docNo: no,
+              productCode: line.productCode,
+              lotNo: line.lotNo,
+              locationCode: line.locationCode,
+              qty: -moveQty, // moved OUT of stock
+              docDate: line.receipt.docDate,
+            },
+          });
+          movedLines += 1;
+          movedQty += moveQty;
+        }
+
+        await tx.receiptLine.update({ where: { id: line.id }, data: { movedToNonStockAt: new Date() } });
+      }
+    });
+
+    safeRevalidate(["/nonstock", "/dashboard", "/products", "/aging", "/locations", "/map", "/reports"]);
+    return { movedLines, movedQty };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "ดึงไม่สำเร็จ (failed)" };
+  }
+}
+
 export type MoveToNonStockInput = {
   lotId: string;
   qty: number;
