@@ -34,20 +34,32 @@ export async function clearTransactionsAction(confirmText: string): Promise<{ er
     return { error: 'Type "CLEAR" exactly to confirm (พิมพ์ CLEAR ให้ตรงเพื่อยืนยัน)' };
   }
 
-  await db.$transaction([
-    db.receiptBomLoss.deleteMany(),
-    db.receiptMaterialConsumption.deleteMany(),
-    db.receiptLine.deleteMany(),
-    db.receipt.deleteMany(),
-    db.issueLine.deleteMany(),
-    db.issue.deleteMany(),
-    db.transferLine.deleteMany(),
-    db.transfer.deleteMany(),
-    db.conversion.deleteMany(),
-    db.nonStockHolding.deleteMany(),
-    db.lot.updateMany({ data: { qty: 0 } }),
-    db.docSequence.deleteMany({ where: { prefix: { in: ["RC", "ISS", "TRF", "CV"] } } }),
-  ]);
+  try {
+    // Core clear — these tables always exist. Kept in one transaction so it's
+    // all-or-nothing.
+    await db.$transaction([
+      db.receiptBomLoss.deleteMany(),
+      db.receiptMaterialConsumption.deleteMany(),
+      db.receiptLine.deleteMany(),
+      db.receipt.deleteMany(),
+      db.issueLine.deleteMany(),
+      db.issue.deleteMany(),
+      db.transferLine.deleteMany(),
+      db.transfer.deleteMany(),
+      db.purchaseOrderLine.deleteMany(),
+      db.purchaseOrder.deleteMany(),
+      db.lot.updateMany({ data: { qty: 0 } }),
+      db.docSequence.deleteMany({ where: { prefix: { in: ["RC", "ISS", "TRF", "PO"] } } }),
+    ]);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "ล้างไม่สำเร็จ (failed to clear)" };
+  }
+
+  // Best-effort: the Non-Stock tables may not exist yet on an older DB — never
+  // let a missing table roll back the core clear above.
+  try { await db.conversion.deleteMany(); } catch {}
+  try { await db.nonStockHolding.deleteMany(); } catch {}
+  try { await db.docSequence.deleteMany({ where: { prefix: "CV" } }); } catch {}
 
   for (const p of [
     "/dashboard",
@@ -58,6 +70,7 @@ export async function clearTransactionsAction(confirmText: string): Promise<{ er
     "/receive",
     "/issue",
     "/transfer",
+    "/po",
     "/reports",
     "/nonstock",
   ]) {
