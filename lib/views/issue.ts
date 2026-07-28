@@ -35,18 +35,29 @@ function mergeLotOptions(eligible: EligibleLot[], fefoId: string | null) {
     qty: g.reduce((s, x) => s + x.qty, 0),
     expDate: g[0].expDate ? g[0].expDate.toISOString() : null,
     isFefo: g.some((x) => x.id === fefoId),
+    nonStock: false,
   }));
 }
 
 export async function getIssueFormData() {
-  const [products, docNo] = await Promise.all([
+  const [products, holdings, docNo] = await Promise.all([
     db.product.findMany({
       where: { deletedAt: null },
       include: { lots: true },
       orderBy: { code: "asc" },
     }),
+    db.nonStockHolding.findMany({ where: { qty: { gt: 0 } } }),
     peekNextDocNumber("ISS"),
   ]);
+
+  // Non-Stock holdings, grouped by product — they're issuable too (decrement the
+  // holding). Their option id is the holdingId, flagged nonStock.
+  const holdingsByProduct = new Map<string, typeof holdings>();
+  for (const h of holdings) {
+    const arr = holdingsByProduct.get(h.productCode) ?? [];
+    arr.push(h);
+    holdingsByProduct.set(h.productCode, arr);
+  }
 
   const items = products
     .map((p) => {
@@ -74,13 +85,22 @@ export async function getIssueFormData() {
           locationCode: l.locationCode,
         }))
       );
+      const holdingOpts = (holdingsByProduct.get(p.code) ?? []).map((h) => ({
+        id: h.id,
+        lotNo: h.lotNo,
+        locationCode: h.locationCode,
+        qty: h.qty,
+        expDate: h.expDate ? h.expDate.toISOString() : null,
+        isFefo: false,
+        nonStock: true,
+      }));
       return {
         code: p.code,
         name: productLabel(p.nameEn, p.nameTh),
         unit: p.unit,
         price: p.price,
         fefoLotId: fefo?.id ?? null,
-        lots: mergeLotOptions(eligible, fefo?.id ?? null),
+        lots: [...mergeLotOptions(eligible, fefo?.id ?? null), ...holdingOpts],
       };
     })
     .filter((p) => p.lots.length > 0);
@@ -93,7 +113,7 @@ export type IssueFormData = Awaited<ReturnType<typeof getIssueFormData>>;
 export async function getRecentIssues(limit = 400) {
   const issues = await db.issue.findMany({
     include: {
-      lines: { include: { product: true, selectedLot: true } },
+      lines: { include: { product: true, selectedLot: true, nonStockHolding: true } },
     },
     orderBy: { docDate: "desc" },
     take: limit,
@@ -113,8 +133,8 @@ export async function getRecentIssues(limit = 400) {
     lines: i.lines.map((l) => ({
       code: l.productCode,
       name: productLabel(l.product.nameEn, l.product.nameTh),
-      lotNo: l.selectedLot.lotNo,
-      locationCode: l.selectedLot.locationCode,
+      lotNo: l.selectedLot?.lotNo ?? l.nonStockHolding?.lotNo ?? "-",
+      locationCode: l.selectedLot?.locationCode ?? l.nonStockHolding?.locationCode ?? "-",
       qty: l.qty,
       unit: l.product.unit,
     })),

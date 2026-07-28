@@ -101,8 +101,20 @@ async function undoStock(
     if (!issue) throw new Error("Issue not found");
     if (issue.reversedAt) return { docNo: issue.docNo, wasReversed: true };
 
-    // Put the issued quantities back onto the lots they came from.
+    // Put the issued quantities back — onto the lots they came from, or back into
+    // the Non-Stock holding for Non-Stock lines.
     for (const line of issue.lines) {
+      if (line.nonStockHoldingId) {
+        const holding = await tx.nonStockHolding.findUnique({ where: { id: line.nonStockHoldingId } });
+        if (holding) {
+          await tx.nonStockHolding.update({
+            where: { id: holding.id },
+            data: { qty: holding.qty + line.qty },
+          });
+        }
+        continue;
+      }
+      if (!line.selectedLotId) continue;
       const lot = await tx.lot.findUnique({ where: { id: line.selectedLotId } });
       if (!lot) continue;
       await tx.lot.update({ where: { id: lot.id }, data: { qty: lot.qty + line.qty } });

@@ -28,7 +28,7 @@ export async function getRedoTemplateAction(
         issueTo: issue.issueTo,
         lines: issue.lines.map((l) => ({
           productCode: l.productCode,
-          selectedLotId: l.selectedLotId,
+          selectedLotId: l.selectedLotId ?? l.nonStockHoldingId ?? "",
           qty: l.qty,
         })),
       },

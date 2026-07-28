@@ -18,7 +18,6 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
   const ISSUE_TO_OPTIONS = issueToOptions.length > 0 ? issueToOptions : ["-"];
   const [issueTo, setIssueTo] = useState(ISSUE_TO_OPTIONS[0]);
   const [materialDoc, setMaterialDoc] = useState("");
-  const [stockType, setStockType] = useState<"STOCK" | "NON_STOCK">("STOCK");
   const [remark, setRemark] = useState("");
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Line[]>([]);
@@ -55,7 +54,12 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
     const defaultLot = p.lots.find((l) => l.isFefo) ?? p.lots[0];
     setLines((ls) => [
       ...ls,
-      { ...p, selectedLotId: defaultLot?.id ?? "", qty: String(defaultLot?.qty ?? 0), stockType },
+      {
+        ...p,
+        selectedLotId: defaultLot?.id ?? "",
+        qty: String(defaultLot?.qty ?? 0),
+        stockType: defaultLot?.nonStock ? "NON_STOCK" : "STOCK",
+      },
     ]);
   }
 
@@ -90,7 +94,6 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
       issueTo,
       materialDoc: materialDoc || null,
       remark: remark || null,
-      stockType,
       docDate,
       lines: lines.map(
         (l): IssueLineInput => ({
@@ -165,31 +168,6 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
           </div>
           <div className="h-[34px] w-px bg-[#e2e6ec]" />
           <div>
-            <div className="mb-1 text-[11.5px] text-[#69748a]">ประเภทเริ่มต้น · ตั้งทุกบรรทัด</div>
-            <div className="flex gap-1.5">
-              {(["STOCK", "NON_STOCK"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => {
-                    setStockType(t);
-                    setLines((ls) => ls.map((l) => ({ ...l, stockType: t })));
-                  }}
-                  className={`rounded-[8px] border px-2.5 py-1.5 text-[12px] font-semibold ${
-                    stockType === t
-                      ? t === "NON_STOCK"
-                        ? "border-[#d8c48f] bg-[#efe6d3] text-[#8a6d1f]"
-                        : "border-[#a8cdea] bg-[#dcecf6] text-[#1f66a6]"
-                      : "border-[#d7dce4] bg-white text-[#69748a] hover:bg-[#f2f6f9]"
-                  }`}
-                >
-                  {t === "NON_STOCK" ? "Non-Stock" : "Stock"}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="h-[34px] w-px bg-[#e2e6ec]" />
-          <div>
             <div className="mb-1 text-[11.5px] text-[#69748a]">Material Document (SAP)</div>
             <input
               value={materialDoc}
@@ -257,7 +235,13 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
                     <td className="p-[11px_16px]">
                       <select
                         value={l.selectedLotId}
-                        onChange={(e) => updateLine(i, { selectedLotId: e.target.value })}
+                        onChange={(e) => {
+                          const opt = l.lots.find((x) => x.id === e.target.value);
+                          updateLine(i, {
+                            selectedLotId: e.target.value,
+                            stockType: opt?.nonStock ? "NON_STOCK" : "STOCK",
+                          });
+                        }}
                         className="font-num rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
                       >
                         {l.lots.map((lot) => (
@@ -265,6 +249,7 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
                             {lot.lotNo} · {lot.locationCode} ·{" "}
                             {lot.expDate ? fmtDateBE(new Date(lot.expDate)) : "no exp"}
                             {lot.isFefo ? " ★FEFO" : ""}
+                            {lot.nonStock ? " · Non-Stock" : ""}
                           </option>
                         ))}
                       </select>
@@ -293,10 +278,8 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
                       />
                     </td>
                     <td className="p-[11px_16px]">
-                      <button
-                        type="button"
-                        onClick={() => updateLine(i, { stockType: l.stockType === "STOCK" ? "NON_STOCK" : "STOCK" })}
-                        title="กดสลับ Stock / Non-Stock"
+                      <span
+                        title="ประเภทตามล็อตที่เลือก (เลือก Non-Stock ในช่อง Lot เพื่อจ่ายของ Non-Stock)"
                         className={`rounded-[7px] border px-2 py-1 text-[11px] font-semibold ${
                           l.stockType === "NON_STOCK"
                             ? "border-[#d8c48f] bg-[#efe6d3] text-[#8a6d1f]"
@@ -304,7 +287,7 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
                         }`}
                       >
                         {l.stockType === "NON_STOCK" ? "Non-Stock" : "Stock"}
-                      </button>
+                      </span>
                     </td>
                     <td className="p-[11px_16px] text-center">
                       <div className="flex items-center justify-center gap-1.5">

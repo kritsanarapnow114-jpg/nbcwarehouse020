@@ -20,7 +20,7 @@ export async function getReportData(range: Range) {
     }),
     db.issue.findMany({
       where: activeInRange,
-      include: { lines: { include: { product: true, selectedLot: true } } },
+      include: { lines: { include: { product: true, selectedLot: true, nonStockHolding: true } } },
       orderBy: { docDate: "desc" },
     }),
     db.adjustment.findMany({
@@ -78,7 +78,7 @@ export async function getReportData(range: Range) {
       remark: i.remark ?? "",
       code: l.productCode,
       name: productLabel(l.product.nameEn, l.product.nameTh),
-      lotNo: l.selectedLot.lotNo,
+      lotNo: l.selectedLot?.lotNo ?? l.nonStockHolding?.lotNo ?? "-",
       qty: l.qty,
       unit: l.product.unit,
     }))

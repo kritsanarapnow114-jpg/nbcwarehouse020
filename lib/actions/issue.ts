@@ -50,6 +50,32 @@ export async function confirmIssueAction(
 
       for (const line of input.lines) {
         if (line.qty <= 0) continue;
+
+        // Non-Stock line: issue from the holding (selectedLotId is a holdingId).
+        if (line.stockType === "NON_STOCK") {
+          const holding = await tx.nonStockHolding.findUnique({ where: { id: line.selectedLotId } });
+          if (!holding || holding.qty < line.qty) {
+            throw new Error(
+              `Non-Stock ไม่พอ — มี ${holding?.qty.toLocaleString() ?? 0}, ขอจ่าย ${line.qty.toLocaleString()} (${line.productCode})`
+            );
+          }
+          await tx.nonStockHolding.update({
+            where: { id: holding.id },
+            data: { qty: holding.qty - line.qty },
+          });
+          await tx.issueLine.create({
+            data: {
+              issueId: issue.id,
+              productCode: line.productCode,
+              selectedLotId: null,
+              nonStockHoldingId: holding.id,
+              qty: line.qty,
+              stockType: "NON_STOCK",
+            },
+          });
+          continue;
+        }
+
         const sel = await tx.lot.findUnique({ where: { id: line.selectedLotId } });
         if (!sel) {
           throw new Error(`Not enough stock for ${line.productCode} (สต็อกไม่พอ)`);

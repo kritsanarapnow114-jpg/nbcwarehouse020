@@ -40,7 +40,8 @@ export async function buildStockCard(
         include: { receipt: true },
       }),
       db.issueLine.findMany({
-        where: { productCode, issue: { reversedAt: null } },
+        // Non-Stock issues (no lot) don't affect stock — exclude them.
+        where: { productCode, selectedLotId: { not: null }, issue: { reversedAt: null } },
         include: { issue: true, selectedLot: true },
       }),
       db.adjustmentLine.findMany({
@@ -81,7 +82,7 @@ export async function buildStockCard(
       date: i.issue.docDate,
       doc: i.issue.docNo,
       type: "Issue",
-      lot: i.selectedLot.lotNo,
+      lot: i.selectedLot?.lotNo ?? "-",
       in: 0,
       out: i.qty,
       balance: 0,

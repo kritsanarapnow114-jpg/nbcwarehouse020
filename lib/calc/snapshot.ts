@@ -51,6 +51,7 @@ export async function getLotsAsOf(asOf: Date): Promise<LotSnapshot[]> {
   }
   const issAfter = new Map<string, number>();
   for (const i of laterIssueLines) {
+    if (!i.selectedLotId) continue; // Non-Stock issues don't touch a lot
     issAfter.set(i.selectedLotId, (issAfter.get(i.selectedLotId) ?? 0) + i.qty);
   }
   const adjAfter = new Map<string, number>();

@@ -66,7 +66,7 @@ export async function getLotQtyAsOf(asOfDateStr: string): Promise<Map<string, nu
     ]);
 
   for (const r of receiptLines) add(r.lotId ?? undefined, r.recvQty);
-  for (const i of issueLines) add(i.selectedLotId, -i.qty);
+  for (const i of issueLines) add(i.selectedLotId ?? undefined, -i.qty);
   for (const a of adjLines) add(a.lotId, a.countedQty - a.sysQty);
   for (const c of consumptions) add(c.lotId, -c.qty);
   for (const c of countLines) add(c.lotId, c.addedQty); // off-system find created stock

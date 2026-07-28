@@ -117,6 +117,8 @@ model NonStockHolding {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  issueLines   IssueLine[]
+
   @@index([productCode])
 }
 
@@ -313,11 +315,13 @@ model IssueLine {
   product       Product @relation(fields: [productCode], references: [code])
   fefoLotId     String?
   fefoLot       Lot?    @relation("FefoLot", fields: [fefoLotId], references: [id])
-  selectedLotId String
-  selectedLot   Lot     @relation("SelectedLot", fields: [selectedLotId], references: [id])
+  selectedLotId String?
+  selectedLot   Lot?    @relation("SelectedLot", fields: [selectedLotId], references: [id])
   qty           Float
   stockType        StockType @default(STOCK) // Stock vs Non-Stock, per line
   stockConvertedAt DateTime? // when this line was converted Non-Stock → Stock
+  nonStockHoldingId String? // set for a Non-Stock line — issued from a holding, not a lot
+  nonStockHolding   NonStockHolding? @relation(fields: [nonStockHoldingId], references: [id])
 }
 
 model Adjustment {
