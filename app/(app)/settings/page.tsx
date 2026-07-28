@@ -6,6 +6,7 @@ import {
 } from "@/lib/views/settings";
 import { ResetDataCard } from "./ResetDataCard";
 import { ClearDemoDataCard } from "./ClearDemoDataCard";
+import { ClearTransactionsCard } from "./ClearTransactionsCard";
 import { UsersCard } from "./UsersCard";
 import { CountPlanCard } from "./CountPlanCard";
 import { SubtitlesCard } from "./SubtitlesCard";
@@ -55,6 +56,9 @@ export default async function SettingsPage() {
       </div>
       <div className="mt-4">
         <ClearDemoDataCard />
+      </div>
+      <div className="mt-4">
+        <ClearTransactionsCard />
       </div>
       <div className="mt-4">
         <ResetDataCard />

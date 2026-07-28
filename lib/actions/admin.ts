@@ -23,6 +23,49 @@ const DEMO_LOCATION_CODES = [
  * BOM, KPI logs, doc-number counters) so the app starts completely empty.
  * The User table is untouched so nobody gets logged out.
  */
+/**
+ * Clear only the movement documents (Receive incl. Production, Issue, Transfer)
+ * plus Non-Stock holdings/conversions, zero every lot's quantity, and reset those
+ * documents' running numbers so the next ones start at 0001. Products, locations,
+ * Purchase Orders, Adjust, Count and BOM master are kept.
+ */
+export async function clearTransactionsAction(confirmText: string): Promise<{ error?: string }> {
+  if (confirmText !== "CLEAR") {
+    return { error: 'Type "CLEAR" exactly to confirm (พิมพ์ CLEAR ให้ตรงเพื่อยืนยัน)' };
+  }
+
+  await db.$transaction([
+    db.receiptBomLoss.deleteMany(),
+    db.receiptMaterialConsumption.deleteMany(),
+    db.receiptLine.deleteMany(),
+    db.receipt.deleteMany(),
+    db.issueLine.deleteMany(),
+    db.issue.deleteMany(),
+    db.transferLine.deleteMany(),
+    db.transfer.deleteMany(),
+    db.conversion.deleteMany(),
+    db.nonStockHolding.deleteMany(),
+    db.lot.updateMany({ data: { qty: 0 } }),
+    db.docSequence.deleteMany({ where: { prefix: { in: ["RC", "ISS", "TRF", "CV"] } } }),
+  ]);
+
+  for (const p of [
+    "/dashboard",
+    "/products",
+    "/aging",
+    "/locations",
+    "/map",
+    "/receive",
+    "/issue",
+    "/transfer",
+    "/reports",
+    "/nonstock",
+  ]) {
+    revalidatePath(p);
+  }
+  return {};
+}
+
 export async function resetAllDataAction(confirmText: string): Promise<{ error?: string }> {
   if (confirmText !== "RESET") {
     return { error: 'Type "RESET" exactly to confirm (พิมพ์ RESET ให้ตรงเพื่อยืนยัน)' };
