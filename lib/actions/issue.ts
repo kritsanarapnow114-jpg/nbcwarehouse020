@@ -16,6 +16,7 @@ export type ConfirmIssueInput = {
   issueTo: string;
   materialDoc?: string | null;
   remark?: string | null;
+  stockType?: "STOCK" | "NON_STOCK";
   docDate: string;
   lines: IssueLineInput[];
 };
@@ -40,6 +41,7 @@ export async function confirmIssueAction(
           issueTo: input.issueTo,
           materialDoc: input.materialDoc?.trim() || null,
           remark: input.remark?.trim() || null,
+          stockType: input.stockType ?? "STOCK",
           docDate,
           shippedDate: docDate,
         },

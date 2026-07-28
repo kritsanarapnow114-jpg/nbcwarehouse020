@@ -21,6 +21,7 @@ export default async function ReceivePage() {
     reversedAt: r.reversedAt,
     materialDoc: r.materialDoc,
     remark: r.remark,
+    stockType: r.stockType,
     lineCount: r.lineCount,
     lines: r.lines.map((l) => ({
       code: l.code,

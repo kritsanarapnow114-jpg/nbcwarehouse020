@@ -105,6 +105,7 @@ export async function getRecentIssues(limit = 400) {
     issueTo: i.issueTo,
     materialDoc: i.materialDoc ?? "",
     remark: i.remark ?? "",
+    stockType: i.stockType,
     docDate: i.docDate.toISOString(),
     reversedAt: i.reversedAt ? i.reversedAt.toISOString() : null,
     lineCount: i.lines.length,

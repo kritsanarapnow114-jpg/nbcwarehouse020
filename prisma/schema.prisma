@@ -30,6 +30,11 @@ enum LotStatus {
   QC
 }
 
+enum StockType {
+  STOCK
+  NON_STOCK
+}
+
 enum ReceiptMode {
   PO
   PRODUCTION
@@ -170,6 +175,7 @@ model Receipt {
   invoiceNo     String? // only meaningful when mode = PO
   materialDoc   String? // SAP Material Document number
   remark        String? // free-text note
+  stockType     StockType @default(STOCK) // Stock vs Non-Stock (Reuse/consumable) goods
   docDate       DateTime
   producedTotal Float? // mode = PRODUCTION
   prodLoss      Float? // mode = PRODUCTION, finished-goods loss qty
@@ -246,6 +252,7 @@ model Issue {
   issueTo     String // "Production - Line A" | "Production - Line B" | "Wholesale - Customer" | "Write-off"
   materialDoc String? // SAP Material Document number
   remark      String? // free-text note
+  stockType   StockType @default(STOCK) // Stock vs Non-Stock (Reuse/consumable) goods
   docDate     DateTime
   shippedDate DateTime? // actual ship date, drives Delivery on-time KPI
   reversedAt  DateTime? // set when the document is reversed/voided

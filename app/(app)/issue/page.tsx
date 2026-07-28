@@ -21,6 +21,7 @@ export default async function IssuePage() {
     reversedAt: i.reversedAt,
     materialDoc: i.materialDoc,
     remark: i.remark,
+    stockType: i.stockType,
     lineCount: i.lineCount,
     lines: i.lines.map((l) => ({
       code: l.code,

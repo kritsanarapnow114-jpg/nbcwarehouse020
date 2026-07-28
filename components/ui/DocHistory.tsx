@@ -36,7 +36,21 @@ export type DocHistoryRow = {
   // Editable SAP metadata (receipts & issues only).
   materialDoc?: string;
   remark?: string;
+  stockType?: "STOCK" | "NON_STOCK";
 };
+
+function StockBadge({ type }: { type?: "STOCK" | "NON_STOCK" }) {
+  const nonStock = type === "NON_STOCK";
+  return (
+    <span
+      className={`ml-2 rounded-[5px] px-1.5 py-0.5 text-[10px] font-semibold ${
+        nonStock ? "bg-[#efe6d3] text-[#8a6d1f]" : "bg-[#dcecf6] text-[#1f66a6]"
+      }`}
+    >
+      {nonStock ? "Non-Stock" : "Stock"}
+    </span>
+  );
+}
 
 
 function printDoc(title: string, row: DocHistoryRow, sheet?: "count") {
@@ -86,6 +100,7 @@ export function DocHistory({
   // SAP metadata editing (receipts & issues)
   const [matDoc, setMatDoc] = useState("");
   const [remark, setRemark] = useState("");
+  const [stockType, setStockType] = useState<"STOCK" | "NON_STOCK">("STOCK");
   const [savingMeta, setSavingMeta] = useState(false);
   const [metaError, setMetaError] = useState<string | null>(null);
   // Delete
@@ -102,6 +117,7 @@ export function DocHistory({
     setMetaError(null);
     setMatDoc(r.materialDoc ?? "");
     setRemark(r.remark ?? "");
+    setStockType(r.stockType ?? "STOCK");
   }
 
   function closeModal() {
@@ -160,6 +176,7 @@ export function DocHistory({
       const res = await updateDocMetaAction(reverseKind as MetaEditableKind, selected.id, {
         materialDoc: matDoc,
         remark,
+        stockType,
       });
       if (res.error) {
         setMetaError(res.error);
@@ -167,7 +184,7 @@ export function DocHistory({
       }
       showToast(`บันทึกแล้ว · saved (${selected.docNo})`);
       // Reflect saved values on the open row so it stays consistent.
-      setSelected({ ...selected, materialDoc: matDoc.trim(), remark: remark.trim() });
+      setSelected({ ...selected, materialDoc: matDoc.trim(), remark: remark.trim(), stockType });
       router.refresh();
     } catch (e) {
       setMetaError(e instanceof Error ? e.message : "Failed to save.");
@@ -198,7 +215,8 @@ export function DocHistory({
   const metaDirty =
     !!selected &&
     (matDoc.trim() !== (selected.materialDoc ?? "").trim() ||
-      remark.trim() !== (selected.remark ?? "").trim());
+      remark.trim() !== (selected.remark ?? "").trim() ||
+      stockType !== (selected.stockType ?? "STOCK"));
 
   return (
     <Card className="mt-4">
@@ -248,6 +266,7 @@ export function DocHistory({
               </span>
               <span className="flex-1 truncate text-[#3a4658]">
                 {r.summary}
+                {canEditMeta && <StockBadge type={r.stockType} />}
                 {r.reversedAt && (
                   <span className="ml-2 rounded-[5px] bg-[#f3d2d2] px-1.5 py-0.5 text-[10px] font-semibold text-[#b13c3c]">
                     ถอยแล้ว · Reversed
@@ -270,6 +289,7 @@ export function DocHistory({
                 <span>
                   <span className="font-num">{selected.docNo}</span> ·{" "}
                   {fmtDateBE(new Date(selected.docDate))}
+                  {canEditMeta && <StockBadge type={selected.stockType} />}
                   {selected.reversedAt && (
                     <span className="ml-2 rounded-[5px] bg-[#f3d2d2] px-1.5 py-0.5 text-[10px] font-semibold text-[#b13c3c]">
                       ถอยแล้ว · Reversed
@@ -314,9 +334,35 @@ export function DocHistory({
               {canEditMeta && (
                 <div className="mt-4 rounded-[10px] border border-[#e7ebf1] bg-[#fafbfc] p-3">
                   <div className="mb-2 text-[11.5px] font-semibold text-[#69748a]">
-                    เพิ่ม/แก้ไขภายหลัง · Material Document (SAP) &amp; Remark
+                    เพิ่ม/แก้ไขภายหลัง · ประเภท · Material Document (SAP) &amp; Remark
                   </div>
                   <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] text-[#8a92a8]">ประเภทเอกสาร (Stock / Non-Stock)</span>
+                      <div className="flex gap-2">
+                        {(["STOCK", "NON_STOCK"] as const).map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => setStockType(t)}
+                            className={`flex-1 rounded-[8px] border px-3 py-1.5 text-[12.5px] font-semibold ${
+                              stockType === t
+                                ? t === "NON_STOCK"
+                                  ? "border-[#d8c48f] bg-[#efe6d3] text-[#8a6d1f]"
+                                  : "border-[#a8cdea] bg-[#dcecf6] text-[#1f66a6]"
+                                : "border-[#d7dce4] bg-white text-[#69748a] hover:bg-[#f2f6f9]"
+                            }`}
+                          >
+                            {t === "NON_STOCK" ? "Non-Stock (ไม่นับสต็อก)" : "Stock (สินค้าสต็อก)"}
+                          </button>
+                        ))}
+                      </div>
+                      {(selected.stockType ?? "STOCK") === "NON_STOCK" && stockType === "STOCK" && (
+                        <span className="text-[11px] font-medium text-[#1f9d63]">
+                          ↩ จะแปลงเอกสารนี้จาก Non-Stock → Stock เมื่อกดบันทึก
+                        </span>
+                      )}
+                    </div>
                     <label className="flex flex-col gap-1">
                       <span className="text-[11px] text-[#8a92a8]">
                         Material Document (เลขจาก SAP)

@@ -105,6 +105,7 @@ export async function getRecentReceipts(limit = 400) {
     invoiceNo: r.invoiceNo,
     materialDoc: r.materialDoc ?? "",
     remark: r.remark ?? "",
+    stockType: r.stockType,
     docDate: r.docDate.toISOString(),
     reversedAt: r.reversedAt ? r.reversedAt.toISOString() : null,
     lineCount: r.lines.length,

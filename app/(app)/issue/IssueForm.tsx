@@ -18,6 +18,7 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
   const ISSUE_TO_OPTIONS = issueToOptions.length > 0 ? issueToOptions : ["-"];
   const [issueTo, setIssueTo] = useState(ISSUE_TO_OPTIONS[0]);
   const [materialDoc, setMaterialDoc] = useState("");
+  const [stockType, setStockType] = useState<"STOCK" | "NON_STOCK">("STOCK");
   const [remark, setRemark] = useState("");
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Line[]>([]);
@@ -89,6 +90,7 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
       issueTo,
       materialDoc: materialDoc || null,
       remark: remark || null,
+      stockType,
       docDate,
       lines: lines.map(
         (l): IssueLineInput => ({
@@ -159,6 +161,28 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
                 </option>
               ))}
             </select>
+          </div>
+          <div className="h-[34px] w-px bg-[#e2e6ec]" />
+          <div>
+            <div className="mb-1 text-[11.5px] text-[#69748a]">ประเภท (Stock / Non-Stock)</div>
+            <div className="flex gap-1.5">
+              {(["STOCK", "NON_STOCK"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setStockType(t)}
+                  className={`rounded-[8px] border px-2.5 py-1.5 text-[12px] font-semibold ${
+                    stockType === t
+                      ? t === "NON_STOCK"
+                        ? "border-[#d8c48f] bg-[#efe6d3] text-[#8a6d1f]"
+                        : "border-[#a8cdea] bg-[#dcecf6] text-[#1f66a6]"
+                      : "border-[#d7dce4] bg-white text-[#69748a] hover:bg-[#f2f6f9]"
+                  }`}
+                >
+                  {t === "NON_STOCK" ? "Non-Stock" : "Stock"}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="h-[34px] w-px bg-[#e2e6ec]" />
           <div>
