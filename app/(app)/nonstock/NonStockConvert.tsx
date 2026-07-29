@@ -8,7 +8,12 @@ import { buttonClass } from "@/components/ui/Button";
 import { showToast } from "@/components/ui/Toast";
 import { fmtDateBE, fmtDateISO } from "@/lib/calc/date";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
-import { convertToStockAction, moveToNonStockAction, pullNonStockDocsAction } from "@/lib/actions/nonstock";
+import {
+  convertToStockAction,
+  moveToNonStockAction,
+  pullNonStockDocsAction,
+  setHoldingQtyAction,
+} from "@/lib/actions/nonstock";
 import type { NonStockHoldingRow, ConversionRow, MovableLotRow } from "@/lib/views/nonstock";
 
 export function NonStockConvert({
@@ -93,6 +98,29 @@ export function NonStockConvert({
     router.refresh();
   }
 
+  // "ปรับยอด" — correct a holding whose stored qty was double-counted.
+  const [adjust, setAdjust] = useState<NonStockHoldingRow | null>(null);
+  const [adjustQty, setAdjustQty] = useState("");
+  function openAdjust(h: NonStockHoldingRow) {
+    setAdjust(h);
+    setAdjustQty(String(h.qty));
+    setError(null);
+  }
+  async function confirmAdjust() {
+    if (!adjust) return;
+    setSaving(true);
+    setError(null);
+    const res = await setHoldingQtyAction({ holdingId: adjust.id, qty: Number(adjustQty) || 0 });
+    setSaving(false);
+    if (res.error) {
+      setError(res.error);
+      return;
+    }
+    showToast(`ปรับยอด Non-Stock แล้ว · ${adjust.productCode}`);
+    setAdjust(null);
+    router.refresh();
+  }
+
   return (
     <>
       <Card className="mb-4">
@@ -129,14 +157,15 @@ export function NonStockConvert({
       <Card>
         <CardTitle>Non-Stock ที่รอแปลงเข้าสต็อก (held, not in stock)</CardTitle>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] border-collapse text-[13px]">
+          <table className="w-full min-w-[1000px] border-collapse text-[13px]">
             <thead>
               <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
                 <th className="p-[10px_16px] text-[11.5px] font-medium">SAP Material Master</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Material Description</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Lot</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Location</th>
-                <th className="p-[10px_16px] text-[11.5px] font-medium">Received</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">วันที่รับ</th>
+                <th className="p-[10px_16px] text-right text-[11.5px] font-medium">รับเข้าจริง (ตามใบรับ)</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Qty (คงเหลือ)</th>
                 <th className="p-[10px_16px]"></th>
               </tr>
@@ -149,22 +178,41 @@ export function NonStockConvert({
                   <td className="font-num p-[11px_16px] text-[12px]">{h.lotNo}</td>
                   <td className="font-num p-[11px_16px] text-[12px]">{h.locationCode}</td>
                   <td className="font-num p-[11px_16px] text-[12px] text-[#69748a]">{fmtDateBE(new Date(h.recvDate))}</td>
+                  <td className="font-num p-[11px_16px] text-right text-[12px] text-[#3a4658]">
+                    {h.receivedQty > 0 ? `${h.receivedQty.toLocaleString()} ${h.unit}` : "—"}
+                  </td>
                   <td className="font-num p-[11px_16px] text-right font-semibold text-[#8a6d1f]">
                     {h.qty.toLocaleString()} {h.unit}
+                    {h.receivedQty > 0 && h.qty > h.receivedQty && (
+                      <div
+                        className="mt-0.5 text-[10.5px] font-semibold text-[#c53f3f]"
+                        title="ยอดคงเหลือมากกว่าที่รับเข้า = บวกซ้ำ กด 'ปรับยอด' เพื่อแก้"
+                      >
+                        ⚠ เกินที่รับ +{(h.qty - h.receivedQty).toLocaleString()}
+                      </div>
+                    )}
                   </td>
                   <td className="p-[11px_16px] text-right">
-                    <button
-                      onClick={() => open(h)}
-                      className="rounded-[8px] bg-[#2f86cf] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[#1f66a6]"
-                    >
-                      แปลงเข้าสต็อก →
-                    </button>
+                    <div className="flex justify-end gap-1.5">
+                      <button
+                        onClick={() => openAdjust(h)}
+                        className="rounded-[8px] border border-[#d7dce4] bg-white px-2.5 py-1.5 text-[12px] font-semibold text-[#5b6473] hover:border-[#c53f3f] hover:text-[#c53f3f]"
+                      >
+                        ปรับยอด
+                      </button>
+                      <button
+                        onClick={() => open(h)}
+                        className="rounded-[8px] bg-[#2f86cf] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[#1f66a6]"
+                      >
+                        แปลงเข้าสต็อก →
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
               {holdings.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-6 text-center text-[#9aa4b4]">
+                  <td colSpan={8} className="p-6 text-center text-[#9aa4b4]">
                     ไม่มีของ Non-Stock ค้างอยู่ (no Non-Stock held)
                   </td>
                 </tr>
@@ -303,6 +351,53 @@ export function NonStockConvert({
                   className="rounded-[8px] bg-[#8a6d1f] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#725a19] disabled:opacity-60"
                 >
                   {saving ? "กำลังย้าย…" : "ยืนยันย้ายเป็น Non-Stock"}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </Modal>
+
+      <Modal open={!!adjust} onClose={() => setAdjust(null)} width={420}>
+        {adjust && (
+          <>
+            <ModalHeader title={`ปรับยอด Non-Stock · ${adjust.productCode}`} onClose={() => setAdjust(null)} />
+            <div className="flex flex-col gap-3 px-5 py-4">
+              <div className="rounded-[10px] bg-[#fdf3f3] px-3 py-2 text-[12.5px] text-[#a34141]">
+                {adjust.name} · Lot {adjust.lotNo} · {adjust.locationCode}
+                <br />
+                รับเข้าจริงตามใบรับ:{" "}
+                <b className="font-num">
+                  {adjust.receivedQty > 0 ? `${adjust.receivedQty.toLocaleString()} ${adjust.unit}` : "—"}
+                </b>{" "}
+                · คงเหลือตอนนี้ <b className="font-num">{adjust.qty.toLocaleString()} {adjust.unit}</b>
+              </div>
+              <label className="flex flex-col gap-1">
+                <span className="text-[11.5px] font-medium text-[#69748a]">
+                  แก้ยอดคงเหลือให้ถูกต้อง (ใส่ 0 = เอาออกจากรายการ)
+                </span>
+                <input
+                  value={adjustQty}
+                  onChange={(e) => setAdjustQty(e.target.value)}
+                  className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#c53f3f]"
+                />
+              </label>
+              <p className="text-[11px] leading-relaxed text-[#9aa4b4]">
+                ใช้แก้เฉพาะยอดที่บวกซ้ำ/ผิดพลาด — ไม่กระทบสต็อกจริง (Non-Stock ไม่ใช่สต็อก)
+              </p>
+              {error && (
+                <div className="rounded-[8px] bg-[#fbe9e9] px-3 py-2 text-[12px] text-[#c53f3f]">{error}</div>
+              )}
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setAdjust(null)} disabled={saving} className={buttonClass("secondary")}>
+                  ยกเลิก
+                </button>
+                <button
+                  onClick={confirmAdjust}
+                  disabled={saving}
+                  className="rounded-[8px] bg-[#c53f3f] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#a83333] disabled:opacity-60"
+                >
+                  {saving ? "กำลังบันทึก…" : "บันทึกยอดใหม่"}
                 </button>
               </div>
             </div>
