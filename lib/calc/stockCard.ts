@@ -141,13 +141,13 @@ export async function buildStockCard(
   // they're pure noise on a product-level card — drop them.
   const kept = entries.filter((e) => e.type !== "Transfer");
 
-  // Collapse movements of the same lot, same day, same type (and same stock vs
-  // Non-Stock) into a single row — e.g. several receipts of one lot on one day
-  // become one "received X" line instead of a row per receipt line.
+  // Collapse only the split lines OF THE SAME DOCUMENT for one lot on one day into
+  // a single row (summed qty). Different documents keep their own rows — the doc
+  // number is part of the key.
   const groups = new Map<string, { base: StockCardEntry; docs: Set<string> }>();
   for (const e of kept) {
     const dayKey = e.date.toISOString().slice(0, 10);
-    const key = `${dayKey}|${e.lot}|${e.type}|${e.stockType ?? ""}`;
+    const key = `${dayKey}|${e.lot}|${e.type}|${e.doc}|${e.stockType ?? ""}`;
     const g = groups.get(key);
     if (g) {
       g.base.in += e.in;
