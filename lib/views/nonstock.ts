@@ -84,6 +84,7 @@ export async function getMovableStockLots(): Promise<MovableLotRow[]> {
 }
 
 export type ConversionRow = {
+  id: string;
   docNo: string;
   productCode: string;
   name: string;
@@ -101,6 +102,7 @@ export async function getConversions(limit = 200): Promise<ConversionRow[]> {
     take: limit,
   });
   return rows.map((c) => ({
+    id: c.id,
     docNo: c.docNo,
     productCode: c.productCode,
     name: productLabel(c.product.nameEn, c.product.nameTh),

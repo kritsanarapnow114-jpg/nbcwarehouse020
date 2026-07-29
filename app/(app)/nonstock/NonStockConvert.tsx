@@ -13,6 +13,7 @@ import {
   moveToNonStockAction,
   pullNonStockDocsAction,
   setHoldingQtyAction,
+  deleteConversionAction,
 } from "@/lib/actions/nonstock";
 import type { NonStockHoldingRow, ConversionRow, MovableLotRow } from "@/lib/views/nonstock";
 
@@ -121,6 +122,27 @@ export function NonStockConvert({
     router.refresh();
   }
 
+  // "ถอย" — undo a conversion made by mistake and remove it from history.
+  const [undoing, setUndoing] = useState<string | null>(null);
+  async function undoConversion(c: ConversionRow) {
+    const dir = c.qty >= 0 ? "ออกจากสต็อกกลับเป็น Non-Stock" : "กลับเข้าสต็อก";
+    if (
+      !window.confirm(
+        `ถอยรายการ ${c.docNo}?\n${c.name} · ล็อต ${c.lotNo} · ${Math.abs(c.qty).toLocaleString()} จะถูกย้าย${dir} และลบรายการนี้ออกจากประวัติ`
+      )
+    )
+      return;
+    setUndoing(c.id);
+    const res = await deleteConversionAction({ id: c.id });
+    setUndoing(null);
+    if (res.error) {
+      showToast(res.error);
+      return;
+    }
+    showToast(`ถอยและลบรายการแล้ว · ${c.docNo}`);
+    router.refresh();
+  }
+
   return (
     <>
       <Card className="mb-4">
@@ -225,7 +247,7 @@ export function NonStockConvert({
       <Card className="mt-4">
         <CardTitle>ประวัติการแปลง (conversion history)</CardTitle>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] border-collapse text-[12.5px]">
+          <table className="w-full min-w-[860px] border-collapse text-[12.5px]">
             <thead>
               <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Doc No.</th>
@@ -235,6 +257,7 @@ export function NonStockConvert({
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Lot</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Location</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Qty เข้าสต็อก</th>
+                <th className="p-[10px_16px]"></th>
               </tr>
             </thead>
             <tbody>
@@ -252,11 +275,20 @@ export function NonStockConvert({
                   >
                     {c.qty >= 0 ? `+${c.qty.toLocaleString()} เข้าสต็อก` : `${c.qty.toLocaleString()} → Non-Stock`}
                   </td>
+                  <td className="p-[10px_16px] text-right">
+                    <button
+                      onClick={() => undoConversion(c)}
+                      disabled={undoing === c.id}
+                      className="rounded-[7px] border border-[#e6c9c9] bg-white px-2.5 py-1 text-[11.5px] font-semibold text-[#b5484f] hover:bg-[#fdf3f3] disabled:opacity-50"
+                    >
+                      {undoing === c.id ? "กำลังถอย…" : "ถอย/ลบ"}
+                    </button>
+                  </td>
                 </tr>
               ))}
               {conversions.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-6 text-center text-[#9aa4b4]">
+                  <td colSpan={8} className="p-6 text-center text-[#9aa4b4]">
                     ยังไม่มีการแปลง (no conversions yet)
                   </td>
                 </tr>
