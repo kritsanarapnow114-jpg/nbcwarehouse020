@@ -23,7 +23,7 @@ export type ConfirmIssueInput = {
 };
 
 function revalidateAll() {
-  safeRevalidate(["/issue", "/dashboard", "/products", "/aging", "/locations", "/map"]);
+  safeRevalidate(["/issue", "/dashboard", "/products", "/aging", "/locations", "/map", "/nonstock"]);
 }
 
 export async function confirmIssueAction(
