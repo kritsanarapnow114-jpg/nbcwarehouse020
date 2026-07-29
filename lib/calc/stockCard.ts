@@ -35,14 +35,14 @@ export async function buildStockCard(
   const [receiptLines, issueLines, adjustmentLines, transferLines, bomConsumptions, conversions] =
     await Promise.all([
       db.receiptLine.findMany({
-        // Non-Stock receipts aren't in stock yet — they enter via a Conversion.
-        where: { productCode, stockType: "STOCK", receipt: { reversedAt: null } },
+        // Include Non-Stock receipts too — shown with a tag; they don't move the
+        // stock balance (see the balance loop below).
+        where: { productCode, receipt: { reversedAt: null } },
         include: { receipt: true },
       }),
       db.issueLine.findMany({
-        // Non-Stock issues (no lot) don't affect stock — exclude them.
-        where: { productCode, selectedLotId: { not: null }, issue: { reversedAt: null } },
-        include: { issue: true, selectedLot: true },
+        where: { productCode, issue: { reversedAt: null } },
+        include: { issue: true, selectedLot: true, nonStockHolding: true },
       }),
       db.adjustmentLine.findMany({
         where: { lot: { productCode }, adjustment: { reversedAt: null } },
@@ -82,7 +82,7 @@ export async function buildStockCard(
       date: i.issue.docDate,
       doc: i.issue.docNo,
       type: "Issue",
-      lot: i.selectedLot?.lotNo ?? "-",
+      lot: i.selectedLot?.lotNo ?? i.nonStockHolding?.lotNo ?? "-",
       in: 0,
       out: i.qty,
       balance: 0,
@@ -141,7 +141,9 @@ export async function buildStockCard(
 
   let balance = 0;
   for (const e of entries) {
-    balance += e.in - e.out;
+    // Non-Stock movements are shown for visibility but aren't part of the stock
+    // balance — carry the running stock balance across them unchanged.
+    if (e.stockType !== "NON_STOCK") balance += e.in - e.out;
     e.balance = balance;
   }
 

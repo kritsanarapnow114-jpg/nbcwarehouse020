@@ -103,7 +103,11 @@ export function StockCardModal({
                   {r.out > 0 ? `−${r.out.toLocaleString()}` : ""}
                 </td>
                 <td className="font-num py-2 text-right font-semibold">
-                  {r.balance.toLocaleString()}
+                  {r.stockType === "NON_STOCK" ? (
+                    <span className="text-[#b0b8c4]">—</span>
+                  ) : (
+                    r.balance.toLocaleString()
+                  )}
                 </td>
               </tr>
             ))}
