@@ -121,17 +121,25 @@ export function StockCardModal({
           </tbody>
         </table>
       </div>
-      {nonStockTotal > 0 && (
-        <div className="border-t border-[#eef1f5] bg-[#faf6ec] px-5 py-2 text-[12px] text-[#8a6d1f]">
-          Non-Stock (ยังไม่เข้าสต็อก): <b className="font-num">{nonStockTotal.toLocaleString()}</b> — ไม่รวมในยอดคงเหลือด้านบน · แปลงเข้าสต็อกที่หน้า “Non-Stock”
+      <div className="border-t border-[#eef1f5] px-5 py-3">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12.5px]">
+          <span className="text-[#69748a]">
+            ยอดในสต็อก: <b className="font-num text-[#16202e]">{balance.toLocaleString()}</b>
+          </span>
+          <span className="text-[#8a6d1f]">
+            + Non-Stock: <b className="font-num">{nonStockTotal.toLocaleString()}</b>
+          </span>
+          <span className="rounded-[7px] bg-[#e2f0e8] px-2.5 py-1 text-[#177a4a]">
+            รวมทั้งหมด: <b className="font-num">{(balance + nonStockTotal).toLocaleString()}</b>
+          </span>
+          <span className="flex-1" />
+          <span className="text-[#9aa4b4]">As of {fmtDateBE(new Date())}</span>
         </div>
-      )}
-      <div className="flex items-center gap-3 border-t border-[#eef1f5] px-5 py-3 text-[12px] text-[#69748a]">
-        <span>
-          Balance: <b className="font-num text-[#16202e]">{balance.toLocaleString()}</b>
-        </span>
-        <span className="flex-1" />
-        <span>As of {fmtDateBE(new Date())} · chronological</span>
+        {nonStockTotal > 0 && (
+          <p className="mt-1.5 text-[11px] text-[#a58a4a]">
+            * Non-Stock = ของที่ยังไม่แปลงเข้าสต็อก (ไม่นับในยอดสต็อกด้านบน) — แปลงได้ที่หน้า “Non-Stock”
+          </p>
+        )}
       </div>
     </Modal>
   );
