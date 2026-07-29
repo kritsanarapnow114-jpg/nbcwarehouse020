@@ -30,10 +30,19 @@ const DEMO_LOCATION_CODES = [
  * kept but their received progress is reset to 0 (Open again). Products,
  * locations, Adjust, Count and BOM master are kept.
  */
-export async function clearTransactionsAction(confirmText: string): Promise<{ error?: string }> {
+export async function clearTransactionsAction(
+  confirmText: string
+): Promise<{ error?: string; deleted?: { receipts: number; issues: number; transfers: number } }> {
   if (confirmText !== "CLEAR") {
     return { error: 'Type "CLEAR" exactly to confirm (พิมพ์ CLEAR ให้ตรงเพื่อยืนยัน)' };
   }
+
+  // Count what's there first, so we can report exactly how many were removed.
+  const [receipts, issues, transfers] = await Promise.all([
+    db.receipt.count(),
+    db.issue.count(),
+    db.transfer.count(),
+  ]);
 
   try {
     // Core clear — these tables always exist. Kept in one transaction so it's
@@ -79,7 +88,7 @@ export async function clearTransactionsAction(confirmText: string): Promise<{ er
   ]) {
     revalidatePath(p);
   }
-  return {};
+  return { deleted: { receipts, issues, transfers } };
 }
 
 export async function resetAllDataAction(confirmText: string): Promise<{ error?: string }> {
