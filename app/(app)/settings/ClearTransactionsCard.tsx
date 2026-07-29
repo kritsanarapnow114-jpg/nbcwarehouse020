@@ -26,7 +26,7 @@ export function ClearTransactionsCard() {
     const d = res.deleted;
     showToast(
       d
-        ? `ลบแล้ว — รับ ${d.receipts} · จ่าย ${d.issues} · ย้าย ${d.transfers} ใบ · ล้างสต็อก + เริ่มเลขใหม่`
+        ? `ลบแล้ว — รับ ${d.receipts} · จ่าย ${d.issues} · ย้าย ${d.transfers} · Non-Stock ${d.nonStock} · ล้างสต็อก + เริ่มเลขใหม่`
         : "ลบเอกสาร + ล้างสต็อกแล้ว — เริ่มเลขรันใหม่"
     );
     router.push("/products");

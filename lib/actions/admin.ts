@@ -32,7 +32,10 @@ const DEMO_LOCATION_CODES = [
  */
 export async function clearTransactionsAction(
   confirmText: string
-): Promise<{ error?: string; deleted?: { receipts: number; issues: number; transfers: number } }> {
+): Promise<{
+  error?: string;
+  deleted?: { receipts: number; issues: number; transfers: number; nonStock: number };
+}> {
   if (confirmText !== "CLEAR") {
     return { error: 'Type "CLEAR" exactly to confirm (พิมพ์ CLEAR ให้ตรงเพื่อยืนยัน)' };
   }
@@ -69,6 +72,8 @@ export async function clearTransactionsAction(
 
   // Best-effort: the Non-Stock tables may not exist yet on an older DB — never
   // let a missing table roll back the core clear above.
+  let nonStock = 0;
+  try { nonStock = await db.nonStockHolding.count(); } catch {}
   try { await db.conversion.deleteMany(); } catch {}
   try { await db.nonStockHolding.deleteMany(); } catch {}
   try { await db.docSequence.deleteMany({ where: { prefix: "CV" } }); } catch {}
@@ -88,7 +93,7 @@ export async function clearTransactionsAction(
   ]) {
     revalidatePath(p);
   }
-  return { deleted: { receipts, issues, transfers } };
+  return { deleted: { receipts, issues, transfers, nonStock } };
 }
 
 export async function resetAllDataAction(confirmText: string): Promise<{ error?: string }> {
