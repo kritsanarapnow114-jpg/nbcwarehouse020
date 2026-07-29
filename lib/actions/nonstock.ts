@@ -61,74 +61,22 @@ export async function setHoldingQtyAction(input: {
 }
 
 /**
- * Undo a conversion and delete it from history — for entries made by mistake.
- * Reverses the stock/holding movement so the numbers go back to how they were,
- * then removes the record entirely (no leftover offsetting row). Fails if the
- * goods have since moved on (already issued/used), so nothing goes negative.
- *   qty > 0 = Non-Stock → Stock: take qty back out of stock, return it to the holding.
- *   qty < 0 = Stock → Non-Stock: take |qty| back out of the holding, return it to stock.
+ * Delete a conversion HISTORY record only. This does NOT change any stock lot or
+ * Non-Stock holding quantity — it just removes the row from the conversion log so
+ * the user can clean up mistaken/experimental entries. Real inventory numbers are
+ * managed separately (ปรับยอด for Non-Stock, stock adjust for lots), so a history
+ * cleanup can never corrupt on-hand quantities.
  */
 export async function deleteConversionAction(input: {
   id: string;
 }): Promise<{ error?: string }> {
   try {
     await requireWrite();
-    await db.$transaction(async (tx) => {
-      const cv = await tx.conversion.findUnique({ where: { id: input.id } });
-      if (!cv) throw new Error("ไม่พบรายการแปลง (conversion not found)");
-      const where = { productCode: cv.productCode, locationCode: cv.locationCode, lotNo: cv.lotNo };
-
-      if (cv.qty > 0) {
-        // Was Non-Stock → Stock: pull qty back out of the stock lot into the holding.
-        const lot = await tx.lot.findFirst({ where });
-        if (!lot || lot.qty < cv.qty) {
-          throw new Error(
-            `ถอยไม่ได้ — ของ ${cv.qty.toLocaleString()} ที่แปลงเข้าสต็อกถูกจ่าย/ใช้ไปแล้ว (stock already used)`
-          );
-        }
-        await tx.lot.update({ where: { id: lot.id }, data: { qty: lot.qty - cv.qty } });
-        const holding = await tx.nonStockHolding.findFirst({ where });
-        if (holding) {
-          await tx.nonStockHolding.update({ where: { id: holding.id }, data: { qty: holding.qty + cv.qty } });
-        } else {
-          await tx.nonStockHolding.create({
-            data: { ...where, qty: cv.qty, recvDate: cv.docDate, mfgDate: lot.mfgDate, expDate: lot.expDate },
-          });
-        }
-      } else if (cv.qty < 0) {
-        // Was Stock → Non-Stock: pull |qty| back out of the holding into stock.
-        const amt = -cv.qty;
-        const holding = await tx.nonStockHolding.findFirst({ where });
-        if (!holding || holding.qty < amt) {
-          throw new Error(
-            `ถอยไม่ได้ — Non-Stock ${amt.toLocaleString()} ถูกแปลง/จ่ายไปแล้ว (Non-Stock already used)`
-          );
-        }
-        await tx.nonStockHolding.update({ where: { id: holding.id }, data: { qty: holding.qty - amt } });
-        const lot = await tx.lot.findFirst({ where });
-        if (lot) {
-          await tx.lot.update({ where: { id: lot.id }, data: { qty: lot.qty + amt } });
-        } else {
-          await tx.lot.create({
-            data: {
-              ...where,
-              qty: amt,
-              status: "OK",
-              recvDate: cv.docDate,
-              mfgDate: holding.mfgDate,
-              expDate: holding.expDate,
-            },
-          });
-        }
-      }
-
-      await tx.conversion.delete({ where: { id: cv.id } });
-    });
-
-    safeRevalidate(["/nonstock", "/dashboard", "/products", "/aging", "/locations", "/map", "/reports"]);
+    await db.conversion.delete({ where: { id: input.id } });
+    safeRevalidate(["/nonstock", "/dashboard", "/products", "/reports"]);
     return {};
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "ถอยไม่สำเร็จ (failed to undo)" };
+    return { error: e instanceof Error ? e.message : "ลบไม่สำเร็จ (failed to delete)" };
   }
 }
 

@@ -122,13 +122,12 @@ export function NonStockConvert({
     router.refresh();
   }
 
-  // "ถอย" — undo a conversion made by mistake and remove it from history.
+  // "ลบ" — remove a conversion history record (does NOT change stock/Non-Stock qty).
   const [undoing, setUndoing] = useState<string | null>(null);
   async function undoConversion(c: ConversionRow) {
-    const dir = c.qty >= 0 ? "ออกจากสต็อกกลับเป็น Non-Stock" : "กลับเข้าสต็อก";
     if (
       !window.confirm(
-        `ถอยรายการ ${c.docNo}?\n${c.name} · ล็อต ${c.lotNo} · ${Math.abs(c.qty).toLocaleString()} จะถูกย้าย${dir} และลบรายการนี้ออกจากประวัติ`
+        `ลบรายการประวัติ ${c.docNo}?\n${c.name} · ล็อต ${c.lotNo}\n(ลบเฉพาะประวัติ ไม่แก้ยอดสต็อก/Non-Stock)`
       )
     )
       return;
@@ -139,7 +138,7 @@ export function NonStockConvert({
       showToast(res.error);
       return;
     }
-    showToast(`ถอยและลบรายการแล้ว · ${c.docNo}`);
+    showToast(`ลบรายการประวัติแล้ว · ${c.docNo}`);
     router.refresh();
   }
 
@@ -281,7 +280,7 @@ export function NonStockConvert({
                       disabled={undoing === c.id}
                       className="rounded-[7px] border border-[#e6c9c9] bg-white px-2.5 py-1 text-[11.5px] font-semibold text-[#b5484f] hover:bg-[#fdf3f3] disabled:opacity-50"
                     >
-                      {undoing === c.id ? "กำลังถอย…" : "ถอย/ลบ"}
+                      {undoing === c.id ? "กำลังลบ…" : "ลบ"}
                     </button>
                   </td>
                 </tr>
