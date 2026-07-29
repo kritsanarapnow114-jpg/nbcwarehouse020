@@ -137,15 +137,42 @@ export async function buildStockCard(
     });
   }
 
-  entries.sort((a, b) => a.date.getTime() - b.date.getTime());
+  // Transfers move a lot between bins without changing the product's total, so
+  // they're pure noise on a product-level card — drop them.
+  const kept = entries.filter((e) => e.type !== "Transfer");
+
+  // Collapse movements of the same lot, same day, same type (and same stock vs
+  // Non-Stock) into a single row — e.g. several receipts of one lot on one day
+  // become one "received X" line instead of a row per receipt line.
+  const groups = new Map<string, { base: StockCardEntry; docs: Set<string> }>();
+  for (const e of kept) {
+    const dayKey = e.date.toISOString().slice(0, 10);
+    const key = `${dayKey}|${e.lot}|${e.type}|${e.stockType ?? ""}`;
+    const g = groups.get(key);
+    if (g) {
+      g.base.in += e.in;
+      g.base.out += e.out;
+      g.docs.add(e.doc);
+      if (e.convertedAt && !g.base.convertedAt) g.base.convertedAt = e.convertedAt;
+    } else {
+      groups.set(key, { base: { ...e }, docs: new Set([e.doc]) });
+    }
+  }
+  const merged = [...groups.values()].map(({ base, docs }) => {
+    const list = [...docs];
+    base.doc = list.length === 1 ? list[0] : list.join(", ");
+    return base;
+  });
+
+  merged.sort((a, b) => a.date.getTime() - b.date.getTime());
 
   let balance = 0;
-  for (const e of entries) {
+  for (const e of merged) {
     // Non-Stock movements are shown for visibility but aren't part of the stock
     // balance — carry the running stock balance across them unchanged.
     if (e.stockType !== "NON_STOCK") balance += e.in - e.out;
     e.balance = balance;
   }
 
-  return entries;
+  return merged;
 }
