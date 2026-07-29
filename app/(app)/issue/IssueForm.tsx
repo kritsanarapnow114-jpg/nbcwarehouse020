@@ -278,8 +278,10 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
                       />
                     </td>
                     <td className="p-[11px_16px]">
-                      <span
-                        title="ประเภทตามล็อตที่เลือก (เลือก Non-Stock ในช่อง Lot เพื่อจ่ายของ Non-Stock)"
+                      <button
+                        type="button"
+                        onClick={() => updateLine(i, { stockType: l.stockType === "STOCK" ? "NON_STOCK" : "STOCK" })}
+                        title="กดสลับ Stock / Non-Stock (ปกติจะตั้งตามล็อตที่เลือกให้อัตโนมัติ)"
                         className={`rounded-[7px] border px-2 py-1 text-[11px] font-semibold ${
                           l.stockType === "NON_STOCK"
                             ? "border-[#d8c48f] bg-[#efe6d3] text-[#8a6d1f]"
@@ -287,7 +289,7 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
                         }`}
                       >
                         {l.stockType === "NON_STOCK" ? "Non-Stock" : "Stock"}
-                      </span>
+                      </button>
                     </td>
                     <td className="p-[11px_16px] text-center">
                       <div className="flex items-center justify-center gap-1.5">

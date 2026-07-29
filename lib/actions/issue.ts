@@ -54,10 +54,10 @@ export async function confirmIssueAction(
         // Decide Non-Stock vs Stock by what the id actually points to, not the
         // client's label — if selectedLotId is a holding, issue from the holding.
         const holding = await tx.nonStockHolding.findUnique({ where: { id: line.selectedLotId ?? "" } });
-        if (holding || line.stockType === "NON_STOCK") {
-          if (!holding || holding.qty < line.qty) {
+        if (holding) {
+          if (holding.qty < line.qty) {
             throw new Error(
-              `Non-Stock ไม่พอ — มี ${holding?.qty.toLocaleString() ?? 0}, ขอจ่าย ${line.qty.toLocaleString()} (${line.productCode})`
+              `Non-Stock ไม่พอ — มี ${holding.qty.toLocaleString()}, ขอจ่าย ${line.qty.toLocaleString()} (${line.productCode})`
             );
           }
           await tx.nonStockHolding.update({
