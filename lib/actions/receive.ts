@@ -18,6 +18,7 @@ export type ReceiveLineInput = {
   expDate: string | null;
   stockType?: "STOCK" | "NON_STOCK";
   weightKg?: number | null;
+  suNo?: number | null;
 };
 
 export type ConfirmReceiptInput = {
@@ -70,7 +71,8 @@ export async function confirmReceiptAction(
       },
     });
 
-    // SU is a global running number — assign it to each production line in order.
+    // SU numbers are keyed by the operator; fall back to a global running number
+    // for any production line left blank.
     let suNext = isProduction
       ? ((await tx.receiptLine.aggregate({ _max: { suNo: true } }))._max.suNo ?? 0) + 1
       : 0;
@@ -80,7 +82,7 @@ export async function confirmReceiptAction(
 
       const lotNo = line.lotNo || "-";
       let lotId: string | null = null;
-      const suNo = isProduction ? suNext++ : null;
+      const suNo = isProduction ? (line.suNo ?? suNext++) : null;
 
       if (line.stockType === "NON_STOCK") {
         // Non-Stock: hold outside of valued inventory until a Conversion event

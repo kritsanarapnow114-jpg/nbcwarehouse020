@@ -21,6 +21,7 @@ type Line = {
   mfg: string;
   exp: string;
   weight: string;
+  su: string;
   stockType: "STOCK" | "NON_STOCK";
 };
 
@@ -60,7 +61,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
     setLines(
       p.lines.map((l) => {
         const prod = data.products.find((x) => x.code === l.productCode);
-        return { ...l, name: prod?.name ?? l.productCode, unit: prod?.unit ?? "", weight: "", stockType: "STOCK" as const };
+        return { ...l, name: prod?.name ?? l.productCode, unit: prod?.unit ?? "", weight: "", su: "", stockType: "STOCK" as const };
       })
     );
     /* eslint-enable react-hooks/set-state-in-effect */
@@ -84,6 +85,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
             mfg: "",
             exp: "",
             weight: "",
+            su: "",
             stockType,
           }))
       );
@@ -95,10 +97,20 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
   function addLine(code: string) {
     const p = data.products.find((x) => x.code === code);
     if (!p) return;
-    setLines((ls) => [
-      ...ls,
-      { productCode: p.code, name: p.name, unit: p.unit, ordered: null, recv: "0", lot: "", loc: "", mfg: "", exp: "", weight: "", stockType },
-    ]);
+    setLines((ls) => {
+      // Production SU is keyed by hand — seed the first row from the system's next
+      // number and continue +1 from the previous row; still editable.
+      const last = ls[ls.length - 1];
+      const lastSu = last ? Number(last.su) : NaN;
+      const su =
+        mode === "PRODUCTION"
+          ? String(last && last.su && Number.isFinite(lastSu) ? lastSu + 1 : data.nextSuNo)
+          : "";
+      return [
+        ...ls,
+        { productCode: p.code, name: p.name, unit: p.unit, ordered: null, recv: "0", lot: "", loc: "", mfg: "", exp: "", weight: "", su, stockType },
+      ];
+    });
   }
 
   function updateLine(i: number, patch: Partial<Line>) {
@@ -114,7 +126,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
   function splitLine(i: number) {
     setLines((ls) => {
       const src = ls[i];
-      const clone: Line = { ...src, ordered: null, recv: "0", lot: "", mfg: "", exp: "", weight: "" };
+      const clone: Line = { ...src, ordered: null, recv: "0", lot: "", mfg: "", exp: "", weight: "", su: "" };
       const next = [...ls];
       next.splice(i + 1, 0, clone);
       return next;
@@ -175,6 +187,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
           mfgDate: l.mfg || null,
           expDate: l.exp || null,
           weightKg: l.weight ? Number(l.weight) || null : null,
+          suNo: l.su ? Number(l.su) || null : null,
           stockType: l.stockType,
         })
       ),
@@ -390,8 +403,13 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                   <td className="font-num p-[11px_16px] text-[12px] text-[#3a4658]">{l.productCode}</td>
                   <td className="p-[11px_16px] font-medium">{l.name}</td>
                   {mode === "PRODUCTION" && (
-                    <td className="font-num p-[11px_16px] text-[13px] font-semibold text-[#8a6d1f]">
-                      {data.nextSuNo + i}
+                    <td className="p-[11px_16px]">
+                      <input
+                        value={l.su}
+                        onChange={(e) => updateLine(i, { su: e.target.value })}
+                        placeholder="SU"
+                        className="font-num w-[74px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[13px] font-semibold text-[#8a6d1f]"
+                      />
                     </td>
                   )}
                   <td className="font-num p-[11px_16px] text-right text-[12.5px] text-[#69748a]">
