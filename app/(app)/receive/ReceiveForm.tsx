@@ -22,6 +22,7 @@ type Line = {
   exp: string;
   weight: string;
   su: string;
+  palletFull: boolean;
   stockType: "STOCK" | "NON_STOCK";
 };
 
@@ -36,6 +37,10 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Line[]>([]);
   const [prodLoss, setProdLoss] = useState("20");
+  // Production: one Lot / Mfg / Expiry shared by every pallet (typed once).
+  const [prodLot, setProdLot] = useState("");
+  const [prodMfg, setProdMfg] = useState("");
+  const [prodExp, setProdExp] = useState("");
   const [bomLossByLine, setBomLossByLine] = useState<Record<string, string>>({});
   // BOM material lines the operator marks as "reused" — not deducted this run.
   const [bomExclude, setBomExclude] = useState<Record<string, boolean>>({});
@@ -61,7 +66,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
     setLines(
       p.lines.map((l) => {
         const prod = data.products.find((x) => x.code === l.productCode);
-        return { ...l, name: prod?.name ?? l.productCode, unit: prod?.unit ?? "", weight: "", su: "", stockType: "STOCK" as const };
+        return { ...l, name: prod?.name ?? l.productCode, unit: prod?.unit ?? "", weight: "", su: "", palletFull: true, stockType: "STOCK" as const };
       })
     );
     /* eslint-enable react-hooks/set-state-in-effect */
@@ -86,6 +91,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
             exp: "",
             weight: "",
             su: "",
+            palletFull: true,
             stockType,
           }))
       );
@@ -108,7 +114,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
           : "";
       return [
         ...ls,
-        { productCode: p.code, name: p.name, unit: p.unit, ordered: null, recv: "0", lot: "", loc: "", mfg: "", exp: "", weight: "", su, stockType },
+        { productCode: p.code, name: p.name, unit: p.unit, ordered: null, recv: "0", lot: "", loc: "", mfg: "", exp: "", weight: "", su, palletFull: true, stockType },
       ];
     });
   }
@@ -136,8 +142,10 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
     });
   }
 
+  // In production, each pallet's weight (kg) IS its quantity — no separate qty field.
+  const prodWeightTotal = lines.reduce((s, l) => s + (Number(l.weight) || 0), 0);
   const totalQty = lines.reduce((s, l) => s + (Number(l.recv) || 0), 0);
-  const producedTotal = mode === "PRODUCTION" ? totalQty : 0;
+  const producedTotal = mode === "PRODUCTION" ? prodWeightTotal : 0;
 
   const bom = useMemo(() => {
     if (mode !== "PRODUCTION" || lines.length === 0) return null;
@@ -180,20 +188,25 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
       remark: remark || null,
       stockType,
       docDate,
-      lines: lines.map(
-        (l): ReceiveLineInput => ({
+      lines: lines.map((l): ReceiveLineInput => {
+        const isProd = mode === "PRODUCTION";
+        const weight = l.weight ? Number(l.weight) || 0 : 0;
+        return {
           productCode: l.productCode,
           orderedQty: l.ordered,
-          recvQty: Number(l.recv) || 0,
-          lotNo: l.lot,
+          // Production: the pallet weight is the received qty; PO: the typed qty.
+          recvQty: isProd ? weight : Number(l.recv) || 0,
+          // Production: one shared Lot / Mfg / Expiry for every pallet.
+          lotNo: isProd ? prodLot : l.lot,
           locationCode: l.loc,
-          mfgDate: l.mfg || null,
-          expDate: l.exp || null,
-          weightKg: l.weight ? Number(l.weight) || null : null,
+          mfgDate: isProd ? prodMfg || null : l.mfg || null,
+          expDate: isProd ? prodExp || null : l.exp || null,
+          weightKg: weight || null,
           suNo: l.su ? Number(l.su) || null : null,
+          palletFull: isProd ? l.palletFull : null,
           stockType: l.stockType,
-        })
-      ),
+        };
+      }),
       producedTotal: mode === "PRODUCTION" ? producedTotal : undefined,
       prodLoss: mode === "PRODUCTION" ? Number(prodLoss) || 0 : undefined,
       bomLoss:
@@ -224,6 +237,9 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
         setInvoiceNo("");
         setMaterialDoc("");
         setRemark("");
+        setProdLot("");
+        setProdMfg("");
+        setProdExp("");
         router.refresh();
       }
     } catch (e) {
@@ -366,6 +382,45 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
           </div>
         </div>
 
+        {mode === "PRODUCTION" && (
+          <div className="flex flex-wrap items-end gap-4 border-b border-[#eef1f5] bg-[#f8fafc] p-[12px_22px]">
+            <div className="text-[12px] font-semibold text-[#3a4658]">
+              ล็อต/วันที่ (ใช้ร่วมทุกพาเลท):
+            </div>
+            <div>
+              <div className="mb-1 text-[11.5px] text-[#69748a]">Lot (ล็อต)</div>
+              <input
+                value={prodLot}
+                onChange={(e) => setProdLot(e.target.value)}
+                list="nbLots"
+                placeholder="เลขล็อตการผลิต"
+                className="font-num w-[170px] rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
+              />
+            </div>
+            <div>
+              <div className="mb-1 text-[11.5px] text-[#69748a]">Mfg (วันผลิต)</div>
+              <input
+                type="date"
+                value={prodMfg}
+                onChange={(e) => setProdMfg(e.target.value)}
+                className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
+              />
+            </div>
+            <div>
+              <div className="mb-1 text-[11.5px] text-[#69748a]">Expiry (วันหมดอายุ)</div>
+              <input
+                type="date"
+                value={prodExp}
+                onChange={(e) => setProdExp(e.target.value)}
+                className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
+              />
+            </div>
+            <div className="text-[11.5px] text-[#9aa4b4]">
+              ดูจากเอกสารการผลิต · แต่ละแถว = 1 พาเลท (คีย์ SU + น้ำหนัก)
+            </div>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <datalist id="nbLots">
             {data.lotOptions.map((lo) => (
@@ -382,21 +437,24 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
               <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
                 <th className="p-[10px_16px] text-[11.5px] font-medium">SAP Material Master</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Material Description</th>
-                {mode === "PRODUCTION" && (
-                  <th className="p-[10px_16px] text-[11.5px] font-medium">SU</th>
+                {mode === "PRODUCTION" ? (
+                  <>
+                    <th className="p-[10px_16px] text-[11.5px] font-medium">SU</th>
+                    <th className="p-[10px_16px] text-right text-[11.5px] font-medium">น้ำหนักต่อพาเลท (กก.)</th>
+                    <th className="p-[10px_16px] text-[11.5px] font-medium">Location</th>
+                    <th className="p-[10px_16px] text-[11.5px] font-medium">พาเลท</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Ordered (สั่งตาม PO)</th>
+                    <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Received (รับจริง)</th>
+                    <th className="p-[10px_16px] text-[11.5px] font-medium">Lot</th>
+                    <th className="p-[10px_16px] text-[11.5px] font-medium">Location</th>
+                    <th className="p-[10px_16px] text-[11.5px] font-medium">Mfg</th>
+                    <th className="p-[10px_16px] text-[11.5px] font-medium">Expiry</th>
+                    <th className="p-[10px_16px] text-[11.5px] font-medium">Type</th>
+                  </>
                 )}
-                <th className="p-[10px_16px] text-right text-[11.5px] font-medium">
-                  {mode === "PO" ? "Ordered (สั่งตาม PO)" : "Produced (จำนวนผลิต)"}
-                </th>
-                <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Received (รับจริง)</th>
-                {mode === "PRODUCTION" && (
-                  <th className="p-[10px_16px] text-right text-[11.5px] font-medium">น้ำหนัก (กก.)</th>
-                )}
-                <th className="p-[10px_16px] text-[11.5px] font-medium">Lot</th>
-                <th className="p-[10px_16px] text-[11.5px] font-medium">Location</th>
-                <th className="p-[10px_16px] text-[11.5px] font-medium">Mfg</th>
-                <th className="p-[10px_16px] text-[11.5px] font-medium">Expiry</th>
-                <th className="p-[10px_16px] text-[11.5px] font-medium">Type</th>
                 <th className="w-10 p-[10px_16px]"></th>
               </tr>
             </thead>
@@ -405,83 +463,109 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                 <tr key={i} className="border-t border-[#eef1f5]">
                   <td className="font-num p-[11px_16px] text-[12px] text-[#3a4658]">{l.productCode}</td>
                   <td className="p-[11px_16px] font-medium">{l.name}</td>
-                  {mode === "PRODUCTION" && (
-                    <td className="p-[11px_16px]">
-                      <input
-                        value={l.su}
-                        onChange={(e) => updateLine(i, { su: e.target.value })}
-                        placeholder="SU"
-                        className="font-num w-[74px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[13px] font-semibold text-[#8a6d1f]"
-                      />
-                    </td>
+                  {mode === "PRODUCTION" ? (
+                    <>
+                      <td className="p-[11px_16px]">
+                        <input
+                          value={l.su}
+                          onChange={(e) => updateLine(i, { su: e.target.value })}
+                          placeholder="SU"
+                          className="font-num w-[80px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[13px] font-semibold text-[#8a6d1f]"
+                        />
+                      </td>
+                      <td className="p-[11px_16px] text-right">
+                        <input
+                          value={l.weight}
+                          onChange={(e) => updateLine(i, { weight: e.target.value })}
+                          placeholder="กก."
+                          className="font-num w-[96px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-right text-[13px]"
+                        />
+                      </td>
+                      <td className="p-[11px_16px]">
+                        <input
+                          value={l.loc}
+                          onChange={(e) => updateLine(i, { loc: e.target.value })}
+                          list="nbLocs"
+                          placeholder="พิมพ์/เลือก"
+                          className="font-num w-[100px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
+                        />
+                      </td>
+                      <td className="p-[11px_16px]">
+                        <button
+                          type="button"
+                          onClick={() => updateLine(i, { palletFull: !l.palletFull })}
+                          title="กดสลับ Full / Partial (พาเลทเต็ม/ไม่เต็ม)"
+                          className={`rounded-[7px] border px-2.5 py-1 text-[11px] font-semibold ${
+                            l.palletFull
+                              ? "border-[#a8d9bd] bg-[#e2f0e8] text-[#177a4a]"
+                              : "border-[#e0c08a] bg-[#faf0dc] text-[#9a6a12]"
+                          }`}
+                        >
+                          {l.palletFull ? "Full" : "Partial"}
+                        </button>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="font-num p-[11px_16px] text-right text-[12.5px] text-[#69748a]">
+                        {l.ordered != null ? l.ordered.toLocaleString() : "—"}
+                      </td>
+                      <td className="p-[11px_16px] text-right">
+                        <input
+                          value={l.recv}
+                          onChange={(e) => updateLine(i, { recv: e.target.value })}
+                          className="font-num w-[74px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-right text-[13px]"
+                        />
+                      </td>
+                      <td className="p-[11px_16px]">
+                        <input
+                          value={l.lot}
+                          onChange={(e) => updateLine(i, { lot: e.target.value })}
+                          list="nbLots"
+                          className="font-num w-[118px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
+                        />
+                      </td>
+                      <td className="p-[11px_16px]">
+                        <input
+                          value={l.loc}
+                          onChange={(e) => updateLine(i, { loc: e.target.value })}
+                          list="nbLocs"
+                          placeholder="พิมพ์/เลือก"
+                          className="font-num w-[100px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
+                        />
+                      </td>
+                      <td className="p-[11px_16px]">
+                        <input
+                          type="date"
+                          value={l.mfg}
+                          onChange={(e) => updateLine(i, { mfg: e.target.value })}
+                          className="font-num rounded-[7px] border border-[#d7dce4] px-2 py-1 text-[12px]"
+                        />
+                      </td>
+                      <td className="p-[11px_16px]">
+                        <input
+                          type="date"
+                          value={l.exp}
+                          onChange={(e) => updateLine(i, { exp: e.target.value })}
+                          className="font-num rounded-[7px] border border-[#d7dce4] px-2 py-1 text-[12px]"
+                        />
+                      </td>
+                      <td className="p-[11px_16px]">
+                        <button
+                          type="button"
+                          onClick={() => updateLine(i, { stockType: l.stockType === "STOCK" ? "NON_STOCK" : "STOCK" })}
+                          title="กดสลับ Stock / Non-Stock"
+                          className={`rounded-[7px] border px-2 py-1 text-[11px] font-semibold ${
+                            l.stockType === "NON_STOCK"
+                              ? "border-[#d8c48f] bg-[#efe6d3] text-[#8a6d1f]"
+                              : "border-[#a8cdea] bg-[#dcecf6] text-[#1f66a6]"
+                          }`}
+                        >
+                          {l.stockType === "NON_STOCK" ? "Non-Stock" : "Stock"}
+                        </button>
+                      </td>
+                    </>
                   )}
-                  <td className="font-num p-[11px_16px] text-right text-[12.5px] text-[#69748a]">
-                    {l.ordered != null ? l.ordered.toLocaleString() : "—"}
-                  </td>
-                  <td className="p-[11px_16px] text-right">
-                    <input
-                      value={l.recv}
-                      onChange={(e) => updateLine(i, { recv: e.target.value })}
-                      className="font-num w-[74px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-right text-[13px]"
-                    />
-                  </td>
-                  {mode === "PRODUCTION" && (
-                    <td className="p-[11px_16px] text-right">
-                      <input
-                        value={l.weight}
-                        onChange={(e) => updateLine(i, { weight: e.target.value })}
-                        placeholder="กก."
-                        className="font-num w-[80px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-right text-[13px]"
-                      />
-                    </td>
-                  )}
-                  <td className="p-[11px_16px]">
-                    <input
-                      value={l.lot}
-                      onChange={(e) => updateLine(i, { lot: e.target.value })}
-                      list="nbLots"
-                      className="font-num w-[118px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
-                    />
-                  </td>
-                  <td className="p-[11px_16px]">
-                    <input
-                      value={l.loc}
-                      onChange={(e) => updateLine(i, { loc: e.target.value })}
-                      list="nbLocs"
-                      placeholder="พิมพ์/เลือก"
-                      className="font-num w-[100px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
-                    />
-                  </td>
-                  <td className="p-[11px_16px]">
-                    <input
-                      type="date"
-                      value={l.mfg}
-                      onChange={(e) => updateLine(i, { mfg: e.target.value })}
-                      className="font-num rounded-[7px] border border-[#d7dce4] px-2 py-1 text-[12px]"
-                    />
-                  </td>
-                  <td className="p-[11px_16px]">
-                    <input
-                      type="date"
-                      value={l.exp}
-                      onChange={(e) => updateLine(i, { exp: e.target.value })}
-                      className="font-num rounded-[7px] border border-[#d7dce4] px-2 py-1 text-[12px]"
-                    />
-                  </td>
-                  <td className="p-[11px_16px]">
-                    <button
-                      type="button"
-                      onClick={() => updateLine(i, { stockType: l.stockType === "STOCK" ? "NON_STOCK" : "STOCK" })}
-                      title="กดสลับ Stock / Non-Stock"
-                      className={`rounded-[7px] border px-2 py-1 text-[11px] font-semibold ${
-                        l.stockType === "NON_STOCK"
-                          ? "border-[#d8c48f] bg-[#efe6d3] text-[#8a6d1f]"
-                          : "border-[#a8cdea] bg-[#dcecf6] text-[#1f66a6]"
-                      }`}
-                    >
-                      {l.stockType === "NON_STOCK" ? "Non-Stock" : "Stock"}
-                    </button>
-                  </td>
                   <td className="p-[11px_16px] text-center">
                     <div className="flex items-center justify-center gap-1.5">
                       <button
@@ -500,7 +584,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
               ))}
               {lines.length === 0 && (
                 <tr>
-                  <td colSpan={mode === "PRODUCTION" ? 11 : 9} className="p-6 text-center text-[#9aa4b4]">
+                  <td colSpan={mode === "PRODUCTION" ? 7 : 10} className="p-6 text-center text-[#9aa4b4]">
                     {mode === "PO" && selectedPo
                       ? "This PO has nothing outstanding."
                       : "No lines yet — add a product below."}

@@ -63,8 +63,8 @@ export function PendingVerify({ receipts }: { receipts: PendingReceipt[] }) {
                     <th className="p-[7px_14px] text-[11px] font-medium">Material</th>
                     <th className="p-[7px_14px] text-[11px] font-medium">Lot</th>
                     <th className="p-[7px_14px] text-[11px] font-medium">Location</th>
-                    <th className="p-[7px_14px] text-right text-[11px] font-medium">จำนวน</th>
                     <th className="p-[7px_14px] text-right text-[11px] font-medium">น้ำหนัก (กก.)</th>
+                    <th className="p-[7px_14px] text-[11px] font-medium">พาเลท</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -79,10 +79,20 @@ export function PendingVerify({ receipts }: { receipts: PendingReceipt[] }) {
                       <td className="font-num p-[7px_14px] text-[12px]">{l.lotNo}</td>
                       <td className="font-num p-[7px_14px] text-[12px]">{l.locationCode}</td>
                       <td className="font-num p-[7px_14px] text-right">
-                        {l.recvQty.toLocaleString()} {l.unit}
+                        {l.weightKg != null ? l.weightKg.toLocaleString() : l.recvQty.toLocaleString()}
                       </td>
-                      <td className="font-num p-[7px_14px] text-right">
-                        {l.weightKg != null ? l.weightKg.toLocaleString() : "—"}
+                      <td className="p-[7px_14px]">
+                        {l.palletFull == null ? (
+                          "—"
+                        ) : (
+                          <span
+                            className={`rounded-[5px] px-1.5 py-0.5 text-[10px] font-semibold ${
+                              l.palletFull ? "bg-[#e2f0e8] text-[#177a4a]" : "bg-[#faf0dc] text-[#9a6a12]"
+                            }`}
+                          >
+                            {l.palletFull ? "Full" : "Partial"}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}

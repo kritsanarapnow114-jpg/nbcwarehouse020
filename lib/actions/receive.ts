@@ -19,6 +19,7 @@ export type ReceiveLineInput = {
   stockType?: "STOCK" | "NON_STOCK";
   weightKg?: number | null;
   suNo?: number | null;
+  palletFull?: boolean | null;
 };
 
 export type ConfirmReceiptInput = {
@@ -158,6 +159,7 @@ export async function confirmReceiptAction(
           expDate: line.expDate ? new Date(line.expDate) : null,
           suNo,
           weightKg: line.weightKg ?? null,
+          palletFull: line.palletFull ?? null,
           lotId,
           stockType: line.stockType ?? "STOCK",
         },
