@@ -4,9 +4,11 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Money } from "@/components/ui/Currency";
 import { buttonClass } from "@/components/ui/Button";
 import { getAgeBuckets, getExpiryBuckets, getAgingRows } from "@/lib/views/aging";
+import { getShelfLifeRows } from "@/lib/views/shelfLife";
 import { todayBangkok } from "@/lib/calc/date";
 import { ThresholdInput } from "./ThresholdInput";
 import { AgingTable } from "./AgingTable";
+import { ShelfLifeChart } from "./ShelfLifeChart";
 
 const FILTERS = [
   { value: "all", label: "All" },
@@ -25,10 +27,11 @@ export default async function AgingPage({
   const filterValue: "all" | "near" | "expired" =
     filter === "near" || filter === "expired" ? filter : "all";
 
-  const [ageBuckets, expiryBuckets, rows] = await Promise.all([
+  const [ageBuckets, expiryBuckets, rows, shelfLifeRows] = await Promise.all([
     getAgeBuckets(today),
     getExpiryBuckets(today),
     getAgingRows({ filter: filterValue, thresholdDays, today }),
+    getShelfLifeRows(today),
   ]);
 
   const maxAgeValue = Math.max(1, ...ageBuckets.map((b) => b.value));
@@ -99,6 +102,10 @@ export default async function AgingPage({
             </div>
           ))}
         </div>
+      </Card>
+
+      <Card className="mb-4">
+        <ShelfLifeChart rows={shelfLifeRows} />
       </Card>
 
       <div className="mb-4 flex flex-wrap items-center gap-2.5">
