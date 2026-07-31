@@ -126,7 +126,10 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
   function splitLine(i: number) {
     setLines((ls) => {
       const src = ls[i];
-      const clone: Line = { ...src, ordered: null, recv: "0", lot: "", mfg: "", exp: "", weight: "", su: "" };
+      // Continue the SU number +1 from the row being split (still editable).
+      const srcSu = Number(src.su);
+      const su = src.su && Number.isFinite(srcSu) ? String(srcSu + 1) : "";
+      const clone: Line = { ...src, ordered: null, recv: "0", lot: "", mfg: "", exp: "", weight: "", su };
       const next = [...ls];
       next.splice(i + 1, 0, clone);
       return next;
