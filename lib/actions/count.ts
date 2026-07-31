@@ -72,19 +72,26 @@ export async function getCountLotsAction(
     }))
     .filter((r) => r.sysQty > 0);
 
-  // The same lot in the same bin can exist as several stock records (received
-  // more than once). It's one physical pile, so show it as one line to count —
-  // merge by product + lot + bin, summing the system qty. The count only records
-  // numbers (it never moves stock), so recording against one representative lot
-  // id is safe; the merged sysQty keeps the accuracy figures correct.
-  const merged = new Map<string, (typeof rows)[number]>();
+  // Sum by LOT (across every bin it sits in) so one lot is one line to count —
+  // not split per bin. The Location column then lists all the bins that lot is in.
+  // The count only records numbers (it never moves stock), so recording against
+  // one representative lot id with the merged sysQty keeps the accuracy figures
+  // correct.
+  const merged = new Map<string, (typeof rows)[number] & { bins: Set<string> }>();
   for (const r of rows) {
-    const key = `${r.productCode}||${r.lotNo}||${r.locationCode}`;
+    const key = `${r.productCode}||${r.lotNo}`;
     const ex = merged.get(key);
-    if (ex) ex.sysQty = Math.round((ex.sysQty + r.sysQty) * 1000) / 1000;
-    else merged.set(key, { ...r });
+    if (ex) {
+      ex.sysQty = Math.round((ex.sysQty + r.sysQty) * 1000) / 1000;
+      ex.bins.add(r.locationCode);
+    } else {
+      merged.set(key, { ...r, bins: new Set([r.locationCode]) });
+    }
   }
-  return [...merged.values()];
+  return [...merged.values()].map(({ bins, ...r }) => ({
+    ...r,
+    locationCode: [...bins].sort().join(", "),
+  }));
 }
 
 export async function confirmCountAction(input: ConfirmCountInput) {
