@@ -323,7 +323,12 @@ export function CountForm({
               className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
             />
           </div>
-          <button onClick={handlePull} disabled={pulling} className={buttonClass("accent")}>
+          <button
+            onClick={handlePull}
+            disabled={pulling || (pullMode !== "zone" && !pullValue)}
+            title={pullMode !== "zone" && !pullValue ? "เลือก Location / Lot ก่อน" : ""}
+            className={buttonClass("accent")}
+          >
             {pulling ? "Pulling…" : asOfDate ? "⤓ ดึงยอดวันนั้น" : "⤓ Pull lots"}
           </button>
           <div className="flex-1" />
