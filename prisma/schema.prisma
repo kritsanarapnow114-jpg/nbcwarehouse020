@@ -247,6 +247,7 @@ model ReceiptLine {
   suNo         Int? // global running "SU" number for production-received units
   weightKg     Float? // recorded weight (kg), separate from qty
   palletFull   Boolean? // production: whether the pallet/box is Full (true) or Partial (false)
+  packTime     String? // production: finish time of this pallet, 24h "HH:MM"
   lotId        String?
   lot          Lot?      @relation(fields: [lotId], references: [id])
   stockType        StockType @default(STOCK) // Stock vs Non-Stock, per line

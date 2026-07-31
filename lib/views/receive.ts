@@ -151,6 +151,7 @@ export async function getPendingReceipts() {
       recvQty: l.recvQty,
       weightKg: l.weightKg,
       palletFull: l.palletFull,
+      packTime: l.packTime,
       unit: l.product.unit,
     })),
   }));

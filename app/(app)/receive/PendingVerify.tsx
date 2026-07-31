@@ -66,6 +66,7 @@ export function PendingVerify({ receipts }: { receipts: PendingReceipt[] }) {
                     <th className="p-[7px_14px] text-right text-[11px] font-medium">รับเข้า (กก.)</th>
                     <th className="p-[7px_14px] text-right text-[11px] font-medium">ชั่งจริง (กก.)</th>
                     <th className="p-[7px_14px] text-[11px] font-medium">พาเลท</th>
+                    <th className="p-[7px_14px] text-[11px] font-medium">เวลา</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -97,6 +98,9 @@ export function PendingVerify({ receipts }: { receipts: PendingReceipt[] }) {
                             {l.palletFull ? "Full" : "Partial"}
                           </span>
                         )}
+                      </td>
+                      <td className="font-num p-[7px_14px] text-[12px] text-[#69748a]">
+                        {l.packTime || "—"}
                       </td>
                     </tr>
                   ))}

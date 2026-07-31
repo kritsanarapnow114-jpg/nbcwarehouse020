@@ -22,6 +22,7 @@ type Line = {
   exp: string;
   weight: string;
   su: string;
+  time: string;
   palletFull: boolean;
   stockType: "STOCK" | "NON_STOCK";
 };
@@ -73,7 +74,7 @@ export function ReceiveForm({
     setLines(
       p.lines.map((l) => {
         const prod = data.products.find((x) => x.code === l.productCode);
-        return { ...l, name: prod?.name ?? l.productCode, unit: prod?.unit ?? "", weight: "", su: "", palletFull: true, stockType: "STOCK" as const };
+        return { ...l, name: prod?.name ?? l.productCode, unit: prod?.unit ?? "", weight: "", su: "", time: "", palletFull: true, stockType: "STOCK" as const };
       })
     );
     /* eslint-enable react-hooks/set-state-in-effect */
@@ -98,6 +99,7 @@ export function ReceiveForm({
             exp: "",
             weight: "",
             su: "",
+            time: "",
             palletFull: true,
             stockType,
           }))
@@ -123,7 +125,7 @@ export function ReceiveForm({
       const su = mode === "PRODUCTION" ? String(nextSu(ls)) : "";
       return [
         ...ls,
-        { productCode: p.code, name: p.name, unit: p.unit, ordered: null, recv: "0", lot: "", loc: "", mfg: "", exp: "", weight: "", su, palletFull: true, stockType },
+        { productCode: p.code, name: p.name, unit: p.unit, ordered: null, recv: "0", lot: "", loc: "", mfg: "", exp: "", weight: "", su, time: "", palletFull: true, stockType },
       ];
     });
   }
@@ -147,6 +149,17 @@ export function ReceiveForm({
       const next = [...ls];
       next.splice(i + 1, 0, clone);
       return next;
+    });
+  }
+
+  // Add one more pallet of the same product (production) — the single top "+"
+  // button. Clones the last row with the next SU, blank weight/time.
+  function addPalletRow() {
+    setLines((ls) => {
+      if (ls.length === 0) return ls;
+      const src = ls[ls.length - 1];
+      const clone: Line = { ...src, recv: "0", weight: "", time: "", su: String(nextSu(ls)), palletFull: true };
+      return [...ls, clone];
     });
   }
 
@@ -217,6 +230,7 @@ export function ReceiveForm({
           weightKg: weight || null,
           suNo: l.su ? Number(l.su) || null : null,
           palletFull: isProd ? l.palletFull : null,
+          packTime: isProd ? l.time || null : null,
           stockType: l.stockType,
         };
       }),
@@ -431,8 +445,18 @@ export function ReceiveForm({
               />
             </div>
             <div className="text-[11.5px] text-[#9aa4b4]">
-              ดูจากเอกสารการผลิต · แต่ละแถว = 1 พาเลท (คีย์ SU + น้ำหนัก)
+              ดูจากเอกสารการผลิต · แต่ละแถว = 1 พาเลท (คีย์ SU + น้ำหนัก + เวลา)
             </div>
+            <div className="flex-1" />
+            <button
+              type="button"
+              onClick={addPalletRow}
+              disabled={lines.length === 0}
+              title={lines.length === 0 ? "เพิ่มสินค้าด้วย + Add line ด้านล่างก่อน" : "เพิ่มอีก 1 พาเลท (SU ถัดไป)"}
+              className="rounded-[9px] bg-[#1f9d63] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#178150] disabled:bg-[#a9d3bd]"
+            >
+              ＋ เพิ่มพาเลท
+            </button>
           </div>
         )}
 
@@ -459,6 +483,7 @@ export function ReceiveForm({
                     <th className="p-[10px_16px] text-right text-[11.5px] font-medium">รับเข้า (กก.)</th>
                     <th className="p-[10px_16px] text-[11.5px] font-medium">Location</th>
                     <th className="p-[10px_16px] text-[11.5px] font-medium">พาเลท</th>
+                    <th className="p-[10px_16px] text-[11.5px] font-medium">เวลา (24 ชม.)</th>
                   </>
                 ) : (
                   <>
@@ -526,6 +551,17 @@ export function ReceiveForm({
                           {l.palletFull ? "Full" : "Partial"}
                         </button>
                       </td>
+                      <td className="p-[11px_16px]">
+                        <input
+                          value={l.time}
+                          onChange={(e) => updateLine(i, { time: e.target.value })}
+                          inputMode="numeric"
+                          maxLength={5}
+                          placeholder="00:00"
+                          title="เวลาที่พาเลทเสร็จ แบบ 24 ชม. (00:00–23:59)"
+                          className="font-num w-[72px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-center text-[13px]"
+                        />
+                      </td>
                     </>
                   ) : (
                     <>
@@ -590,13 +626,15 @@ export function ReceiveForm({
                   )}
                   <td className="p-[11px_16px] text-center">
                     <div className="flex items-center justify-center gap-1.5">
-                      <button
-                        onClick={() => splitLine(i)}
-                        title={mode === "PRODUCTION" ? "เพิ่มพาเลท (SU ถัดไป)" : "รับอีก Lot ของสินค้าตัวนี้ (split into another lot)"}
-                        className="rounded-[6px] border border-[#cfe6d9] bg-[#e8f2fb] px-2 py-0.5 text-[13px] font-semibold text-[#0c7f93] hover:bg-[#d6eef4]"
-                      >
-                        {mode === "PRODUCTION" ? "＋" : "＋Lot"}
-                      </button>
+                      {mode !== "PRODUCTION" && (
+                        <button
+                          onClick={() => splitLine(i)}
+                          title="รับอีก Lot ของสินค้าตัวนี้ (split into another lot)"
+                          className="rounded-[6px] border border-[#cfe6d9] bg-[#e8f2fb] px-2 py-0.5 text-[13px] font-semibold text-[#0c7f93] hover:bg-[#d6eef4]"
+                        >
+                          ＋Lot
+                        </button>
+                      )}
                       <button onClick={() => removeLine(i)} className="text-[16px] text-[#c2606f]">
                         ×
                       </button>
@@ -606,7 +644,7 @@ export function ReceiveForm({
               ))}
               {lines.length === 0 && (
                 <tr>
-                  <td colSpan={mode === "PRODUCTION" ? 8 : 10} className="p-6 text-center text-[#9aa4b4]">
+                  <td colSpan={mode === "PRODUCTION" ? 9 : 10} className="p-6 text-center text-[#9aa4b4]">
                     {mode === "PO" && selectedPo
                       ? "This PO has nothing outstanding."
                       : "No lines yet — add a product below."}
