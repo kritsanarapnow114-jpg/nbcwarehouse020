@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { beYear } from "./date";
 
-export type DocPrefix = "PO" | "RC" | "ISS" | "ADJ" | "TRF" | "CNT" | "LOT" | "CV";
+export type DocPrefix = "PO" | "RC" | "ISS" | "ADJ" | "TRF" | "CNT" | "LOT" | "CV" | "SF";
 
 /** Real, transaction-safe {PREFIX}-{BEyear}-{seq:04d} auto-numbering per doc type. */
 export async function nextDocNumber(

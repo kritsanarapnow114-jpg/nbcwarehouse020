@@ -96,8 +96,45 @@ model Product {
   usedInBomLines BomLine[]           @relation("MaterialProduct")
   nonStockHoldings NonStockHolding[]
   conversions      Conversion[]
+  siloStagings     SiloStaging[]
 
   @@index([category])
+}
+
+/** Material issued from stock and staged, waiting to be loaded into a machine /
+ *  SILO. Stock is already decremented (via the linked Issue); this only tracks the
+ *  downstream loading. Loaders fill in each load (time/machine/SILO) afterwards. */
+model SiloStaging {
+  id          String   @id @default(cuid())
+  docNo       String   @unique
+  productCode String
+  product     Product  @relation(fields: [productCode], references: [code])
+  lotNo       String
+  sourceLoc   String
+  qtyStaged   Float
+  qtyLoaded   Float    @default(0)
+  stagedBy    String?
+  stagedAt    DateTime
+  createdAt   DateTime @default(now())
+
+  loads SiloLoad[]
+
+  @@index([productCode])
+  @@index([stagedAt])
+}
+
+model SiloLoad {
+  id        String      @id @default(cuid())
+  stagingId String
+  staging   SiloStaging @relation(fields: [stagingId], references: [id], onDelete: Cascade)
+  qty       Float
+  machine   String?
+  silo      String?
+  operator  String?
+  loadedAt  DateTime
+  createdAt DateTime    @default(now())
+
+  @@index([stagingId])
 }
 
 /** Goods received as Non-Stock: they occupy the warehouse but are NOT part of
