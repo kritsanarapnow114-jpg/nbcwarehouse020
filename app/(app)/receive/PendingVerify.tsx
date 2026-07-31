@@ -63,7 +63,8 @@ export function PendingVerify({ receipts }: { receipts: PendingReceipt[] }) {
                     <th className="p-[7px_14px] text-[11px] font-medium">Material</th>
                     <th className="p-[7px_14px] text-[11px] font-medium">Lot</th>
                     <th className="p-[7px_14px] text-[11px] font-medium">Location</th>
-                    <th className="p-[7px_14px] text-right text-[11px] font-medium">น้ำหนัก (กก.)</th>
+                    <th className="p-[7px_14px] text-right text-[11px] font-medium">รับเข้า (กก.)</th>
+                    <th className="p-[7px_14px] text-right text-[11px] font-medium">ชั่งจริง (กก.)</th>
                     <th className="p-[7px_14px] text-[11px] font-medium">พาเลท</th>
                   </tr>
                 </thead>
@@ -78,8 +79,11 @@ export function PendingVerify({ receipts }: { receipts: PendingReceipt[] }) {
                       </td>
                       <td className="font-num p-[7px_14px] text-[12px]">{l.lotNo}</td>
                       <td className="font-num p-[7px_14px] text-[12px]">{l.locationCode}</td>
-                      <td className="font-num p-[7px_14px] text-right">
-                        {l.weightKg != null ? l.weightKg.toLocaleString() : l.recvQty.toLocaleString()}
+                      <td className="font-num p-[7px_14px] text-right font-semibold text-[#177a4a]">
+                        {l.recvQty.toLocaleString()}
+                      </td>
+                      <td className="font-num p-[7px_14px] text-right text-[#69748a]">
+                        {l.weightKg != null ? l.weightKg.toLocaleString() : "—"}
                       </td>
                       <td className="p-[7px_14px]">
                         {l.palletFull == null ? (

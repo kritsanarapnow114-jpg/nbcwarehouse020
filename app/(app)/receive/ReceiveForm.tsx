@@ -143,10 +143,15 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
     });
   }
 
-  // In production, each pallet's weight (kg) IS its quantity — no separate qty field.
-  const prodWeightTotal = lines.reduce((s, l) => s + (Number(l.weight) || 0), 0);
+  // A Full pallet is received as the product's standard pallet size (whatever the
+  // scale reads); a Partial pallet is received as its actual weighed weight.
+  const palletSizeOf = (code: string) => data.products.find((p) => p.code === code)?.pallet ?? 0;
+  const effectiveQty = (l: Line) => {
+    const w = Number(l.weight) || 0;
+    return l.palletFull ? palletSizeOf(l.productCode) || w : w;
+  };
   const totalQty = lines.reduce((s, l) => s + (Number(l.recv) || 0), 0);
-  const producedTotal = mode === "PRODUCTION" ? prodWeightTotal : 0;
+  const producedTotal = mode === "PRODUCTION" ? lines.reduce((s, l) => s + effectiveQty(l), 0) : 0;
 
   const bom = useMemo(() => {
     if (mode !== "PRODUCTION" || lines.length === 0) return null;
@@ -195,8 +200,8 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
         return {
           productCode: l.productCode,
           orderedQty: l.ordered,
-          // Production: the pallet weight is the received qty; PO: the typed qty.
-          recvQty: isProd ? weight : Number(l.recv) || 0,
+          // Production: Full pallet → standard pallet size; Partial → actual weight.
+          recvQty: isProd ? effectiveQty(l) : Number(l.recv) || 0,
           // Production: one shared Lot / Mfg / Expiry for every pallet.
           lotNo: isProd ? prodLot : l.lot,
           locationCode: l.loc,
@@ -441,7 +446,8 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                 {mode === "PRODUCTION" ? (
                   <>
                     <th className="p-[10px_16px] text-[11.5px] font-medium">SU</th>
-                    <th className="p-[10px_16px] text-right text-[11.5px] font-medium">น้ำหนักต่อพาเลท (กก.)</th>
+                    <th className="p-[10px_16px] text-right text-[11.5px] font-medium">น้ำหนักชั่งจริง (กก.)</th>
+                    <th className="p-[10px_16px] text-right text-[11.5px] font-medium">รับเข้า (กก.)</th>
                     <th className="p-[10px_16px] text-[11.5px] font-medium">Location</th>
                     <th className="p-[10px_16px] text-[11.5px] font-medium">พาเลท</th>
                   </>
@@ -481,6 +487,12 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                           placeholder="กก."
                           className="font-num w-[96px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-right text-[13px]"
                         />
+                      </td>
+                      <td className="font-num p-[11px_16px] text-right text-[13px] font-semibold text-[#177a4a]">
+                        {effectiveQty(l).toLocaleString()}
+                        {l.palletFull && palletSizeOf(l.productCode) > 0 && (
+                          <span className="ml-1 text-[10px] font-normal text-[#9aa4b4]">(พาเลทเต็ม)</span>
+                        )}
                       </td>
                       <td className="p-[11px_16px]">
                         <input
@@ -585,7 +597,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
               ))}
               {lines.length === 0 && (
                 <tr>
-                  <td colSpan={mode === "PRODUCTION" ? 7 : 10} className="p-6 text-center text-[#9aa4b4]">
+                  <td colSpan={mode === "PRODUCTION" ? 8 : 10} className="p-6 text-center text-[#9aa4b4]">
                     {mode === "PO" && selectedPo
                       ? "This PO has nothing outstanding."
                       : "No lines yet — add a product below."}

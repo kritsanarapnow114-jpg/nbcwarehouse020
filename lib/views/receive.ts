@@ -56,6 +56,7 @@ export async function getReceiveFormData() {
       name: productLabel(p.nameEn, p.nameTh),
       unit: p.unit,
       price: p.price,
+      pallet: p.pallet, // standard pallet size — a Full pallet is received as this
     })),
     pos: pos.map((po) => ({
       id: po.id,
