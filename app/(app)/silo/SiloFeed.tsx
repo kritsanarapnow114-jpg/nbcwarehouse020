@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { buttonClass } from "@/components/ui/Button";
@@ -27,6 +27,25 @@ function fmtDateTime(iso: string) {
 function hm(iso: string) {
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+/** Format a duration in ms as m:ss (or h:mm:ss past an hour). */
+function fmtDur(ms: number) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const ss = String(sec).padStart(2, "0");
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
+}
+
+/** Live stopwatch that ticks every second while a bag is loading. */
+function LiveTimer({ from }: { from: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <span className="font-num">⏱ {fmtDur(now - new Date(from).getTime())}</span>;
 }
 
 type StageProduct = SiloFormData["products"][number];
@@ -195,7 +214,13 @@ export function SiloFeed({
           ✓ ถุง {b.bagNo}
           {b.isPartial && <span className="text-[#b5790f]">(partial)</span>}
           <span className="font-num">· {b.size.toLocaleString()}</span>
-          {b.loadedAt && <span className="font-num text-[#5b6473]">· {hm(b.loadedAt)}</span>}
+          {b.startedAt && b.loadedAt ? (
+            <span className="font-num text-[#5b6473]">
+              · {hm(b.startedAt)}→{hm(b.loadedAt)} · ⏱ {fmtDur(new Date(b.loadedAt).getTime() - new Date(b.startedAt).getTime())}
+            </span>
+          ) : (
+            b.loadedAt && <span className="font-num text-[#5b6473]">· {hm(b.loadedAt)}</span>
+          )}
           {b.loadId && <SiloInput loadId={b.loadId} initial={b.silo} />}
           {b.loadId && (
             <button
@@ -217,7 +242,11 @@ export function SiloFeed({
           className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#f0d6a0] bg-[#fdf6e7] px-2 py-1 text-[11px] font-semibold text-[#b5790f]"
         >
           <span className="animate-pulse">● กำลังโหลด ถุง {b.bagNo}</span>
-          {b.startedAt && <span className="font-num text-[#8a6d1f]">เริ่ม {hm(b.startedAt)}</span>}
+          {b.startedAt && (
+            <span className="font-num text-[#8a6d1f]">
+              เริ่ม {hm(b.startedAt)} · <LiveTimer from={b.startedAt} />
+            </span>
+          )}
           <button
             onClick={() => finishBag(b)}
             disabled={busy === b.loadId}
@@ -462,10 +491,12 @@ export function SiloFeed({
       <Card className="mt-4">
         <CardTitle>ประวัติการโหลดเข้าเครื่อง / SILO (load history)</CardTitle>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1000px] border-collapse text-[12.5px]">
+          <table className="w-full min-w-[1120px] border-collapse text-[12.5px]">
             <thead>
               <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
+                <th className="p-[10px_16px] text-[11.5px] font-medium">เวลาเริ่ม</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">เวลาเสร็จ</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">ใช้เวลา</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Doc No.</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">SAP</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Material Description</th>
@@ -480,7 +511,13 @@ export function SiloFeed({
             <tbody>
               {history.map((h) => (
                 <tr key={h.id} className="border-t border-[#eef1f5]">
+                  <td className="font-num p-[10px_16px] text-[#69748a]">{h.startedAt ? fmtDateTime(h.startedAt) : "—"}</td>
                   <td className="font-num p-[10px_16px] text-[#69748a]">{h.loadedAt ? fmtDateTime(h.loadedAt) : "—"}</td>
+                  <td className="font-num p-[10px_16px] text-[#5b6473]">
+                    {h.startedAt && h.loadedAt
+                      ? fmtDur(new Date(h.loadedAt).getTime() - new Date(h.startedAt).getTime())
+                      : "—"}
+                  </td>
                   <td className="font-num p-[10px_16px] font-semibold text-[#2f86cf]">{h.stagingDoc}</td>
                   <td className="font-num p-[10px_16px] text-[12px]">{h.productCode}</td>
                   <td className="p-[10px_16px]">{h.name}</td>
@@ -496,7 +533,7 @@ export function SiloFeed({
               ))}
               {history.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="p-6 text-center text-[#9aa4b4]">
+                  <td colSpan={12} className="p-6 text-center text-[#9aa4b4]">
                     ยังไม่มีประวัติการโหลด (no loads yet)
                   </td>
                 </tr>
