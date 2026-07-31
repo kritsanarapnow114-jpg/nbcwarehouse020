@@ -11,6 +11,8 @@ import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { stageForSiloAction, loadSiloAction, deleteStagingAction } from "@/lib/actions/silo";
 import type { SiloFormData, StagingRow, SiloBag, LoadHistoryRow } from "@/lib/views/silo";
 
+const MACHINES = ["Super Sack Unloading", "Box Unloading", "EBS Unloading"];
+
 function nowHM() {
   const d = new Date();
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -406,12 +408,18 @@ export function SiloFeed({
               <div className="flex gap-3">
                 <label className="flex flex-1 flex-col gap-1">
                   <span className="text-[11.5px] font-medium text-[#69748a]">เครื่อง (machine)</span>
-                  <input
+                  <select
                     value={machine}
                     onChange={(e) => setMachine(e.target.value)}
                     className="rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#1f9d63]"
-                    placeholder="เช่น M1"
-                  />
+                  >
+                    <option value="">— เลือกเครื่อง —</option>
+                    {MACHINES.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label className="flex flex-1 flex-col gap-1">
                   <span className="text-[11.5px] font-medium text-[#69748a]">SILO</span>
