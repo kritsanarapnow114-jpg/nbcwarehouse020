@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS, NAV_GROUPS } from "./nav";
@@ -18,6 +19,27 @@ export function Sidebar({
   onClose?: () => void;
 }) {
   const pathname = usePathname();
+
+  // Which group holds the current page — it always stays open.
+  const activeGroupKey = NAV_GROUPS.find((g) =>
+    g.items.some((k) => {
+      const it = NAV_ITEMS.find((n) => n.key === k);
+      return it && pathname.startsWith(it.href);
+    })
+  )?.key;
+
+  // Collapsible group headings (dropdowns). Start with only the active group open.
+  const [collapsed, setCollapsed] = useState<Set<string>>(
+    () => new Set(NAV_GROUPS.map((g) => g.key).filter((k) => k !== activeGroupKey))
+  );
+  function toggleGroup(key: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   return (
     <>
@@ -55,12 +77,20 @@ export function Sidebar({
         </div>
 
         <nav className="flex flex-1 flex-col gap-0.5 overflow-auto p-3">
-          {NAV_GROUPS.map((group) => (
+          {NAV_GROUPS.map((group) => {
+            const open = !collapsed.has(group.key) || group.key === activeGroupKey;
+            return (
             <div key={group.key} className="mb-1.5">
-              <div className="px-2 pb-1 pt-2 text-[10px] font-bold uppercase tracking-wider text-white/55">
-                {group.en} <span className="font-medium normal-case tracking-normal text-white/40">· {group.th}</span>
-              </div>
-              <div className="flex flex-col gap-0.5">
+              <button
+                onClick={() => toggleGroup(group.key)}
+                className="flex w-full items-center gap-1 px-2 pb-1 pt-2 text-left text-[10px] font-bold uppercase tracking-wider text-white/55 hover:text-white/80"
+              >
+                <span className={`text-[8px] transition-transform ${open ? "rotate-90" : ""}`}>▶</span>
+                <span className="flex-1">
+                  {group.en} <span className="font-medium normal-case tracking-normal text-white/40">· {group.th}</span>
+                </span>
+              </button>
+              <div className={`flex-col gap-0.5 ${open ? "flex" : "hidden"}`}>
                 {group.items.map((key) => {
                   const item = NAV_ITEMS.find((n) => n.key === key);
                   if (!item) return null;
@@ -98,7 +128,8 @@ export function Sidebar({
                 })}
               </div>
             </div>
-          ))}
+            );
+          })}
         </nav>
 
         <Link

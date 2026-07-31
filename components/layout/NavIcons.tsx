@@ -59,6 +59,13 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M4 16v2.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V16" />
     </>
   ),
+  pack: (
+    <>
+      <path d="M3 8l9-4 9 4-9 4-9-4Z" />
+      <path d="M3 8v8l9 4 9-4V8" />
+      <path d="M12 12v8" />
+    </>
+  ),
   po: (
     <>
       <circle cx="9" cy="20" r="1.4" />

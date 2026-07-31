@@ -26,9 +26,15 @@ type Line = {
   stockType: "STOCK" | "NON_STOCK";
 };
 
-export function ReceiveForm({ data }: { data: ReceiveFormData }) {
+export function ReceiveForm({
+  data,
+  lockMode,
+}: {
+  data: ReceiveFormData;
+  lockMode?: "PO" | "PRODUCTION";
+}) {
   const router = useRouter();
-  const [mode, setMode] = useState<"PO" | "PRODUCTION">("PO");
+  const [mode, setMode] = useState<"PO" | "PRODUCTION">(lockMode ?? "PO");
   const [poId, setPoId] = useState<string>("");
   const [invoiceNo, setInvoiceNo] = useState("");
   const [materialDoc, setMaterialDoc] = useState("");
@@ -60,7 +66,8 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
       lines: Omit<Line, "name" | "unit">[];
     }>("receipt");
     if (!p) return;
-    setMode(p.mode);
+    if (lockMode && p.mode !== lockMode) return;
+    setMode(lockMode ?? p.mode);
     setPoId(p.poId ?? "");
     setInvoiceNo(p.invoiceNo ?? "");
     setLines(
@@ -70,7 +77,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
       })
     );
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [data.products]);
+  }, [data.products, lockMode]);
 
   function selectPo(id: string) {
     setPoId(id);
@@ -235,7 +242,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
           kind: "in",
           message:
             mode === "PRODUCTION"
-              ? `ส่งแล้ว ${res.docNo} — รอตรวจสอบที่หน้า Received ก่อนเข้าสต็อก`
+              ? `ส่งแล้ว ${res.docNo} — รอตรวจสอบก่อนเข้าสต็อก (ดูรายการด้านล่าง)`
               : `Receipt ${res.docNo} confirmed — inventory updated.`,
         });
         setLines([]);
@@ -261,27 +268,29 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
 
   return (
     <>
-      <div className="mb-4 flex w-fit gap-2 rounded-[11px] bg-[#e5e9ef] p-1">
-        <button
-          onClick={() => {
-            setMode("PO");
-            setLines([]);
-          }}
-          className={`rounded-[9px] px-4 py-2 text-[13px] font-medium ${mode === "PO" ? "bg-white shadow-sm" : "text-[#3a4658]"}`}
-        >
-          By PO (ตาม PO)
-        </button>
-        <button
-          onClick={() => {
-            setMode("PRODUCTION");
-            setLines([]);
-            setPoId("");
-          }}
-          className={`rounded-[9px] px-4 py-2 text-[13px] font-medium ${mode === "PRODUCTION" ? "bg-white shadow-sm" : "text-[#3a4658]"}`}
-        >
-          From Production (จากฝ่ายผลิต)
-        </button>
-      </div>
+      {!lockMode && (
+        <div className="mb-4 flex w-fit gap-2 rounded-[11px] bg-[#e5e9ef] p-1">
+          <button
+            onClick={() => {
+              setMode("PO");
+              setLines([]);
+            }}
+            className={`rounded-[9px] px-4 py-2 text-[13px] font-medium ${mode === "PO" ? "bg-white shadow-sm" : "text-[#3a4658]"}`}
+          >
+            By PO (ตาม PO)
+          </button>
+          <button
+            onClick={() => {
+              setMode("PRODUCTION");
+              setLines([]);
+              setPoId("");
+            }}
+            className={`rounded-[9px] px-4 py-2 text-[13px] font-medium ${mode === "PRODUCTION" ? "bg-white shadow-sm" : "text-[#3a4658]"}`}
+          >
+            From Production (จากฝ่ายผลิต)
+          </button>
+        </div>
+      )}
 
       <div className="overflow-hidden rounded-[14px] border border-[#e7ebf1] bg-white shadow-[0_1px_2px_rgba(20,30,48,.04),0_6px_18px_rgba(20,30,48,.035)]">
         <div className="flex flex-wrap items-center gap-4 border-b border-[#eef1f5] p-[18px_22px]">
