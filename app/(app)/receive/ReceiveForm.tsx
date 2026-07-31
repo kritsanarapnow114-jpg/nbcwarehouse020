@@ -100,18 +100,20 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
     }
   }
 
+  // Next SU = one past the highest SU already on the sheet, else the system's next.
+  function nextSu(ls: Line[]): number {
+    const nums = ls.map((x) => Number(x.su)).filter((n) => Number.isFinite(n) && n > 0);
+    return nums.length ? Math.max(...nums) + 1 : data.nextSuNo;
+  }
+
   function addLine(code: string) {
     const p = data.products.find((x) => x.code === code);
     if (!p) return;
     setLines((ls) => {
-      // Production SU is keyed by hand — seed the first row from the system's next
-      // number and continue +1 from the previous row; still editable.
-      const last = ls[ls.length - 1];
-      const lastSu = last ? Number(last.su) : NaN;
-      const su =
-        mode === "PRODUCTION"
-          ? String(last && last.su && Number.isFinite(lastSu) ? lastSu + 1 : data.nextSuNo)
-          : "";
+      // Production SU continues from the highest SU already on the sheet (+1), no
+      // matter which row it's added from; seed from the system's next number when
+      // the sheet is empty. Still editable.
+      const su = mode === "PRODUCTION" ? String(nextSu(ls)) : "";
       return [
         ...ls,
         { productCode: p.code, name: p.name, unit: p.unit, ordered: null, recv: "0", lot: "", loc: "", mfg: "", exp: "", weight: "", su, palletFull: true, stockType },
@@ -132,9 +134,8 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
   function splitLine(i: number) {
     setLines((ls) => {
       const src = ls[i];
-      // Continue the SU number +1 from the row being split (still editable).
-      const srcSu = Number(src.su);
-      const su = src.su && Number.isFinite(srcSu) ? String(srcSu + 1) : "";
+      // SU continues from the highest on the sheet (+1), whichever row you split from.
+      const su = mode === "PRODUCTION" ? String(nextSu(ls)) : "";
       const clone: Line = { ...src, ordered: null, recv: "0", lot: "", mfg: "", exp: "", weight: "", su };
       const next = [...ls];
       next.splice(i + 1, 0, clone);
@@ -570,10 +571,10 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                     <div className="flex items-center justify-center gap-1.5">
                       <button
                         onClick={() => splitLine(i)}
-                        title="รับอีก Lot ของสินค้าตัวนี้ (split into another lot)"
-                        className="rounded-[6px] border border-[#cfe6d9] bg-[#e8f2fb] px-1.5 py-0.5 text-[11px] font-semibold text-[#0c7f93] hover:bg-[#d6eef4]"
+                        title={mode === "PRODUCTION" ? "เพิ่มพาเลท (SU ถัดไป)" : "รับอีก Lot ของสินค้าตัวนี้ (split into another lot)"}
+                        className="rounded-[6px] border border-[#cfe6d9] bg-[#e8f2fb] px-2 py-0.5 text-[13px] font-semibold text-[#0c7f93] hover:bg-[#d6eef4]"
                       >
-                        ＋Lot
+                        {mode === "PRODUCTION" ? "＋" : "＋Lot"}
                       </button>
                       <button onClick={() => removeLine(i)} className="text-[16px] text-[#c2606f]">
                         ×
