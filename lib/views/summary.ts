@@ -51,7 +51,7 @@ export async function getExecutiveSummary(range: Range) {
     code: a.code,
     name: a.nameEn,
     lotNo: a.lotNo,
-    location: a.locationCode,
+    location: a.bins.map((b) => b.locationCode).join(", "),
     onHand: a.onHand,
     unit: a.unit,
     ageDays: a.ageDays,

@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       r.code,
       r.nameEn,
       r.lotNo,
-      r.locationCode,
+      r.bins.map((b) => `${b.locationCode}:${b.onHand.toLocaleString()}`).join(", "),
       r.onHand,
       r.value,
       fmtDateBE(new Date(r.recvDate)),

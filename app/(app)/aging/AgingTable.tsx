@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Money } from "@/components/ui/Currency";
 import { buttonClass } from "@/components/ui/Button";
 import { fmtDateBE } from "@/lib/calc/date";
 import { Tone } from "@/components/ui/tone";
 import { AgingRow } from "@/lib/views/aging";
-import { ExtendShelfLifeModal } from "./ExtendShelfLifeModal";
+import { ExtendShelfLifeModal, ExtendTarget } from "./ExtendShelfLifeModal";
 
 const EXP_TONE: Record<AgingRow["expKind"], Tone> = {
   ok: "ok",
@@ -17,7 +17,17 @@ const EXP_TONE: Record<AgingRow["expKind"], Tone> = {
 };
 
 export function AgingTable({ rows }: { rows: AgingRow[] }) {
-  const [selected, setSelected] = useState<AgingRow | null>(null);
+  const [selected, setSelected] = useState<ExtendTarget | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  function toggle(key: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   return (
     <>
@@ -28,7 +38,7 @@ export function AgingTable({ rows }: { rows: AgingRow[] }) {
               <Th>SAP Material Master</Th>
               <Th>Material Description</Th>
               <Th>Lot</Th>
-              <Th>Location (ที่เก็บ)</Th>
+              <Th>ที่เก็บ (bins)</Th>
               <Th align="right">On Hand (คงเหลือ)</Th>
               <Th align="right">Value (มูลค่า)</Th>
               <Th>Received (รับเข้า)</Th>
@@ -49,53 +59,99 @@ export function AgingTable({ rows }: { rows: AgingRow[] }) {
                     : r.expKind === "none"
                       ? "#9aa4b4"
                       : "#1f66a6";
+              const isOpen = expanded.has(r.lotKey);
               return (
-                <tr
-                  key={r.lotId}
-                  className="border-t border-[#eef1f5] hover:bg-[#f7f9fb]"
-                >
-                  <Td className="font-num text-[12px] text-[#3a4658]">{r.code}</Td>
-                  <Td className="font-medium">{r.nameEn}</Td>
-                  <Td className="font-num text-[12px] text-[#69748a]">{r.lotNo}</Td>
-                  <Td className="font-num text-[12px] text-[#69748a]">{r.locationCode}</Td>
-                  <Td align="right" className="font-num">
-                    {r.onHand.toLocaleString()} {r.unit}
-                  </Td>
-                  <Td align="right" className="font-num font-semibold">
-                    <Money value={r.value} />
-                  </Td>
-                  <Td className="font-num text-[12px] text-[#69748a]">
-                    {fmtDateBE(new Date(r.recvDate))}
-                  </Td>
-                  <Td align="right" className="font-num">
-                    {r.ageDays}
-                  </Td>
-                  <Td className="font-num text-[12px] text-[#69748a]">
-                    {r.mfgDate ? fmtDateBE(new Date(r.mfgDate)) : "—"}
-                  </Td>
-                  <Td>
-                    <Badge tone={EXP_TONE[r.expKind]}>
-                      {r.expKind === "none" ? "— none —" : r.expLabel}
-                    </Badge>
-                  </Td>
-                  <Td align="right">
-                    <div className="font-num font-semibold" style={{ color: daysLeftColor }}>
-                      {r.daysLeft === null ? "—" : `${r.daysLeft}d`}
-                    </div>
-                    <div className="font-num text-[10.5px] text-[#9aa4b4]">
+                <Fragment key={r.lotKey}>
+                  <tr className="border-t border-[#eef1f5] hover:bg-[#f7f9fb]">
+                    <Td className="font-num text-[12px] text-[#3a4658]">{r.code}</Td>
+                    <Td className="font-medium">{r.nameEn}</Td>
+                    <Td className="font-num text-[12px] text-[#69748a]">{r.lotNo}</Td>
+                    <Td>
+                      <button
+                        onClick={() => toggle(r.lotKey)}
+                        className="flex items-center gap-1 rounded-[7px] border border-[#dce2ea] bg-white px-2 py-1 text-[11.5px] font-medium text-[#5b6473] hover:border-[#2f86cf] hover:text-[#2f86cf]"
+                      >
+                        <span className="font-num text-[9px]">{isOpen ? "▼" : "▶"}</span>
+                        {r.bins.length === 1
+                          ? r.bins[0].locationCode
+                          : `${r.bins.length} ที่เก็บ`}
+                      </button>
+                    </Td>
+                    <Td align="right" className="font-num">
+                      {r.onHand.toLocaleString()} {r.unit}
+                    </Td>
+                    <Td align="right" className="font-num font-semibold">
                       <Money value={r.value} />
-                      {(r.expKind === "near" || r.expKind === "expired") && " at risk"}
-                    </div>
-                  </Td>
-                  <Td align="center">
-                    <button
-                      onClick={() => setSelected(r)}
-                      className={buttonClass("secondary", "text-[11.5px]")}
-                    >
-                      ต่ออายุ (extend)
-                    </button>
-                  </Td>
-                </tr>
+                    </Td>
+                    <Td className="font-num text-[12px] text-[#69748a]">
+                      {fmtDateBE(new Date(r.recvDate))}
+                    </Td>
+                    <Td align="right" className="font-num">
+                      {r.ageDays}
+                    </Td>
+                    <Td className="font-num text-[12px] text-[#69748a]">
+                      {r.mfgDate ? fmtDateBE(new Date(r.mfgDate)) : "—"}
+                    </Td>
+                    <Td>
+                      <Badge tone={EXP_TONE[r.expKind]}>
+                        {r.expKind === "none" ? "— none —" : r.expLabel}
+                      </Badge>
+                    </Td>
+                    <Td align="right">
+                      <div className="font-num font-semibold" style={{ color: daysLeftColor }}>
+                        {r.daysLeft === null ? "—" : `${r.daysLeft}d`}
+                      </div>
+                      <div className="font-num text-[10.5px] text-[#9aa4b4]">
+                        <Money value={r.value} />
+                        {(r.expKind === "near" || r.expKind === "expired") && " at risk"}
+                      </div>
+                    </Td>
+                    <Td align="center">
+                      <button
+                        onClick={() =>
+                          setSelected({
+                            lotIds: r.lotIds,
+                            code: r.code,
+                            nameEn: r.nameEn,
+                            lotNo: r.lotNo,
+                            mfgDate: r.mfgDate,
+                            expDate: r.expDate,
+                          })
+                        }
+                        className={buttonClass("secondary", "text-[11.5px]")}
+                      >
+                        ต่ออายุ (extend)
+                      </button>
+                    </Td>
+                  </tr>
+                  {isOpen && (
+                    <tr className="border-t border-[#eef1f5] bg-[#fafbfc]">
+                      <td colSpan={12} className="p-[6px_9px_10px_30px]">
+                        <div className="flex flex-col gap-1.5">
+                          {r.bins.map((b) => (
+                            <div
+                              key={b.lotId}
+                              className="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[12px] text-[#5b6473]"
+                            >
+                              <span className="font-num inline-block min-w-[70px] font-semibold text-[#3a4658]">
+                                📍 {b.locationCode}
+                              </span>
+                              <span className="font-num">
+                                {b.onHand.toLocaleString()} {r.unit}
+                              </span>
+                              <span className="font-num text-[#69748a]">
+                                <Money value={b.value} />
+                              </span>
+                              <span className="font-num text-[11px] text-[#9aa4b4]">
+                                รับเข้า {fmtDateBE(new Date(b.recvDate))}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               );
             })}
             {rows.length === 0 && (
@@ -110,8 +166,8 @@ export function AgingTable({ rows }: { rows: AgingRow[] }) {
       </div>
 
       <ExtendShelfLifeModal
-        key={selected?.lotId ?? "none"}
-        row={selected}
+        key={selected?.lotIds.join(",") ?? "none"}
+        target={selected}
         onClose={() => setSelected(null)}
       />
     </>

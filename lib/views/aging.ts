@@ -22,12 +22,19 @@ export async function getExpiryBuckets(today: Date = todayBangkok()) {
   return getValueByExpiry(today);
 }
 
-export type AgingRow = {
+export type AgingBin = {
   lotId: string;
+  locationCode: string;
+  onHand: number;
+  value: number;
+  recvDate: string;
+};
+
+export type AgingRow = {
+  lotKey: string;
   code: string;
   nameEn: string;
   lotNo: string;
-  locationCode: string;
   onHand: number;
   unit: string;
   value: number;
@@ -38,6 +45,10 @@ export type AgingRow = {
   expKind: ExpKind;
   expLabel: string;
   daysLeft: number | null;
+  /** Every bin this lot sits in — shown only when the row is expanded. */
+  bins: AgingBin[];
+  /** All the underlying lot-record ids (one per bin), for extending shelf-life. */
+  lotIds: string[];
 };
 
 export async function getAgingRows(opts: {
@@ -52,24 +63,52 @@ export async function getAgingRows(opts: {
     orderBy: { recvDate: "asc" },
   });
 
-  const rows: AgingRow[] = lots.map((l) => {
-    const info = expiryInfo(l.expDate, today, opts.thresholdDays);
+  // Group by lot (product + lot number) — the same lot spread over several bins
+  // collapses into one row; the per-bin breakdown lives in `bins`.
+  const groups = new Map<string, typeof lots>();
+  for (const l of lots) {
+    const key = `${l.productCode}||${l.lotNo}`;
+    const g = groups.get(key);
+    if (g) g.push(l);
+    else groups.set(key, [l]);
+  }
+
+  const rows: AgingRow[] = [...groups.entries()].map(([key, g]) => {
+    const first = g[0];
+    const onHand = g.reduce((s, l) => s + l.qty, 0);
+    const value = g.reduce((s, l) => s + l.qty * l.product.price, 0);
+    // Oldest received drives the age; soonest expiry drives the risk badge.
+    const oldest = g.reduce((a, b) => (a.recvDate <= b.recvDate ? a : b));
+    const withExp = g.filter((l) => l.expDate);
+    const soonest = withExp.length
+      ? withExp.reduce((a, b) => (a.expDate! <= b.expDate! ? a : b))
+      : null;
+    const expDate = soonest?.expDate ?? null;
+    const mfgDate = soonest?.mfgDate ?? g.find((l) => l.mfgDate)?.mfgDate ?? null;
+    const info = expiryInfo(expDate, today, opts.thresholdDays);
     return {
-      lotId: l.id,
-      code: l.productCode,
-      nameEn: l.product.nameEn,
-      lotNo: l.lotNo,
-      locationCode: l.locationCode,
-      onHand: l.qty,
-      unit: l.product.unit,
-      value: l.qty * l.product.price,
-      recvDate: l.recvDate.toISOString(),
-      ageDays: daysBetween(today, l.recvDate),
-      mfgDate: l.mfgDate ? l.mfgDate.toISOString() : null,
-      expDate: l.expDate ? l.expDate.toISOString() : null,
+      lotKey: key,
+      code: first.productCode,
+      nameEn: first.product.nameEn,
+      lotNo: first.lotNo,
+      onHand,
+      unit: first.product.unit,
+      value,
+      recvDate: oldest.recvDate.toISOString(),
+      ageDays: daysBetween(today, oldest.recvDate),
+      mfgDate: mfgDate ? mfgDate.toISOString() : null,
+      expDate: expDate ? expDate.toISOString() : null,
       expKind: info.kind,
       expLabel: info.label,
       daysLeft: info.daysLeft,
+      bins: g.map((l) => ({
+        lotId: l.id,
+        locationCode: l.locationCode,
+        onHand: l.qty,
+        value: l.qty * l.product.price,
+        recvDate: l.recvDate.toISOString(),
+      })),
+      lotIds: g.map((l) => l.id),
     };
   });
 
