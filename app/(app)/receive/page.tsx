@@ -1,11 +1,13 @@
-import { getReceiveFormData, getRecentReceipts } from "@/lib/views/receive";
+import { getReceiveFormData, getRecentReceipts, getPendingReceipts } from "@/lib/views/receive";
 import { ReceiveForm } from "./ReceiveForm";
+import { PendingVerify } from "./PendingVerify";
 import { DocHistory, DocHistoryRow } from "@/components/ui/DocHistory";
 
 export default async function ReceivePage() {
-  const [data, receipts] = await Promise.all([
+  const [data, receipts, pending] = await Promise.all([
     getReceiveFormData(),
     getRecentReceipts(),
+    getPendingReceipts(),
   ]);
 
   const rows: DocHistoryRow[] = receipts.map((r) => ({
@@ -34,6 +36,7 @@ export default async function ReceivePage() {
   return (
     <div className="max-w-[1240px] p-[22px_26px]">
       <ReceiveForm data={data} />
+      <PendingVerify receipts={pending} />
       <DocHistory title="Recent Receipts (ประวัติการรับสินค้า)" rows={rows} accentColor="#1f66a6" reverseKind="receipt" />
     </div>
   );

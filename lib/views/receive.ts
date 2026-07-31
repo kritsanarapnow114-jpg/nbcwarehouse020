@@ -6,7 +6,7 @@ import { getAppSetting } from "@/lib/views/settings";
 import { BOM_SOURCE_KEY, parseList } from "@/lib/settingsKeys";
 
 export async function getReceiveFormData() {
-  const [products, pos, locations, lots, bomsRaw, docNo] = await Promise.all([
+  const [products, pos, locations, lots, bomsRaw, docNo, suAgg] = await Promise.all([
     db.product.findMany({
       where: { deletedAt: null },
       orderBy: { code: "asc" },
@@ -20,7 +20,9 @@ export async function getReceiveFormData() {
     db.lot.findMany({ select: { lotNo: true }, distinct: ["lotNo"] }),
     db.bom.findMany({ include: { lines: { include: { materialProduct: true } } } }),
     peekNextDocNumber("RC"),
+    db.receiptLine.aggregate({ _max: { suNo: true } }),
   ]);
+  const nextSuNo = (suAgg._max.suNo ?? 0) + 1;
 
   // FIFO-ordered eligible lots for each BOM material, so the production screen
   // can preview which lots will be deducted.
@@ -48,6 +50,7 @@ export async function getReceiveFormData() {
 
   return {
     docNo,
+    nextSuNo,
     products: products.map((p) => ({
       code: p.code,
       name: productLabel(p.nameEn, p.nameTh),
@@ -108,6 +111,7 @@ export async function getRecentReceipts(limit = 400) {
     stockType: r.stockType,
     docDate: r.docDate.toISOString(),
     reversedAt: r.reversedAt ? r.reversedAt.toISOString() : null,
+    pending: r.mode === "PRODUCTION" && !r.verifiedAt,
     lineCount: r.lines.length,
     totalQty: r.lines.reduce((s, l) => s + l.recvQty, 0),
     lines: r.lines.map((l) => ({
@@ -122,3 +126,32 @@ export async function getRecentReceipts(limit = 400) {
 }
 
 export type ReceiptHistoryRow = Awaited<ReturnType<typeof getRecentReceipts>>[number];
+
+/** Production receipts awaiting warehouse verification (finished goods not in stock yet). */
+export async function getPendingReceipts() {
+  const receipts = await db.receipt.findMany({
+    where: { mode: "PRODUCTION", verifiedAt: null, reversedAt: null },
+    include: { lines: { include: { product: true } } },
+    orderBy: { docDate: "desc" },
+  });
+  return receipts.map((r) => ({
+    id: r.id,
+    docNo: r.docNo,
+    docDate: r.docDate.toISOString(),
+    remark: r.remark ?? "",
+    totalQty: r.lines.reduce((s, l) => s + l.recvQty, 0),
+    totalWeight: r.lines.reduce((s, l) => s + (l.weightKg ?? 0), 0),
+    lines: r.lines.map((l) => ({
+      suNo: l.suNo,
+      code: l.productCode,
+      name: productLabel(l.product.nameEn, l.product.nameTh),
+      lotNo: l.lotNo,
+      locationCode: l.locationCode,
+      recvQty: l.recvQty,
+      weightKg: l.weightKg,
+      unit: l.product.unit,
+    })),
+  }));
+}
+
+export type PendingReceipt = Awaited<ReturnType<typeof getPendingReceipts>>[number];

@@ -221,6 +221,7 @@ model Receipt {
   producedTotal Float? // mode = PRODUCTION
   prodLoss      Float? // mode = PRODUCTION, finished-goods loss qty
   reversedAt    DateTime? // set when the document is reversed/voided
+  verifiedAt    DateTime? // PRODUCTION receipts wait here until the warehouse verifies; then FG enters stock. PO receipts are verified on create.
   createdAt     DateTime       @default(now())
 
   lines               ReceiptLine[]
@@ -243,6 +244,8 @@ model ReceiptLine {
   locationCode String
   mfgDate      DateTime?
   expDate      DateTime?
+  suNo         Int? // global running "SU" number for production-received units
+  weightKg     Float? // recorded weight (kg), separate from qty
   lotId        String?
   lot          Lot?      @relation(fields: [lotId], references: [id])
   stockType        StockType @default(STOCK) // Stock vs Non-Stock, per line

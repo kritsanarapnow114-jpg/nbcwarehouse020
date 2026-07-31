@@ -17,6 +17,7 @@ export type ReceiveLineInput = {
   mfgDate: string | null;
   expDate: string | null;
   stockType?: "STOCK" | "NON_STOCK";
+  weightKg?: number | null;
 };
 
 export type ConfirmReceiptInput = {
@@ -50,6 +51,9 @@ export async function confirmReceiptAction(
     const docNo = await nextDocNumber("RC", docDate);
 
     await db.$transaction(async (tx) => {
+    // Production receipts wait for warehouse verification before finished goods
+    // enter stock; PO/normal receipts are verified as soon as they're created.
+    const isProduction = input.mode === "PRODUCTION";
     const receipt = await tx.receipt.create({
       data: {
         docNo,
@@ -60,16 +64,23 @@ export async function confirmReceiptAction(
         remark: input.remark?.trim() || null,
         stockType: input.stockType ?? "STOCK",
         docDate,
+        verifiedAt: isProduction ? null : docDate,
         producedTotal: input.mode === "PRODUCTION" ? input.producedTotal ?? 0 : null,
         prodLoss: input.mode === "PRODUCTION" ? input.prodLoss ?? 0 : null,
       },
     });
+
+    // SU is a global running number — assign it to each production line in order.
+    let suNext = isProduction
+      ? ((await tx.receiptLine.aggregate({ _max: { suNo: true } }))._max.suNo ?? 0) + 1
+      : 0;
 
     for (const line of input.lines) {
       if (line.recvQty <= 0) continue;
 
       const lotNo = line.lotNo || "-";
       let lotId: string | null = null;
+      const suNo = isProduction ? suNext++ : null;
 
       if (line.stockType === "NON_STOCK") {
         // Non-Stock: hold outside of valued inventory until a Conversion event
@@ -100,6 +111,9 @@ export async function confirmReceiptAction(
             },
           });
         }
+      } else if (isProduction) {
+        // Finished goods from production wait for verification — don't create the
+        // stock lot yet (lotId stays null). It's created on verifyReceiptAction.
       } else {
         let lot = await tx.lot.findFirst({
           where: { productCode: line.productCode, locationCode: line.locationCode, lotNo },
@@ -140,6 +154,8 @@ export async function confirmReceiptAction(
           locationCode: line.locationCode,
           mfgDate: line.mfgDate ? new Date(line.mfgDate) : null,
           expDate: line.expDate ? new Date(line.expDate) : null,
+          suNo,
+          weightKg: line.weightKg ?? null,
           lotId,
           stockType: line.stockType ?? "STOCK",
         },
@@ -250,5 +266,66 @@ export async function confirmReceiptAction(
     return { docNo };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Failed to confirm receipt." };
+  }
+}
+
+/**
+ * Warehouse verifies a pending production receipt: the finished-goods lines now
+ * enter stock (their lots are created) and the receipt is marked verified.
+ */
+export async function verifyReceiptAction(
+  receiptId: string
+): Promise<{ docNo?: string; error?: string }> {
+  try {
+    await requireWrite();
+    const docNo = await db.$transaction(async (tx) => {
+      const receipt = await tx.receipt.findUnique({
+        where: { id: receiptId },
+        include: { lines: true },
+      });
+      if (!receipt) throw new Error("ไม่พบเอกสาร (receipt not found)");
+      if (receipt.reversedAt) throw new Error("เอกสารถูกถอยไปแล้ว (already reversed)");
+      if (receipt.verifiedAt) throw new Error("ตรวจสอบไปแล้ว (already verified)");
+
+      for (const line of receipt.lines) {
+        if (line.stockType === "NON_STOCK" || line.lotId || line.recvQty <= 0) continue;
+        const lotNo = line.lotNo || "-";
+        let lot = await tx.lot.findFirst({
+          where: { productCode: line.productCode, locationCode: line.locationCode, lotNo },
+        });
+        if (lot) {
+          lot = await tx.lot.update({
+            where: { id: lot.id },
+            data: {
+              qty: lot.qty + line.recvQty,
+              mfgDate: line.mfgDate ?? lot.mfgDate,
+              expDate: line.expDate ?? lot.expDate,
+            },
+          });
+        } else {
+          lot = await tx.lot.create({
+            data: {
+              productCode: line.productCode,
+              locationCode: line.locationCode,
+              lotNo,
+              qty: line.recvQty,
+              status: "OK",
+              recvDate: receipt.docDate,
+              mfgDate: line.mfgDate,
+              expDate: line.expDate,
+            },
+          });
+        }
+        await tx.receiptLine.update({ where: { id: line.id }, data: { lotId: lot.id } });
+      }
+
+      await tx.receipt.update({ where: { id: receipt.id }, data: { verifiedAt: new Date() } });
+      return receipt.docNo;
+    });
+
+    revalidateAll();
+    return { docNo };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "ตรวจสอบไม่สำเร็จ (failed to verify)" };
   }
 }

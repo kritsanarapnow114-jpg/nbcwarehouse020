@@ -36,8 +36,9 @@ export async function buildStockCard(
     await Promise.all([
       db.receiptLine.findMany({
         // Include Non-Stock receipts too — shown with a tag; they don't move the
-        // stock balance (see the balance loop below).
-        where: { productCode, receipt: { reversedAt: null } },
+        // stock balance (see the balance loop below). Pending production receipts
+        // (not yet verified) aren't in stock yet, so they're excluded.
+        where: { productCode, receipt: { reversedAt: null, verifiedAt: { not: null } } },
         include: { receipt: true },
       }),
       db.issueLine.findMany({

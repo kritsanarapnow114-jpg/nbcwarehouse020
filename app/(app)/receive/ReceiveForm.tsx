@@ -20,6 +20,7 @@ type Line = {
   loc: string;
   mfg: string;
   exp: string;
+  weight: string;
   stockType: "STOCK" | "NON_STOCK";
 };
 
@@ -59,7 +60,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
     setLines(
       p.lines.map((l) => {
         const prod = data.products.find((x) => x.code === l.productCode);
-        return { ...l, name: prod?.name ?? l.productCode, unit: prod?.unit ?? "", stockType: "STOCK" as const };
+        return { ...l, name: prod?.name ?? l.productCode, unit: prod?.unit ?? "", weight: "", stockType: "STOCK" as const };
       })
     );
     /* eslint-enable react-hooks/set-state-in-effect */
@@ -82,6 +83,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
             loc: "",
             mfg: "",
             exp: "",
+            weight: "",
             stockType,
           }))
       );
@@ -95,7 +97,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
     if (!p) return;
     setLines((ls) => [
       ...ls,
-      { productCode: p.code, name: p.name, unit: p.unit, ordered: null, recv: "0", lot: "", loc: "", mfg: "", exp: "", stockType },
+      { productCode: p.code, name: p.name, unit: p.unit, ordered: null, recv: "0", lot: "", loc: "", mfg: "", exp: "", weight: "", stockType },
     ]);
   }
 
@@ -112,7 +114,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
   function splitLine(i: number) {
     setLines((ls) => {
       const src = ls[i];
-      const clone: Line = { ...src, ordered: null, recv: "0", lot: "", mfg: "", exp: "" };
+      const clone: Line = { ...src, ordered: null, recv: "0", lot: "", mfg: "", exp: "", weight: "" };
       const next = [...ls];
       next.splice(i + 1, 0, clone);
       return next;
@@ -172,6 +174,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
           locationCode: l.loc,
           mfgDate: l.mfg || null,
           expDate: l.exp || null,
+          weightKg: l.weight ? Number(l.weight) || null : null,
           stockType: l.stockType,
         })
       ),
@@ -193,7 +196,13 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
       if (res.error) {
         setError(res.error);
       } else {
-        setPopup({ kind: "in", message: `Receipt ${res.docNo} confirmed — inventory updated.` });
+        setPopup({
+          kind: "in",
+          message:
+            mode === "PRODUCTION"
+              ? `ส่งแล้ว ${res.docNo} — รอตรวจสอบที่หน้า Received ก่อนเข้าสต็อก`
+              : `Receipt ${res.docNo} confirmed — inventory updated.`,
+        });
         setLines([]);
         setPoId("");
         setInvoiceNo("");
@@ -357,10 +366,16 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
               <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
                 <th className="p-[10px_16px] text-[11.5px] font-medium">SAP Material Master</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Material Description</th>
+                {mode === "PRODUCTION" && (
+                  <th className="p-[10px_16px] text-[11.5px] font-medium">SU</th>
+                )}
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">
                   {mode === "PO" ? "Ordered (สั่งตาม PO)" : "Produced (จำนวนผลิต)"}
                 </th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Received (รับจริง)</th>
+                {mode === "PRODUCTION" && (
+                  <th className="p-[10px_16px] text-right text-[11.5px] font-medium">น้ำหนัก (กก.)</th>
+                )}
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Lot</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Location</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Mfg</th>
@@ -374,6 +389,11 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                 <tr key={i} className="border-t border-[#eef1f5]">
                   <td className="font-num p-[11px_16px] text-[12px] text-[#3a4658]">{l.productCode}</td>
                   <td className="p-[11px_16px] font-medium">{l.name}</td>
+                  {mode === "PRODUCTION" && (
+                    <td className="font-num p-[11px_16px] text-[13px] font-semibold text-[#8a6d1f]">
+                      {data.nextSuNo + i}
+                    </td>
+                  )}
                   <td className="font-num p-[11px_16px] text-right text-[12.5px] text-[#69748a]">
                     {l.ordered != null ? l.ordered.toLocaleString() : "—"}
                   </td>
@@ -384,6 +404,16 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
                       className="font-num w-[74px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-right text-[13px]"
                     />
                   </td>
+                  {mode === "PRODUCTION" && (
+                    <td className="p-[11px_16px] text-right">
+                      <input
+                        value={l.weight}
+                        onChange={(e) => updateLine(i, { weight: e.target.value })}
+                        placeholder="กก."
+                        className="font-num w-[80px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-right text-[13px]"
+                      />
+                    </td>
+                  )}
                   <td className="p-[11px_16px]">
                     <input
                       value={l.lot}
@@ -449,7 +479,7 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
               ))}
               {lines.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="p-6 text-center text-[#9aa4b4]">
+                  <td colSpan={mode === "PRODUCTION" ? 11 : 9} className="p-6 text-center text-[#9aa4b4]">
                     {mode === "PO" && selectedPo
                       ? "This PO has nothing outstanding."
                       : "No lines yet — add a product below."}
