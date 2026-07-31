@@ -26,7 +26,12 @@ export default async function PackOrderPage() {
         code: l.code,
         name: l.name,
         qtyText: `${l.recvQty.toLocaleString()} ${l.unit}`,
-        extra: `Lot ${l.lotNo} · ${l.locationCode}`,
+        extra:
+          l.suNo != null
+            ? `SU ${l.suNo} · ชั่ง ${l.weightKg != null ? l.weightKg.toLocaleString() : "—"} กก.` +
+              `${l.palletFull != null ? ` · ${l.palletFull ? "Full" : "Partial"}` : ""}` +
+              `${l.packTime ? ` · ${l.packTime} น.` : ""} · Lot ${l.lotNo} · ${l.locationCode}`
+            : `Lot ${l.lotNo} · ${l.locationCode}`,
       })),
     }));
 

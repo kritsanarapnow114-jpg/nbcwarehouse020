@@ -121,6 +121,10 @@ export async function getRecentReceipts(limit = 400) {
       lotNo: l.lotNo,
       locationCode: l.locationCode,
       recvQty: l.recvQty,
+      suNo: l.suNo,
+      weightKg: l.weightKg,
+      palletFull: l.palletFull,
+      packTime: l.packTime,
       unit: l.product.unit,
     })),
   }));
