@@ -46,8 +46,8 @@ export function CountForm({
   const zoneLabelOf = (code: string) => ZONE_OPTS.find((z) => z.code === code)?.label ?? code;
   const [pullMode, setPullMode] = useState<PullMode>("zone");
   const [pullZone, setPullZone] = useState("ALL");
-  const [pullLocation, setPullLocation] = useState("");
-  const [pullLot, setPullLot] = useState("");
+  const [pullLocation, setPullLocation] = useState("ALL");
+  const [pullLot, setPullLot] = useState("ALL");
   const [asOfDate, setAsOfDate] = useState(""); // empty = today's live stock
 
   // Distinct lot numbers available (for the "by Lot" picker).
@@ -58,8 +58,12 @@ export function CountForm({
     pullMode === "zone"
       ? zoneLabelOf(pullZone)
       : pullMode === "location"
-        ? `Location ${pullLocation || "—"}`
-        : `Lot ${pullLot || "—"}`;
+        ? pullLocation === "ALL"
+          ? "ทุก Location"
+          : `Location ${pullLocation}`
+        : pullLot === "ALL"
+          ? "ทุก Lot"
+          : `Lot ${pullLot}`;
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Row[]>([]);
   const [offLines, setOffLines] = useState<OffRow[]>([]);
@@ -291,7 +295,7 @@ export function CountForm({
                 onChange={(e) => setPullLocation(e.target.value)}
                 className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
               >
-                <option value="">— เลือก Location —</option>
+                <option value="ALL">ทุก Location (All)</option>
                 {locations.map((c) => (
                   <option key={c} value={c}>
                     {c}
@@ -304,7 +308,7 @@ export function CountForm({
                 onChange={(e) => setPullLot(e.target.value)}
                 className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
               >
-                <option value="">— เลือก Lot —</option>
+                <option value="ALL">ทุก Lot (All lots)</option>
                 {lotNos.map((n) => (
                   <option key={n} value={n}>
                     {n}
@@ -323,12 +327,7 @@ export function CountForm({
               className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
             />
           </div>
-          <button
-            onClick={handlePull}
-            disabled={pulling || (pullMode !== "zone" && !pullValue)}
-            title={pullMode !== "zone" && !pullValue ? "เลือก Location / Lot ก่อน" : ""}
-            className={buttonClass("accent")}
-          >
+          <button onClick={handlePull} disabled={pulling} className={buttonClass("accent")}>
             {pulling ? "Pulling…" : asOfDate ? "⤓ ดึงยอดวันนั้น" : "⤓ Pull lots"}
           </button>
           <div className="flex-1" />

@@ -44,12 +44,10 @@ export async function getCountLotsAction(
     const zone = (VALID_ZONES as string[]).includes(code) ? (code as Zone) : null;
     scope = zone ? { location: { zone } } : {};
   } else if (mode === "location") {
-    // Location / Lot must be chosen — an empty pick pulls nothing (not everything).
-    if (!value) return [];
-    scope = { locationCode: value };
+    // "" / "ALL" = every location; otherwise the one chosen bin.
+    scope = !value || value === "ALL" ? {} : { locationCode: value };
   } else {
-    if (!value) return [];
-    scope = { lotNo: value };
+    scope = !value || value === "ALL" ? {} : { lotNo: value };
   }
 
   // With an as-of date we must consider every lot in scope (some empty now may
