@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getLotsByZoneAction, confirmCountAction } from "@/lib/actions/count";
+import { getCountLotsAction, confirmCountAction } from "@/lib/actions/count";
 import { LotOption, ProductOption } from "@/lib/views/docCommon";
 import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup } from "@/components/ui/CuteBoxPopup";
@@ -14,7 +14,8 @@ import { fmtDateISO } from "@/lib/calc/date";
 
 type ZoneOpt = { code: string; label: string };
 
-type Row = Awaited<ReturnType<typeof getLotsByZoneAction>>[number] & { counted: string };
+type Row = Awaited<ReturnType<typeof getCountLotsAction>>[number] & { counted: string };
+type PullMode = "zone" | "location" | "lot";
 type OffRow = {
   key: string;
   productCode: string;
@@ -43,8 +44,22 @@ export function CountForm({
     ...zones.map((z) => ({ code: z.code, label: `โซน ${z.code}${z.label ? ` · ${z.label}` : ""}` })),
   ];
   const zoneLabelOf = (code: string) => ZONE_OPTS.find((z) => z.code === code)?.label ?? code;
+  const [pullMode, setPullMode] = useState<PullMode>("zone");
   const [pullZone, setPullZone] = useState("ALL");
+  const [pullLocation, setPullLocation] = useState("");
+  const [pullLot, setPullLot] = useState("");
   const [asOfDate, setAsOfDate] = useState(""); // empty = today's live stock
+
+  // Distinct lot numbers available (for the "by Lot" picker).
+  const lotNos = [...new Set(lots.map((l) => l.lotNo))].sort();
+  // What to pull, and a human label stored on the document.
+  const pullValue = pullMode === "zone" ? pullZone : pullMode === "location" ? pullLocation : pullLot;
+  const pullLabel =
+    pullMode === "zone"
+      ? zoneLabelOf(pullZone)
+      : pullMode === "location"
+        ? `Location ${pullLocation || "—"}`
+        : `Lot ${pullLot || "—"}`;
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Row[]>([]);
   const [offLines, setOffLines] = useState<OffRow[]>([]);
@@ -106,7 +121,7 @@ export function CountForm({
 
   async function handlePull() {
     setPulling(true);
-    const rows = await getLotsByZoneAction(pullZone, asOfDate || undefined);
+    const rows = await getCountLotsAction(pullMode, pullValue, asOfDate || undefined);
     setLines((existing) => {
       const existingIds = new Set(existing.map((l) => l.id));
       const merged = [...existing];
@@ -173,7 +188,7 @@ export function CountForm({
     setError(null);
     try {
       const res = await confirmCountAction({
-        pullZone: zoneLabelOf(pullZone),
+        pullZone: pullLabel,
         docDate,
         lines: lines.map((l) => ({
           lotId: l.id,
@@ -221,7 +236,7 @@ export function CountForm({
     printCountSheet({
       sheetTitle: `${cycle} CYCLE COUNT`,
       rowsPerPage: 60,
-      meta: [`Pull: ${zoneLabelOf(pullZone)}`, `Date: ${docDate}`, `${lines.length} lines`],
+      meta: [`Pull: ${pullLabel}`, `Date: ${docDate}`, `${lines.length} lines`],
       showSys: printShowSys,
       rows: lines.map((l) => [
         l.productCode,
@@ -243,18 +258,60 @@ export function CountForm({
           </div>
           <div className="h-[34px] w-px bg-[#e2e6ec]" />
           <div>
-            <div className="mb-1 text-[11.5px] text-[#69748a]">Pull by Location (ดึงตาม Location)</div>
+            <div className="mb-1 text-[11.5px] text-[#69748a]">ดึงตาม (Pull by)</div>
             <select
-              value={pullZone}
-              onChange={(e) => setPullZone(e.target.value)}
+              value={pullMode}
+              onChange={(e) => setPullMode(e.target.value as PullMode)}
               className="rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
             >
-              {ZONE_OPTS.map((z) => (
-                <option key={z.code} value={z.code}>
-                  {z.label}
-                </option>
-              ))}
+              <option value="zone">Zone (โซน)</option>
+              <option value="location">Location (ที่เก็บ)</option>
+              <option value="lot">Lot (ล็อต)</option>
             </select>
+          </div>
+          <div>
+            <div className="mb-1 text-[11.5px] text-[#69748a]">
+              {pullMode === "zone" ? "Zone" : pullMode === "location" ? "Location" : "Lot"}
+            </div>
+            {pullMode === "zone" ? (
+              <select
+                value={pullZone}
+                onChange={(e) => setPullZone(e.target.value)}
+                className="rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
+              >
+                {ZONE_OPTS.map((z) => (
+                  <option key={z.code} value={z.code}>
+                    {z.label}
+                  </option>
+                ))}
+              </select>
+            ) : pullMode === "location" ? (
+              <select
+                value={pullLocation}
+                onChange={(e) => setPullLocation(e.target.value)}
+                className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
+              >
+                <option value="">— เลือก Location —</option>
+                {locations.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <select
+                value={pullLot}
+                onChange={(e) => setPullLot(e.target.value)}
+                className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
+              >
+                <option value="">— เลือก Lot —</option>
+                {lotNos.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           <div>
             <div className="mb-1 text-[11.5px] text-[#69748a]">ยอด ณ วันที่ (as-of date)</div>

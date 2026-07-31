@@ -6,7 +6,7 @@ import { requireWrite } from "@/lib/authz";
 import { nextDocNumber } from "@/lib/calc/docNumber";
 import { productLabel } from "@/lib/calc/productName";
 import { getLotQtyAsOf } from "@/lib/views/countAsOf";
-import { Zone } from "@prisma/client";
+import { Zone, Prisma } from "@prisma/client";
 
 export type CountLineInput = { lotId: string; countedQty: number; sysQty?: number };
 export type OffSystemLineInput = {
@@ -28,16 +28,33 @@ const VALID_ZONES: Zone[] = ["A", "B", "C", "D", "E"];
  *  passed the label string; anything that isn't a valid zone letter falls back
  *  to "all zones", so nothing silently returns empty.) */
 export async function getLotsByZoneAction(zoneCode: string, asOfDate?: string) {
-  const code = (zoneCode || "").trim().toUpperCase();
-  const zone = (VALID_ZONES as string[]).includes(code) ? (code as Zone) : null;
-  // With an as-of date we must consider every lot in the zone (some empty now may
+  return getCountLotsAction("zone", zoneCode, asOfDate);
+}
+
+/** Pull lots for a count filtered by one of three scopes: a whole Zone (letter
+ *  A–E, or ALL), a single Location (bin), or a single Lot number (across bins). */
+export async function getCountLotsAction(
+  mode: "zone" | "location" | "lot",
+  value: string,
+  asOfDate?: string
+) {
+  let scope: Prisma.LotWhereInput = {};
+  if (mode === "zone") {
+    const code = (value || "").trim().toUpperCase();
+    const zone = (VALID_ZONES as string[]).includes(code) ? (code as Zone) : null;
+    scope = zone ? { location: { zone } } : {};
+  } else if (mode === "location") {
+    scope = value ? { locationCode: value } : {};
+  } else {
+    scope = value ? { lotNo: value } : {};
+  }
+
+  // With an as-of date we must consider every lot in scope (some empty now may
   // have had stock then; some with stock now may not have existed yet), so we
   // don't pre-filter on current qty — we filter on the as-of quantity instead.
   const asOfMap = asOfDate ? await getLotQtyAsOf(asOfDate) : null;
   const lots = await db.lot.findMany({
-    where: asOfMap
-      ? { ...(zone ? { location: { zone } } : {}) }
-      : { qty: { gt: 0 }, ...(zone ? { location: { zone } } : {}) },
+    where: asOfMap ? scope : { qty: { gt: 0 }, ...scope },
     include: { product: true },
     orderBy: [{ locationCode: "asc" }, { productCode: "asc" }],
   });
