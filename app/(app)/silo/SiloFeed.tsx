@@ -3,24 +3,26 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardTitle } from "@/components/ui/Card";
-import { Modal, ModalHeader } from "@/components/ui/Modal";
 import { buttonClass } from "@/components/ui/Button";
 import { showToast } from "@/components/ui/Toast";
 import { fmtDateBE, fmtDateISO } from "@/lib/calc/date";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
-import { stageForSiloAction, loadSiloAction, deleteStagingAction } from "@/lib/actions/silo";
+import {
+  stageForSiloAction,
+  startBagAction,
+  finishBagAction,
+  cancelBagAction,
+  setBagSiloAction,
+  deleteStagingAction,
+} from "@/lib/actions/silo";
 import type { SiloFormData, StagingRow, SiloBag, LoadHistoryRow } from "@/lib/views/silo";
 
 const MACHINES = ["Super Sack Unloading", "Box Unloading", "EBS Unloading"];
 
-function nowHM() {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
 function fmtDateTime(iso: string) {
   const d = new Date(iso);
-  const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  return `${fmtDateBE(d)} · ${hm}`;
+  const t = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return `${fmtDateBE(d)} · ${t}`;
 }
 function hm(iso: string) {
   const d = new Date(iso);
@@ -28,6 +30,37 @@ function hm(iso: string) {
 }
 
 type StageProduct = SiloFormData["products"][number];
+
+/** Small inline SILO input that saves on blur / Enter — "ใส่ทีหลัง". */
+function SiloInput({ loadId, initial }: { loadId: string; initial: string }) {
+  const router = useRouter();
+  const [val, setVal] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  async function save() {
+    if (val.trim() === initial.trim()) return;
+    setSaving(true);
+    const res = await setBagSiloAction({ loadId, silo: val });
+    setSaving(false);
+    if (res.error) {
+      showToast(res.error);
+      return;
+    }
+    router.refresh();
+  }
+  return (
+    <input
+      value={val}
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={save}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+      }}
+      disabled={saving}
+      placeholder="SILO?"
+      className="font-num w-[68px] rounded-[6px] border border-[#d7dce4] bg-white px-1.5 py-0.5 text-[11px] outline-none focus:border-[#1f9d63]"
+    />
+  );
+}
 
 export function SiloFeed({
   data,
@@ -40,10 +73,11 @@ export function SiloFeed({
 }) {
   const router = useRouter();
 
-  // ── Stage form: FEFO-aware issue → "waiting to load" ─────────────────────
+  // ── Stage form ───────────────────────────────────────────────────────────
   const [prod, setProd] = useState<StageProduct | null>(null);
   const [lotId, setLotId] = useState("");
   const [qty, setQty] = useState("");
+  const [machine, setMachine] = useState(MACHINES[0]);
   const [stagedBy, setStagedBy] = useState("");
   const [date, setDate] = useState(fmtDateISO(new Date()));
   const [staging0, setStaging0] = useState(false);
@@ -74,7 +108,13 @@ export function SiloFeed({
   async function submitStage() {
     setStaging0(true);
     setStageErr(null);
-    const res = await stageForSiloAction({ lotId, qty: Number(qty) || 0, stagedBy: stagedBy || null, docDate: date });
+    const res = await stageForSiloAction({
+      lotId,
+      qty: Number(qty) || 0,
+      machine,
+      stagedBy: stagedBy || null,
+      docDate: date,
+    });
     setStaging0(false);
     if (res.error) {
       setStageErr(res.error);
@@ -85,50 +125,34 @@ export function SiloFeed({
     router.refresh();
   }
 
-  // ── Load a single bag ────────────────────────────────────────────────────
-  const [loadTarget, setLoadTarget] = useState<{ s: StagingRow; bag: SiloBag } | null>(null);
-  const [machine, setMachine] = useState("");
-  const [silo, setSilo] = useState("");
-  const [operator, setOperator] = useState("");
-  const [loadDate, setLoadDate] = useState(fmtDateISO(new Date()));
-  const [loadTime, setLoadTime] = useState(nowHM());
-  const [loadErr, setLoadErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  // ── One-tap bag loading ──────────────────────────────────────────────────
+  const [busy, setBusy] = useState<string | null>(null);
 
-  function openLoad(s: StagingRow, bag: SiloBag) {
-    setLoadTarget({ s, bag });
-    setMachine("");
-    setSilo("");
-    setOperator("");
-    setLoadDate(fmtDateISO(new Date()));
-    setLoadTime(nowHM());
-    setLoadErr(null);
+  async function startBag(s: StagingRow, bag: SiloBag) {
+    setBusy(`${s.id}:${bag.bagNo}`);
+    const res = await startBagAction({ stagingId: s.id, bagNo: bag.bagNo });
+    setBusy(null);
+    if (res.error) showToast(res.error);
+    else router.refresh();
+  }
+  async function finishBag(bag: SiloBag) {
+    if (!bag.loadId) return;
+    setBusy(bag.loadId);
+    const res = await finishBagAction({ loadId: bag.loadId });
+    setBusy(null);
+    if (res.error) showToast(res.error);
+    else router.refresh();
+  }
+  async function cancelBag(bag: SiloBag) {
+    if (!bag.loadId) return;
+    setBusy(bag.loadId);
+    const res = await cancelBagAction({ loadId: bag.loadId });
+    setBusy(null);
+    if (res.error) showToast(res.error);
+    else router.refresh();
   }
 
-  async function submitLoad() {
-    if (!loadTarget) return;
-    setLoading(true);
-    setLoadErr(null);
-    const res = await loadSiloAction({
-      stagingId: loadTarget.s.id,
-      bagNo: loadTarget.bag.bagNo,
-      qty: loadTarget.bag.size,
-      machine: machine || null,
-      silo: silo || null,
-      operator: operator || null,
-      loadedAt: `${loadDate}T${loadTime || "00:00"}`,
-    });
-    setLoading(false);
-    if (res.error) {
-      setLoadErr(res.error);
-      return;
-    }
-    showToast(`บันทึกการโหลด ถุงที่ ${loadTarget.bag.bagNo} แล้ว`);
-    setLoadTarget(null);
-    router.refresh();
-  }
-
-  // ── Delete a whole staging (returns the stock) ───────────────────────────
+  // ── Delete a whole staging (returns stock) ───────────────────────────────
   const [deleting, setDeleting] = useState<string | null>(null);
   async function removeStaging(s: StagingRow) {
     if (
@@ -152,13 +176,13 @@ export function SiloFeed({
 
   return (
     <>
-      {/* Stage: FEFO-aware issue → waiting to load */}
+      {/* Stage: pick product (FEFO) + machine, issue → waiting to load */}
       <Card className="mb-4">
         <CardTitle>เบิกไปรอโหลด SILO (issue → รอโหลด)</CardTitle>
         <div className="mb-3 rounded-[10px] border border-[#dbe7f2] bg-[#eef4f9] px-3 py-2.5 text-[12px] text-[#1f66a6]">
-          เลือกสินค้า — ระบบจะเลือกล็อต <b>FEFO (หมดอายุก่อน–ออกก่อน)</b> ให้อัตโนมัติ (เปลี่ยนล็อตเองได้) แล้ว
-          <b>จ่ายออกจากสต็อกทันที</b> (มีผลใน Stock Card) และย้ายมาที่ “รอโหลด” — ระบบจะแตกเป็น<b>ถุงตามขนาดพาเลท</b>
-          ให้คนโหลดกดโหลดทีละถุง พร้อมบันทึกเวลา/เครื่อง/SILO
+          เลือกสินค้า (ระบบเลือกล็อต <b>FEFO</b> ให้อัตโนมัติ) + <b>เครื่องโหลด</b> แล้วกดเบิก — ของจะ<b>จ่ายออกจากสต็อกทันที</b>{" "}
+          และแตกเป็น<b>ถุงตามขนาดพาเลท</b>. เวลาโหลด: คนโหลด<b>กดถุงหนึ่งครั้ง = เริ่มโหลด, กดอีกครั้ง = เสร็จ</b> (จับเวลาให้อัตโนมัติ){" "}
+          — SILO ค่อยใส่ทีหลังได้
         </div>
         <div className="mb-3">
           <span className="mb-1 block text-[11.5px] font-medium text-[#69748a]">สินค้า (เลือกแล้วได้ล็อต FEFO อัตโนมัติ)</span>
@@ -171,7 +195,7 @@ export function SiloFeed({
         </div>
         {prod && (
           <div className="flex flex-wrap items-end gap-3 rounded-[10px] bg-[#f7f9fb] p-3">
-            <div className="min-w-[280px] flex-1">
+            <div className="min-w-[260px] flex-1">
               <span className="mb-1 block text-[11.5px] font-medium text-[#69748a]">ล็อต (★ = FEFO)</span>
               <select
                 value={lotId}
@@ -191,7 +215,7 @@ export function SiloFeed({
                 ))}
               </select>
             </div>
-            <label className="flex w-[140px] flex-col gap-1">
+            <label className="flex w-[130px] flex-col gap-1">
               <span className="text-[11.5px] font-medium text-[#69748a]">จำนวนที่เบิก</span>
               <input
                 value={qty}
@@ -199,7 +223,21 @@ export function SiloFeed({
                 className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#2f86cf]"
               />
             </label>
-            <label className="flex w-[160px] flex-col gap-1">
+            <label className="flex w-[190px] flex-col gap-1">
+              <span className="text-[11.5px] font-medium text-[#69748a]">เครื่องโหลด (machine)</span>
+              <select
+                value={machine}
+                onChange={(e) => setMachine(e.target.value)}
+                className="rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#2f86cf]"
+              >
+                {MACHINES.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex w-[150px] flex-col gap-1">
               <span className="text-[11.5px] font-medium text-[#69748a]">ผู้เบิก</span>
               <input
                 list="silo-operators"
@@ -209,7 +247,7 @@ export function SiloFeed({
                 placeholder="ชื่อผู้เบิก"
               />
             </label>
-            <label className="flex w-[150px] flex-col gap-1">
+            <label className="flex w-[140px] flex-col gap-1">
               <span className="text-[11.5px] font-medium text-[#69748a]">วันที่เบิก</span>
               <input
                 type="date"
@@ -252,13 +290,13 @@ export function SiloFeed({
         </datalist>
       </Card>
 
-      {/* Staged items: each broken into bags to load one at a time */}
+      {/* Staged items: tap each bag start → finish */}
       <Card>
-        <CardTitle>รายการเบิก SILO — โหลดทีละถุง (staged · load per bag)</CardTitle>
+        <CardTitle>รายการเบิก SILO — โหลดทีละถุง (กดเริ่ม → กดเสร็จ)</CardTitle>
         <div className="flex flex-col gap-3">
           {staging.map((s) => {
-            const loadedBags = s.bags.filter((b) => b.loaded).length;
-            const allDone = s.remaining <= 0.0001;
+            const doneBags = s.bags.filter((b) => b.status === "done").length;
+            const allDone = s.bags.length > 0 && s.bags.every((b) => b.status === "done");
             return (
               <div
                 key={s.id}
@@ -272,6 +310,11 @@ export function SiloFeed({
                   <span className="font-num text-[12px] text-[#69748a]">
                     Lot {s.lotNo} · จาก {s.sourceLoc}
                   </span>
+                  {s.machine && (
+                    <span className="rounded-full bg-[#eef4f9] px-2 py-0.5 text-[10.5px] font-semibold text-[#1f66a6]">
+                      ⚙ {s.machine}
+                    </span>
+                  )}
                   <span className="font-num text-[12px] text-[#69748a]">
                     เบิก <b className="text-[#3a4658]">{s.qtyStaged.toLocaleString()}</b> · โหลดแล้ว{" "}
                     <b className="text-[#1f9d63]">{s.qtyLoaded.toLocaleString()}</b> · เหลือ{" "}
@@ -295,41 +338,77 @@ export function SiloFeed({
                 </div>
 
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {s.bags.map((b) =>
-                    b.loaded ? (
-                      <span
-                        key={b.bagNo}
-                        title={
-                          b.load
-                            ? `${b.load.qty.toLocaleString()} ${s.unit} · ${fmtDateTime(b.load.loadedAt)}` +
-                              (b.load.machine ? ` · เครื่อง ${b.load.machine}` : "") +
-                              (b.load.silo ? ` · SILO ${b.load.silo}` : "") +
-                              (b.load.operator ? ` · ${b.load.operator}` : "")
-                            : ""
-                        }
-                        className="inline-flex items-center gap-1 rounded-[7px] border border-[#bfe3cd] bg-[#e9f6ee] px-2 py-1 text-[11px] font-medium text-[#178050]"
-                      >
-                        ✓ ถุง {b.bagNo}
-                        {b.isPartial && <span className="text-[#b5790f]">(partial)</span>}
-                        <span className="font-num">· {b.size.toLocaleString()}</span>
-                        {b.load && <span className="font-num text-[#5b6473]">· {hm(b.load.loadedAt)}</span>}
-                      </span>
-                    ) : (
+                  {s.bags.map((b) => {
+                    if (b.status === "done") {
+                      return (
+                        <span
+                          key={b.bagNo}
+                          className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#bfe3cd] bg-[#e9f6ee] px-2 py-1 text-[11px] font-medium text-[#178050]"
+                        >
+                          ✓ ถุง {b.bagNo}
+                          {b.isPartial && <span className="text-[#b5790f]">(partial)</span>}
+                          <span className="font-num">· {b.size.toLocaleString()}</span>
+                          {b.loadedAt && <span className="font-num text-[#5b6473]">· {hm(b.loadedAt)}</span>}
+                          {b.loadId && <SiloInput loadId={b.loadId} initial={b.silo} />}
+                          {b.loadId && (
+                            <button
+                              onClick={() => cancelBag(b)}
+                              disabled={busy === b.loadId}
+                              title="ยกเลิกถุงนี้ (undo)"
+                              className="text-[13px] text-[#c2606f] hover:text-[#a83333]"
+                            >
+                              ×
+                            </button>
+                          )}
+                        </span>
+                      );
+                    }
+                    if (b.status === "loading") {
+                      return (
+                        <span
+                          key={b.bagNo}
+                          className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#f0d6a0] bg-[#fdf6e7] px-2 py-1 text-[11px] font-semibold text-[#b5790f]"
+                        >
+                          <span className="animate-pulse">● กำลังโหลด ถุง {b.bagNo}</span>
+                          {b.startedAt && <span className="font-num text-[#8a6d1f]">เริ่ม {hm(b.startedAt)}</span>}
+                          <button
+                            onClick={() => finishBag(b)}
+                            disabled={busy === b.loadId}
+                            className="rounded-[6px] bg-[#1f9d63] px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-[#178050] disabled:opacity-50"
+                          >
+                            ✔ เสร็จ
+                          </button>
+                          {b.loadId && <SiloInput loadId={b.loadId} initial={b.silo} />}
+                          {b.loadId && (
+                            <button
+                              onClick={() => cancelBag(b)}
+                              disabled={busy === b.loadId}
+                              title="ยกเลิก"
+                              className="text-[13px] text-[#c2606f] hover:text-[#a83333]"
+                            >
+                              ×
+                            </button>
+                          )}
+                        </span>
+                      );
+                    }
+                    return (
                       <button
                         key={b.bagNo}
-                        onClick={() => openLoad(s, b)}
-                        className="inline-flex items-center gap-1 rounded-[7px] border border-[#c9e0c9] bg-white px-2 py-1 text-[11px] font-semibold text-[#1f9d63] hover:bg-[#f0f9f2]"
+                        onClick={() => startBag(s, b)}
+                        disabled={busy === `${s.id}:${b.bagNo}`}
+                        className="inline-flex items-center gap-1 rounded-[8px] border border-[#c9e0c9] bg-white px-2 py-1 text-[11px] font-semibold text-[#1f9d63] hover:bg-[#f0f9f2] disabled:opacity-50"
                       >
-                        ▶ ถุง {b.bagNo}
+                        ▶ เริ่มโหลด ถุง {b.bagNo}
                         {b.isPartial && <span className="text-[#b5790f]">(partial)</span>}
                         <span className="font-num">· {b.size.toLocaleString()} {s.unit}</span>
                       </button>
-                    )
-                  )}
+                    );
+                  })}
                 </div>
                 {s.bags.length > 0 && (
                   <div className="mt-1.5 text-[10.5px] text-[#9aa4b4]">
-                    โหลดแล้ว {loadedBags}/{s.bags.length} ถุง
+                    เสร็จแล้ว {doneBags}/{s.bags.length} ถุง
                   </div>
                 )}
               </div>
@@ -341,14 +420,14 @@ export function SiloFeed({
         </div>
       </Card>
 
-      {/* Load history */}
+      {/* Load history (finished bags) */}
       <Card className="mt-4">
         <CardTitle>ประวัติการโหลดเข้าเครื่อง / SILO (load history)</CardTitle>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[980px] border-collapse text-[12.5px]">
+          <table className="w-full min-w-[1000px] border-collapse text-[12.5px]">
             <thead>
               <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
-                <th className="p-[10px_16px] text-[11.5px] font-medium">เวลาโหลด</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">เวลาเสร็จ</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Doc No.</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">SAP</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Material Description</th>
@@ -363,7 +442,7 @@ export function SiloFeed({
             <tbody>
               {history.map((h) => (
                 <tr key={h.id} className="border-t border-[#eef1f5]">
-                  <td className="font-num p-[10px_16px] text-[#69748a]">{fmtDateTime(h.loadedAt)}</td>
+                  <td className="font-num p-[10px_16px] text-[#69748a]">{h.loadedAt ? fmtDateTime(h.loadedAt) : "—"}</td>
                   <td className="font-num p-[10px_16px] font-semibold text-[#2f86cf]">{h.stagingDoc}</td>
                   <td className="font-num p-[10px_16px] text-[12px]">{h.productCode}</td>
                   <td className="p-[10px_16px]">{h.name}</td>
@@ -388,98 +467,6 @@ export function SiloFeed({
           </table>
         </div>
       </Card>
-
-      {/* Load-one-bag modal */}
-      <Modal open={!!loadTarget} onClose={() => setLoadTarget(null)} width={440}>
-        {loadTarget && (
-          <>
-            <ModalHeader
-              title={`โหลดถุงที่ ${loadTarget.bag.bagNo} · ${loadTarget.s.productCode}`}
-              onClose={() => setLoadTarget(null)}
-            />
-            <div className="flex flex-col gap-3 px-5 py-4">
-              <div className="rounded-[10px] bg-[#eef7f1] px-3 py-2 text-[12.5px] text-[#178050]">
-                {loadTarget.s.name} · Lot {loadTarget.s.lotNo} · จาก {loadTarget.s.sourceLoc}
-                <br />
-                ถุงที่ {loadTarget.bag.bagNo}
-                {loadTarget.bag.isPartial ? " (partial)" : ""} — น้ำหนัก{" "}
-                <b className="font-num">{loadTarget.bag.size.toLocaleString()} {loadTarget.s.unit}</b>
-              </div>
-              <div className="flex gap-3">
-                <label className="flex flex-1 flex-col gap-1">
-                  <span className="text-[11.5px] font-medium text-[#69748a]">เครื่อง (machine)</span>
-                  <select
-                    value={machine}
-                    onChange={(e) => setMachine(e.target.value)}
-                    className="rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#1f9d63]"
-                  >
-                    <option value="">— เลือกเครื่อง —</option>
-                    {MACHINES.map((m) => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex flex-1 flex-col gap-1">
-                  <span className="text-[11.5px] font-medium text-[#69748a]">SILO</span>
-                  <input
-                    value={silo}
-                    onChange={(e) => setSilo(e.target.value)}
-                    className="rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#1f9d63]"
-                    placeholder="เช่น S3"
-                  />
-                </label>
-              </div>
-              <div className="flex gap-3">
-                <label className="flex flex-1 flex-col gap-1">
-                  <span className="text-[11.5px] font-medium text-[#69748a]">วันที่โหลด</span>
-                  <input
-                    type="date"
-                    value={loadDate}
-                    onChange={(e) => setLoadDate(e.target.value)}
-                    className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#1f9d63]"
-                  />
-                </label>
-                <label className="flex w-[130px] flex-col gap-1">
-                  <span className="text-[11.5px] font-medium text-[#69748a]">เวลา (00:00–23:59)</span>
-                  <input
-                    type="time"
-                    value={loadTime}
-                    onChange={(e) => setLoadTime(e.target.value)}
-                    className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#1f9d63]"
-                  />
-                </label>
-              </div>
-              <label className="flex flex-col gap-1">
-                <span className="text-[11.5px] font-medium text-[#69748a]">ผู้โหลด (operator)</span>
-                <input
-                  list="silo-operators"
-                  value={operator}
-                  onChange={(e) => setOperator(e.target.value)}
-                  className="rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#1f9d63]"
-                  placeholder="ชื่อผู้โหลด"
-                />
-              </label>
-              {loadErr && (
-                <div className="rounded-[8px] bg-[#fbe9e9] px-3 py-2 text-[12px] text-[#c53f3f]">{loadErr}</div>
-              )}
-              <div className="flex justify-end gap-2">
-                <button onClick={() => setLoadTarget(null)} disabled={loading} className={buttonClass("secondary")}>
-                  ยกเลิก
-                </button>
-                <button
-                  onClick={submitLoad}
-                  disabled={loading}
-                  className="rounded-[8px] bg-[#1f9d63] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[#178050] disabled:opacity-60"
-                >
-                  {loading ? "กำลังบันทึก…" : "บันทึกการโหลด"}
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-      </Modal>
     </>
   );
 }

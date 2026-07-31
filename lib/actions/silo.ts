@@ -5,18 +5,20 @@ import { db } from "@/lib/db";
 import { requireWrite } from "@/lib/authz";
 import { nextDocNumber } from "@/lib/calc/docNumber";
 import { eligibleLots } from "@/lib/calc/fefo";
+import { bagSize } from "@/lib/calc/siloBags";
 
 const SILO_PATHS = ["/silo", "/issue", "/dashboard", "/products", "/aging", "/locations", "/map"];
 
 /**
  * Stage material for the SILO: issue it out of warehouse stock now (a real Issue,
  * so on-hand and the Stock Card stay correct) and create a "waiting to load"
- * record. Loaders fill in the actual loads (time/machine/SILO) afterwards.
- * Draws across every stock record of the chosen lot+location (FEFO-first), like Issue.
+ * record. The unloading machine is chosen here; loaders just tap start/finish
+ * per bag afterwards. Draws across every stock record of the chosen lot+location.
  */
 export async function stageForSiloAction(input: {
   lotId: string;
   qty: number;
+  machine?: string | null;
   stagedBy?: string | null;
   docDate: string;
 }): Promise<{ docNo?: string; error?: string }> {
@@ -33,7 +35,6 @@ export async function stageForSiloAction(input: {
       const sel = await tx.lot.findUnique({ where: { id: input.lotId }, include: { product: true } });
       if (!sel) throw new Error("ไม่พบล็อตในสต็อก (stock lot not found)");
 
-      // Draw across all records of this same lot in this same location, FEFO-first.
       const siblings = await tx.lot.findMany({
         where: { productCode: sel.productCode, lotNo: sel.lotNo, locationCode: sel.locationCode },
       });
@@ -55,13 +56,7 @@ export async function stageForSiloAction(input: {
       }
 
       const issue = await tx.issue.create({
-        data: {
-          docNo: issNo,
-          issueTo: "SILO — รอโหลด",
-          stockType: "STOCK",
-          docDate,
-          shippedDate: docDate,
-        },
+        data: { docNo: issNo, issueTo: "SILO — รอโหลด", stockType: "STOCK", docDate, shippedDate: docDate },
       });
 
       let remaining = qty;
@@ -83,6 +78,7 @@ export async function stageForSiloAction(input: {
           sourceLoc: sel.locationCode,
           qtyStaged: qty,
           palletSize: sel.product.pallet > 0 ? sel.product.pallet : null,
+          machine: input.machine?.trim() || null,
           issueId: issue.id,
           stagedBy: input.stagedBy?.trim() || null,
           stagedAt: docDate,
@@ -97,75 +93,102 @@ export async function stageForSiloAction(input: {
   }
 }
 
-/**
- * A loader records loading one bag (or an ad-hoc qty) of a staged item into a
- * machine/SILO. Does not touch stock (already issued at staging) — it only logs
- * the load and advances how much of the staged qty has been loaded.
- */
-export async function loadSiloAction(input: {
+/** Tap 1 — a loader starts loading a bag. Records the start time; no typing. */
+export async function startBagAction(input: {
   stagingId: string;
-  bagNo?: number | null;
-  qty: number;
-  machine?: string | null;
-  silo?: string | null;
-  operator?: string | null;
-  loadedAt: string;
+  bagNo: number;
 }): Promise<{ error?: string }> {
   try {
     await requireWrite();
-    const qty = Number(input.qty) || 0;
-    if (qty <= 0) return { error: "จำนวนต้องมากกว่า 0 (quantity must be > 0)" };
-    const loadedAt = new Date(input.loadedAt);
-
     await db.$transaction(async (tx) => {
       const st = await tx.siloStaging.findUnique({ where: { id: input.stagingId }, include: { loads: true } });
       if (!st) throw new Error("ไม่พบรายการรอโหลด (staging not found)");
-
-      if (input.bagNo != null && st.loads.some((l) => l.bagNo === input.bagNo)) {
-        throw new Error(`ถุงที่ ${input.bagNo} โหลดไปแล้ว (bag already loaded)`);
-      }
-      const remaining = st.qtyStaged - st.qtyLoaded;
-      if (qty > remaining + 1e-6) {
-        throw new Error(`โหลดเกินที่เหลือ — เหลือ ${remaining.toLocaleString()}, ขอโหลด ${qty.toLocaleString()}`);
+      if (st.loads.some((l) => l.bagNo === input.bagNo)) {
+        throw new Error(`ถุงที่ ${input.bagNo} เริ่มโหลดไปแล้ว (bag already started)`);
       }
       await tx.siloLoad.create({
         data: {
           stagingId: st.id,
-          bagNo: input.bagNo ?? null,
-          qty,
-          machine: input.machine?.trim() || null,
-          silo: input.silo?.trim() || null,
-          operator: input.operator?.trim() || null,
-          loadedAt,
+          bagNo: input.bagNo,
+          qty: bagSize(st.qtyStaged, st.palletSize, input.bagNo),
+          machine: st.machine,
+          operator: st.stagedBy,
+          startedAt: new Date(),
+          loadedAt: null,
         },
       });
-      await tx.siloStaging.update({ where: { id: st.id }, data: { qtyLoaded: st.qtyLoaded + qty } });
     });
-
     safeRevalidate(["/silo"]);
     return {};
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "โหลดไม่สำเร็จ (failed to load)" };
+    return { error: e instanceof Error ? e.message : "เริ่มโหลดไม่สำเร็จ (failed to start)" };
+  }
+}
+
+/** Tap 2 — finish loading a bag. Records the finish time and counts it as loaded. */
+export async function finishBagAction(input: { loadId: string }): Promise<{ error?: string }> {
+  try {
+    await requireWrite();
+    await db.$transaction(async (tx) => {
+      const ld = await tx.siloLoad.findUnique({ where: { id: input.loadId } });
+      if (!ld) throw new Error("ไม่พบรายการโหลด (load not found)");
+      if (ld.loadedAt) return; // already finished
+      await tx.siloLoad.update({ where: { id: ld.id }, data: { loadedAt: new Date() } });
+      await tx.siloStaging.update({
+        where: { id: ld.stagingId },
+        data: { qtyLoaded: { increment: ld.qty } },
+      });
+    });
+    safeRevalidate(["/silo"]);
+    return {};
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "ปิดโหลดไม่สำเร็จ (failed to finish)" };
+  }
+}
+
+/** Cancel a bag that is still loading (before it's finished). */
+export async function cancelBagAction(input: { loadId: string }): Promise<{ error?: string }> {
+  try {
+    await requireWrite();
+    await db.$transaction(async (tx) => {
+      const ld = await tx.siloLoad.findUnique({ where: { id: input.loadId } });
+      if (!ld) return;
+      if (ld.loadedAt) {
+        // Finished bag: also roll back the loaded qty.
+        await tx.siloStaging.update({ where: { id: ld.stagingId }, data: { qtyLoaded: { decrement: ld.qty } } });
+      }
+      await tx.siloLoad.delete({ where: { id: ld.id } });
+    });
+    safeRevalidate(["/silo"]);
+    return {};
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "ยกเลิกไม่สำเร็จ (failed to cancel)" };
+  }
+}
+
+/** Fill in / change the SILO of a bag afterwards (entered later, not at load time). */
+export async function setBagSiloAction(input: { loadId: string; silo: string }): Promise<{ error?: string }> {
+  try {
+    await requireWrite();
+    await db.siloLoad.update({ where: { id: input.loadId }, data: { silo: input.silo.trim() || null } });
+    safeRevalidate(["/silo"]);
+    return {};
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "บันทึก SILO ไม่สำเร็จ (failed)" };
   }
 }
 
 /**
  * Delete a staging record entirely (removes it + all its load history) and return
- * the issued stock back to the lot — i.e. reverse the whole staging. Use this to
- * undo a mistaken เบิก; the Stock Card stays correct because the Issue is reversed.
+ * the issued stock back to the lot — i.e. reverse the whole staging.
  */
-export async function deleteStagingAction(input: {
-  id: string;
-}): Promise<{ error?: string }> {
+export async function deleteStagingAction(input: { id: string }): Promise<{ error?: string }> {
   try {
     await requireWrite();
-
     await db.$transaction(async (tx) => {
       const st = await tx.siloStaging.findUnique({ where: { id: input.id } });
       if (!st) throw new Error("ไม่พบรายการ (staging not found)");
 
-      // Reverse the underlying Issue: add each issued qty back to its lot, then
-      // mark the Issue reversed so it drops out of the Stock Card.
       if (st.issueId) {
         const issue = await tx.issue.findUnique({ where: { id: st.issueId }, include: { lines: true } });
         if (issue && !issue.reversedAt) {
@@ -181,7 +204,6 @@ export async function deleteStagingAction(input: {
 
       await tx.siloStaging.delete({ where: { id: st.id } }); // cascades SiloLoad
     });
-
     safeRevalidate(SILO_PATHS);
     return {};
   } catch (e) {

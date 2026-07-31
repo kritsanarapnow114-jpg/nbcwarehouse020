@@ -114,6 +114,7 @@ model SiloStaging {
   qtyStaged   Float
   qtyLoaded   Float    @default(0)
   palletSize  Float? // standard weight per pallet/bag at stage time — used to split into individual bags
+  machine     String? // unloading machine chosen at stage time (applies to all bags)
   issueId     String? // the Issue created when staging, so deleting the staging can return the stock
   stagedBy    String?
   stagedAt    DateTime
@@ -134,7 +135,8 @@ model SiloLoad {
   machine   String?
   silo      String?
   operator  String?
-  loadedAt  DateTime
+  startedAt DateTime? // tap-to-start: when loading began (null = finished-only/legacy)
+  loadedAt  DateTime? // tap-to-finish: when loading finished (null = still loading in progress)
   createdAt DateTime    @default(now())
 
   @@index([stagingId])
