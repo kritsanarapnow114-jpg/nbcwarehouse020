@@ -152,6 +152,17 @@ export function SiloFeed({
     else router.refresh();
   }
 
+  // Completed rows collapse to the bottom; click to expand their bag details.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  function toggleExpand(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   // ── Delete a whole staging (returns stock) ───────────────────────────────
   const [deleting, setDeleting] = useState<string | null>(null);
   async function removeStaging(s: StagingRow) {
@@ -173,6 +184,144 @@ export function SiloFeed({
   }
 
   const activeProds = data.products.filter((p) => p.lots.length > 0);
+
+  function bagChip(s: StagingRow, b: SiloBag) {
+    if (b.status === "done") {
+      return (
+        <span
+          key={b.bagNo}
+          className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#bfe3cd] bg-[#e9f6ee] px-2 py-1 text-[11px] font-medium text-[#178050]"
+        >
+          ✓ ถุง {b.bagNo}
+          {b.isPartial && <span className="text-[#b5790f]">(partial)</span>}
+          <span className="font-num">· {b.size.toLocaleString()}</span>
+          {b.loadedAt && <span className="font-num text-[#5b6473]">· {hm(b.loadedAt)}</span>}
+          {b.loadId && <SiloInput loadId={b.loadId} initial={b.silo} />}
+          {b.loadId && (
+            <button
+              onClick={() => cancelBag(b)}
+              disabled={busy === b.loadId}
+              title="ยกเลิกถุงนี้ (undo)"
+              className="text-[13px] text-[#c2606f] hover:text-[#a83333]"
+            >
+              ×
+            </button>
+          )}
+        </span>
+      );
+    }
+    if (b.status === "loading") {
+      return (
+        <span
+          key={b.bagNo}
+          className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#f0d6a0] bg-[#fdf6e7] px-2 py-1 text-[11px] font-semibold text-[#b5790f]"
+        >
+          <span className="animate-pulse">● กำลังโหลด ถุง {b.bagNo}</span>
+          {b.startedAt && <span className="font-num text-[#8a6d1f]">เริ่ม {hm(b.startedAt)}</span>}
+          <button
+            onClick={() => finishBag(b)}
+            disabled={busy === b.loadId}
+            className="rounded-[6px] bg-[#1f9d63] px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-[#178050] disabled:opacity-50"
+          >
+            ✔ เสร็จ
+          </button>
+          {b.loadId && <SiloInput loadId={b.loadId} initial={b.silo} />}
+          {b.loadId && (
+            <button
+              onClick={() => cancelBag(b)}
+              disabled={busy === b.loadId}
+              title="ยกเลิก"
+              className="text-[13px] text-[#c2606f] hover:text-[#a83333]"
+            >
+              ×
+            </button>
+          )}
+        </span>
+      );
+    }
+    return (
+      <button
+        key={b.bagNo}
+        onClick={() => startBag(s, b)}
+        disabled={busy === `${s.id}:${b.bagNo}`}
+        className="inline-flex items-center gap-1 rounded-[8px] border border-[#c9e0c9] bg-white px-2 py-1 text-[11px] font-semibold text-[#1f9d63] hover:bg-[#f0f9f2] disabled:opacity-50"
+      >
+        ▶ เริ่มโหลด ถุง {b.bagNo}
+        {b.isPartial && <span className="text-[#b5790f]">(partial)</span>}
+        <span className="font-num">· {b.size.toLocaleString()} {s.unit}</span>
+      </button>
+    );
+  }
+
+  function stagedCard(s: StagingRow, collapsible: boolean) {
+    const doneBags = s.bags.filter((b) => b.status === "done").length;
+    const allDone = s.bags.length > 0 && s.bags.every((b) => b.status === "done");
+    const open = !collapsible || expanded.has(s.id);
+    return (
+      <div
+        key={s.id}
+        className="rounded-[12px] border border-[#e7ebf1] p-3"
+        style={{ background: allDone ? "#f6faf7" : "#ffffff" }}
+      >
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {collapsible && (
+            <button
+              onClick={() => toggleExpand(s.id)}
+              className="text-[12px] text-[#69748a] hover:text-[#2f86cf]"
+              title={open ? "ย่อ" : "ดูรายละเอียด"}
+            >
+              {open ? "▼" : "▶"}
+            </button>
+          )}
+          <span className="font-num text-[13px] font-semibold text-[#2f86cf]">{s.docNo}</span>
+          <span className="font-num text-[12px] text-[#3a4658]">{s.productCode}</span>
+          <span className="text-[13px] font-medium">{s.name}</span>
+          <span className="font-num text-[12px] text-[#69748a]">
+            Lot {s.lotNo} · จาก {s.sourceLoc}
+          </span>
+          {s.machine && (
+            <span className="rounded-full bg-[#eef4f9] px-2 py-0.5 text-[10.5px] font-semibold text-[#1f66a6]">
+              ⚙ {s.machine}
+            </span>
+          )}
+          <span className="font-num text-[12px] text-[#69748a]">
+            เบิก <b className="text-[#3a4658]">{s.qtyStaged.toLocaleString()}</b> · โหลดแล้ว{" "}
+            <b className="text-[#1f9d63]">{s.qtyLoaded.toLocaleString()}</b> · เหลือ{" "}
+            <b className="text-[#b5790f]">{s.remaining.toLocaleString()}</b> {s.unit}
+          </span>
+          <div className="ml-auto flex items-center gap-2">
+            {allDone && (
+              <span className="rounded-full bg-[#e4f4ea] px-2 py-0.5 text-[10.5px] font-semibold text-[#178050]">
+                โหลดครบแล้ว
+              </span>
+            )}
+            <button
+              onClick={() => removeStaging(s)}
+              disabled={deleting === s.id}
+              className="rounded-[7px] border border-[#e6c9c9] bg-white px-2.5 py-1 text-[11.5px] font-semibold text-[#b5484f] hover:bg-[#fdf3f3] disabled:opacity-50"
+              title="ลบรายการนี้ + คืนของเข้าสต็อก + ลบประวัติการโหลด"
+            >
+              {deleting === s.id ? "กำลังลบ…" : "ลบ / คืนของ"}
+            </button>
+          </div>
+        </div>
+
+        {open && (
+          <>
+            <div className="mt-2 flex flex-wrap gap-1.5">{s.bags.map((b) => bagChip(s, b))}</div>
+            {s.bags.length > 0 && (
+              <div className="mt-1.5 text-[10.5px] text-[#9aa4b4]">
+                เสร็จแล้ว {doneBags}/{s.bags.length} ถุง
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  const active = staging.filter((s) => !(s.bags.length > 0 && s.bags.every((b) => b.status === "done")));
+  const completed = staging.filter((s) => s.bags.length > 0 && s.bags.every((b) => b.status === "done"));
 
   return (
     <>
@@ -290,132 +439,21 @@ export function SiloFeed({
         </datalist>
       </Card>
 
-      {/* Staged items: tap each bag start → finish */}
+      {/* Staged items: active on top, completed collapsed at the bottom */}
       <Card>
         <CardTitle>รายการเบิก SILO — โหลดทีละถุง (กดเริ่ม → กดเสร็จ)</CardTitle>
         <div className="flex flex-col gap-3">
-          {staging.map((s) => {
-            const doneBags = s.bags.filter((b) => b.status === "done").length;
-            const allDone = s.bags.length > 0 && s.bags.every((b) => b.status === "done");
-            return (
-              <div
-                key={s.id}
-                className="rounded-[12px] border border-[#e7ebf1] p-3"
-                style={{ background: allDone ? "#f6faf7" : "#ffffff" }}
-              >
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                  <span className="font-num text-[13px] font-semibold text-[#2f86cf]">{s.docNo}</span>
-                  <span className="font-num text-[12px] text-[#3a4658]">{s.productCode}</span>
-                  <span className="text-[13px] font-medium">{s.name}</span>
-                  <span className="font-num text-[12px] text-[#69748a]">
-                    Lot {s.lotNo} · จาก {s.sourceLoc}
-                  </span>
-                  {s.machine && (
-                    <span className="rounded-full bg-[#eef4f9] px-2 py-0.5 text-[10.5px] font-semibold text-[#1f66a6]">
-                      ⚙ {s.machine}
-                    </span>
-                  )}
-                  <span className="font-num text-[12px] text-[#69748a]">
-                    เบิก <b className="text-[#3a4658]">{s.qtyStaged.toLocaleString()}</b> · โหลดแล้ว{" "}
-                    <b className="text-[#1f9d63]">{s.qtyLoaded.toLocaleString()}</b> · เหลือ{" "}
-                    <b className="text-[#b5790f]">{s.remaining.toLocaleString()}</b> {s.unit}
-                  </span>
-                  <div className="ml-auto flex items-center gap-2">
-                    {allDone && (
-                      <span className="rounded-full bg-[#e4f4ea] px-2 py-0.5 text-[10.5px] font-semibold text-[#178050]">
-                        โหลดครบแล้ว
-                      </span>
-                    )}
-                    <button
-                      onClick={() => removeStaging(s)}
-                      disabled={deleting === s.id}
-                      className="rounded-[7px] border border-[#e6c9c9] bg-white px-2.5 py-1 text-[11.5px] font-semibold text-[#b5484f] hover:bg-[#fdf3f3] disabled:opacity-50"
-                      title="ลบรายการนี้ + คืนของเข้าสต็อก + ลบประวัติการโหลด"
-                    >
-                      {deleting === s.id ? "กำลังลบ…" : "ลบ / คืนของ"}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {s.bags.map((b) => {
-                    if (b.status === "done") {
-                      return (
-                        <span
-                          key={b.bagNo}
-                          className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#bfe3cd] bg-[#e9f6ee] px-2 py-1 text-[11px] font-medium text-[#178050]"
-                        >
-                          ✓ ถุง {b.bagNo}
-                          {b.isPartial && <span className="text-[#b5790f]">(partial)</span>}
-                          <span className="font-num">· {b.size.toLocaleString()}</span>
-                          {b.loadedAt && <span className="font-num text-[#5b6473]">· {hm(b.loadedAt)}</span>}
-                          {b.loadId && <SiloInput loadId={b.loadId} initial={b.silo} />}
-                          {b.loadId && (
-                            <button
-                              onClick={() => cancelBag(b)}
-                              disabled={busy === b.loadId}
-                              title="ยกเลิกถุงนี้ (undo)"
-                              className="text-[13px] text-[#c2606f] hover:text-[#a83333]"
-                            >
-                              ×
-                            </button>
-                          )}
-                        </span>
-                      );
-                    }
-                    if (b.status === "loading") {
-                      return (
-                        <span
-                          key={b.bagNo}
-                          className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#f0d6a0] bg-[#fdf6e7] px-2 py-1 text-[11px] font-semibold text-[#b5790f]"
-                        >
-                          <span className="animate-pulse">● กำลังโหลด ถุง {b.bagNo}</span>
-                          {b.startedAt && <span className="font-num text-[#8a6d1f]">เริ่ม {hm(b.startedAt)}</span>}
-                          <button
-                            onClick={() => finishBag(b)}
-                            disabled={busy === b.loadId}
-                            className="rounded-[6px] bg-[#1f9d63] px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-[#178050] disabled:opacity-50"
-                          >
-                            ✔ เสร็จ
-                          </button>
-                          {b.loadId && <SiloInput loadId={b.loadId} initial={b.silo} />}
-                          {b.loadId && (
-                            <button
-                              onClick={() => cancelBag(b)}
-                              disabled={busy === b.loadId}
-                              title="ยกเลิก"
-                              className="text-[13px] text-[#c2606f] hover:text-[#a83333]"
-                            >
-                              ×
-                            </button>
-                          )}
-                        </span>
-                      );
-                    }
-                    return (
-                      <button
-                        key={b.bagNo}
-                        onClick={() => startBag(s, b)}
-                        disabled={busy === `${s.id}:${b.bagNo}`}
-                        className="inline-flex items-center gap-1 rounded-[8px] border border-[#c9e0c9] bg-white px-2 py-1 text-[11px] font-semibold text-[#1f9d63] hover:bg-[#f0f9f2] disabled:opacity-50"
-                      >
-                        ▶ เริ่มโหลด ถุง {b.bagNo}
-                        {b.isPartial && <span className="text-[#b5790f]">(partial)</span>}
-                        <span className="font-num">· {b.size.toLocaleString()} {s.unit}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                {s.bags.length > 0 && (
-                  <div className="mt-1.5 text-[10.5px] text-[#9aa4b4]">
-                    เสร็จแล้ว {doneBags}/{s.bags.length} ถุง
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          {staging.length === 0 && (
+          {active.map((s) => stagedCard(s, false))}
+          {active.length === 0 && completed.length === 0 && (
             <div className="p-6 text-center text-[#9aa4b4]">ไม่มีรายการรอโหลด (nothing staged)</div>
+          )}
+          {completed.length > 0 && (
+            <>
+              <div className="mt-1 border-t border-dashed border-[#dfe4ea] pt-3 text-[11.5px] font-semibold text-[#69748a]">
+                โหลดครบแล้ว {completed.length} รายการ · กด ▶ เพื่อดูรายละเอียด
+              </div>
+              {completed.map((s) => stagedCard(s, true))}
+            </>
           )}
         </div>
       </Card>
