@@ -26,12 +26,11 @@ export default async function PackOrderPage() {
         code: l.code,
         name: l.name,
         qtyText: `${l.recvQty.toLocaleString()} ${l.unit}`,
-        extra:
-          l.suNo != null
-            ? `SU ${l.suNo} · ชั่ง ${l.weightKg != null ? l.weightKg.toLocaleString() : "—"} กก.` +
-              `${l.palletFull != null ? ` · ${l.palletFull ? "Full" : "Partial"}` : ""}` +
-              `${l.packTime ? ` · ${l.packTime} น.` : ""} · Lot ${l.lotNo} · ${l.locationCode}`
-            : `Lot ${l.lotNo} · ${l.locationCode}`,
+        su: l.suNo != null ? String(l.suNo) : "",
+        weight: l.weightKg != null ? l.weightKg.toLocaleString() : "",
+        pallet: l.palletFull == null ? "" : l.palletFull ? "Full" : "Partial",
+        time: l.packTime ?? "",
+        extra: `Lot ${l.lotNo} · ${l.locationCode}`,
       })),
     }));
 
@@ -39,7 +38,7 @@ export default async function PackOrderPage() {
     <div className="max-w-[1240px] p-[22px_26px]">
       <ReceiveForm data={data} lockMode="PRODUCTION" />
       <PendingVerify receipts={pending} />
-      <DocHistory title="ประวัติรับจากผลิต (Pack Order history)" rows={rows} accentColor="#8a6d1f" reverseKind="receipt" />
+      <DocHistory title="ประวัติรับจากผลิต (Pack Order history)" rows={rows} accentColor="#8a6d1f" reverseKind="receipt" packCols />
     </div>
   );
 }

@@ -23,6 +23,11 @@ export type DocHistoryLine = {
   location?: string;
   sysText?: string;
   countText?: string;
+  // Pack Order columns (shown when the table is rendered with packCols).
+  su?: string;
+  weight?: string;
+  pallet?: string;
+  time?: string;
 };
 
 export type DocHistoryRow = {
@@ -53,7 +58,25 @@ function StockBadge({ type }: { type?: "STOCK" | "NON_STOCK" }) {
 }
 
 
-function printDoc(title: string, row: DocHistoryRow, sheet?: "count") {
+function printDoc(title: string, row: DocHistoryRow, sheet?: "count", packCols?: boolean) {
+  if (packCols) {
+    printTable({
+      title: `${title} — ${row.docNo}`,
+      meta: [`Date: ${fmtDateBE(new Date(row.docDate))}`, row.summary],
+      headers: ["SAP Material Master", "Material Description", "SU", "Qty", "ชั่งจริง (กก.)", "พาเลท", "เวลา", "Lot / Location"],
+      rows: row.lines.map((l) => [
+        l.code,
+        l.name,
+        l.su ?? "",
+        l.qtyText,
+        l.weight ?? "",
+        l.pallet ?? "",
+        l.time ?? "",
+        l.extra ?? "",
+      ]),
+    });
+    return;
+  }
   if (sheet === "count") {
     // Print the completed count as the WEEKLY CYCLE COUNT form (values filled in).
     printCountSheet({
@@ -84,12 +107,14 @@ export function DocHistory({
   accentColor = "#2f86cf",
   reverseKind,
   printSheet,
+  packCols,
 }: {
   title: string;
   rows: DocHistoryRow[];
   accentColor?: string;
   reverseKind?: ReversibleKind;
   printSheet?: "count";
+  packCols?: boolean;
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState<DocHistoryRow | null>(null);
@@ -281,7 +306,7 @@ export function DocHistory({
         </div>
       )}
 
-      <Modal open={!!selected} onClose={closeModal} width={560}>
+      <Modal open={!!selected} onClose={closeModal} width={packCols ? 880 : 560}>
         {selected && (
           <>
             <ModalHeader
@@ -299,7 +324,7 @@ export function DocHistory({
               }
               action={
                 <button
-                  onClick={() => printDoc(title, selected, printSheet)}
+                  onClick={() => printDoc(title, selected, printSheet, packCols)}
                   className="flex items-center gap-1.5 rounded-[8px] border border-[#d7dce4] bg-white px-2.5 py-1.5 text-[12px] font-medium text-[#3a4658] hover:bg-[#f7f9fb]"
                 >
                   ⎙ Print
@@ -311,10 +336,14 @@ export function DocHistory({
               <table className="w-full border-collapse text-[12.5px]">
                 <thead>
                   <tr className="text-left text-[#9aa4b4]">
-                    <th className="w-[90px] pb-2 pr-3 font-medium">SAP Material Master</th>
+                    <th className="w-[80px] pb-2 pr-3 font-medium">SAP Material Master</th>
                     <th className="pb-2 pr-3 font-medium">Material Description</th>
-                    <th className="w-[100px] pb-2 pr-3 text-right font-medium">Qty</th>
-                    <th className="w-[150px] pb-2 pl-3 font-medium">Lot / Location</th>
+                    {packCols && <th className="pb-2 pr-3 font-medium">SU</th>}
+                    <th className="pb-2 pr-3 text-right font-medium">Qty</th>
+                    {packCols && <th className="pb-2 pr-3 text-right font-medium">ชั่งจริง (กก.)</th>}
+                    {packCols && <th className="pb-2 pr-3 font-medium">พาเลท</th>}
+                    {packCols && <th className="pb-2 pr-3 font-medium">เวลา</th>}
+                    <th className="pb-2 pl-3 font-medium">Lot / Location</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -322,7 +351,11 @@ export function DocHistory({
                     <tr key={i} className="border-t border-[#eef1f5]">
                       <td className="font-num py-2 pr-3 text-[#3a4658]">{l.code}</td>
                       <td className="py-2 pr-3 font-medium">{l.name}</td>
+                      {packCols && <td className="font-num py-2 pr-3 font-semibold text-[#8a6d1f]">{l.su}</td>}
                       <td className="font-num py-2 pr-3 text-right">{l.qtyText}</td>
+                      {packCols && <td className="font-num py-2 pr-3 text-right text-[#69748a]">{l.weight}</td>}
+                      {packCols && <td className="py-2 pr-3 text-[11.5px]">{l.pallet}</td>}
+                      {packCols && <td className="font-num py-2 pr-3 text-[11.5px] text-[#69748a]">{l.time}</td>}
                       <td className="border-l border-[#eef1f5] py-2 pl-3 text-[11.5px] text-[#9aa4b4]">
                         {l.extra}
                       </td>
