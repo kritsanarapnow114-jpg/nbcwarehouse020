@@ -25,17 +25,17 @@ export async function getShelfLifeRows(today: Date = todayBangkok()): Promise<Sh
     byProduct.set(l.productCode, g);
   }
 
-  const rows: ShelfLifeRow[] = [...byProduct.entries()].map(([code, g]) => ({
-    code,
-    name: g.name,
-    balanceKg: g.balance,
-    daysLeft: g.soonestExp ? daysBetween(g.soonestExp, today) : null,
-  }));
+  const rows: ShelfLifeRow[] = [...byProduct.entries()]
+    // Only items that actually have an expiry date — no point plotting shelf life
+    // for goods that never expire.
+    .filter(([, g]) => g.soonestExp !== null)
+    .map(([code, g]) => ({
+      code,
+      name: g.name,
+      balanceKg: g.balance,
+      daysLeft: daysBetween(g.soonestExp!, today),
+    }));
 
-  // Most urgent (fewest days left) first; items with no expiry go last.
-  return rows.sort((a, b) => {
-    if (a.daysLeft === null) return 1;
-    if (b.daysLeft === null) return -1;
-    return a.daysLeft - b.daysLeft;
-  });
+  // Most urgent (fewest days left) first.
+  return rows.sort((a, b) => (a.daysLeft ?? 0) - (b.daysLeft ?? 0));
 }

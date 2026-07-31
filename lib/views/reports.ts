@@ -15,6 +15,7 @@ export async function getReportData(range: Range) {
         po: true,
         lines: { include: { product: true } },
         bomLoss: { include: { bomLine: { include: { materialProduct: true } } } },
+        materialConsumption: { include: { lot: { include: { product: true } } } },
       },
       orderBy: { docDate: "desc" },
     }),
@@ -140,14 +141,31 @@ export async function getReportData(range: Range) {
       value: bl.lossQty * bl.bomLine.materialProduct.price,
     }))
   );
+  // Raw materials actually consumed by production runs (BOM draw-down).
+  const usageRows = productionReceipts.flatMap((r) =>
+    r.materialConsumption.map((mc) => ({
+      docNo: r.docNo,
+      docDate: r.docDate.toISOString(),
+      materialCode: mc.lot.productCode,
+      materialName: productLabel(mc.lot.product.nameEn, mc.lot.product.nameTh),
+      lotNo: mc.lot.lotNo,
+      locationCode: mc.lot.locationCode,
+      qty: mc.qty,
+      unit: mc.lot.product.unit,
+      value: mc.qty * mc.lot.product.price,
+    }))
+  );
   const production = {
     docCount: productionReceipts.length,
     totalProduced,
     totalProdLoss,
     yieldPct: totalProduced + totalProdLoss > 0 ? (totalProduced / (totalProduced + totalProdLoss)) * 100 : 100,
     bomLossValue: bomLossRows.reduce((s, r) => s + r.value, 0),
+    totalUsed: usageRows.reduce((s, r) => s + r.qty, 0),
+    totalUsedValue: usageRows.reduce((s, r) => s + r.value, 0),
     rows: productionRows,
     bomLossRows,
+    usageRows,
   };
 
   // Purchase Orders — one row per ordered product line (by PO date within range)

@@ -7,6 +7,7 @@ export const REPORT_TYPES = [
   { value: "issuing", label: "Issuing (จ่ายสินค้า)" },
   { value: "loss", label: "Loss (สูญเสีย)" },
   { value: "production", label: "Production (ผลิต)" },
+  { value: "production_usage", label: "Production material usage (วัตถุดิบที่ใช้ผลิต)" },
   { value: "production_loss", label: "Production material loss (สูญเสียวัตถุดิบ)" },
   { value: "po", label: "Purchase Orders (ใบสั่งซื้อ)" },
   { value: "transfer", label: "Transfers (ย้ายที่เก็บ)" },

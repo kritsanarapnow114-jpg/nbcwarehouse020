@@ -41,6 +41,13 @@ export async function GET(req: NextRequest) {
       );
       return excelResponse("report-production.xls", html);
     }
+    case "production_usage": {
+      const html = toExcelHtml("Report",
+        ["Material Code", "Material", "Date", "Used qty", "Unit", "Lot", "Location", "Value", "Doc No."],
+        data.production.usageRows.map((r) => [r.materialCode, r.materialName, fmtDateBE(new Date(r.docDate)), r.qty, r.unit, r.lotNo, r.locationCode, Math.round(r.value), r.docNo])
+      );
+      return excelResponse("report-production-usage.xls", html);
+    }
     case "production_loss": {
       const html = toExcelHtml("Report",
         ["Material Code", "Material", "Date", "Loss qty", "Unit", "Value", "Doc No."],

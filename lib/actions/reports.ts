@@ -40,6 +40,11 @@ export async function getReportRowsAction(input: {
         cols: ["SAP Material Master", "Material Description", "Date", "Qty", "Unit", "Lot", "Location", "Doc loss", "Doc No."],
         rows: data.production.rows.map((r) => [r.code, r.name, d(r.docDate), r.qty, r.unit, r.lotNo, r.locationCode, r.prodLoss, r.docNo]),
       };
+    case "production_usage":
+      return {
+        cols: ["Material Code", "Material", "Date", "Used qty (ใช้ไป)", "Unit", "Lot", "Location", "Value", "Doc No."],
+        rows: data.production.usageRows.map((r) => [r.materialCode, r.materialName, d(r.docDate), r.qty, r.unit, r.lotNo, r.locationCode, `฿${Math.round(r.value).toLocaleString()}`, r.docNo]),
+      };
     case "production_loss":
       return {
         cols: ["Material Code", "Material", "Date", "Loss qty", "Unit", "Value", "Doc No."],
