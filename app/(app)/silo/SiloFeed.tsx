@@ -439,24 +439,24 @@ export function SiloFeed({
         </datalist>
       </Card>
 
-      {/* Staged items: active on top, completed collapsed at the bottom */}
+      {/* Waiting to load — active items only */}
       <Card>
-        <CardTitle>รายการเบิก SILO — โหลดทีละถุง (กดเริ่ม → กดเสร็จ)</CardTitle>
+        <CardTitle>รอโหลด — โหลดทีละถุง (กดเริ่ม → กดเสร็จ)</CardTitle>
         <div className="flex flex-col gap-3">
           {active.map((s) => stagedCard(s, false))}
-          {active.length === 0 && completed.length === 0 && (
-            <div className="p-6 text-center text-[#9aa4b4]">ไม่มีรายการรอโหลด (nothing staged)</div>
-          )}
-          {completed.length > 0 && (
-            <>
-              <div className="mt-1 border-t border-dashed border-[#dfe4ea] pt-3 text-[11.5px] font-semibold text-[#69748a]">
-                โหลดครบแล้ว {completed.length} รายการ · กด ▶ เพื่อดูรายละเอียด
-              </div>
-              {completed.map((s) => stagedCard(s, true))}
-            </>
+          {active.length === 0 && (
+            <div className="p-6 text-center text-[#9aa4b4]">ไม่มีรายการรอโหลด (nothing waiting to load)</div>
           )}
         </div>
       </Card>
+
+      {/* Completed — moved below, collapsed; click ▶ to expand */}
+      {completed.length > 0 && (
+        <Card className="mt-4">
+          <CardTitle>โหลดเสร็จแล้ว {completed.length} รายการ · กด ▶ เพื่อดูรายละเอียด</CardTitle>
+          <div className="flex flex-col gap-3">{completed.map((s) => stagedCard(s, true))}</div>
+        </Card>
+      )}
 
       {/* Load history (finished bags) */}
       <Card className="mt-4">
