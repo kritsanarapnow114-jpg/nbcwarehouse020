@@ -61,12 +61,18 @@ function scorePool(p: Pool, standardPerHour: number) {
 }
 
 export async function getOeeDashboard(range: Range) {
+  // SiloLoad.loadedAt is a real timestamp, but range.end is the *start* of the
+  // last day (midnight). Using `lte: range.end` would drop everything loaded on
+  // the final day itself. Extend the upper bound to the end of that day.
+  const endExclusive = new Date(range.end);
+  endExclusive.setDate(endExclusive.getDate() + 1);
+
   const [standardsRaw, siloLoads, prodReceipts] = await Promise.all([
     getAppSetting(OEE_STANDARDS_KEY),
     // Finished loads with both timestamps (legacy finish-only loads can't be timed).
     db.siloLoad.findMany({
       where: {
-        loadedAt: { not: null, gte: range.start, lte: range.end },
+        loadedAt: { gte: range.start, lt: endExclusive },
         startedAt: { not: null },
       },
       select: { machine: true, qty: true, startedAt: true, loadedAt: true },
