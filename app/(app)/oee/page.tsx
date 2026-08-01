@@ -44,11 +44,27 @@ export default async function OeePage({
           )}
         </Card>
 
-        {/* Production yield */}
+        {/* Production */}
         <Card>
-          <CardTitle>การผลิต · Yield</CardTitle>
+          <CardTitle>{d.production.hasOee ? "การผลิต · OEE" : "การผลิต · Yield"}</CardTitle>
           {d.production.docs === 0 ? (
             <Empty text="ยังไม่มีรับจากผลิตในช่วงนี้" />
+          ) : d.production.hasOee ? (
+            <>
+              <div className="flex items-center gap-5">
+                <Gauge value={d.production.oee} />
+                <div className="flex flex-1 flex-col gap-2.5">
+                  <Bar label="Availability" sub="เดินจริง/แผน" v={d.production.a} />
+                  <Bar label="Performance" sub="เทียบมาตรฐาน" v={d.production.p} />
+                  <Bar label="Quality" sub="ผลิตดี/ทั้งหมด" v={d.production.q} />
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-5 border-t border-[#eef1f5] pt-3 text-[12px] text-[#69748a]">
+                <Foot k="ผลิตได้" v={`${d.production.produced.toLocaleString()} kg`} />
+                <Foot k="ของเสีย" v={`${d.production.loss.toLocaleString()} kg`} />
+                <Foot k="รอบที่วัด OEE" v={`${d.production.scoredRuns}/${d.production.docs}`} />
+              </div>
+            </>
           ) : (
             <>
               <div className="flex items-center gap-5">
@@ -65,14 +81,49 @@ export default async function OeePage({
                   </div>
                 </div>
               </div>
-              <p className="mt-3 rounded-[9px] bg-[#f7f9fb] p-2.5 text-[11px] leading-relaxed text-[#69748a]">
-                <b className="text-[#3a4658]">หมายเหตุ:</b> ฝั่งผลิตวัดได้แค่ <b>Quality (yield)</b> ตอนนี้ —
-                ยังไม่มีการจับเวลาต่อเครื่องเหมือน Unloading เลยยังไม่มี A/P
+              <p className="mt-3 rounded-[9px] bg-[#fbf1de] p-2.5 text-[11px] leading-relaxed text-[#8a6d1f]">
+                ตอนนี้มีแค่ <b>Yield</b> — เลือก “สายผลิต” + ใส่เวลาตอนบันทึก Pack Order เพื่อให้ได้ A/P/Q ครบ
               </p>
             </>
           )}
         </Card>
       </div>
+
+      {d.production.hasOee && d.production.perLine.length > 0 && (
+        <Card className="mb-4">
+          <CardTitle>OEE รายสายผลิต (Production lines)</CardTitle>
+          <div className="flex flex-col gap-3.5">
+            {d.production.perLine.map((m) => (
+              <div key={m.name}>
+                <div className="mb-1 flex items-baseline gap-2">
+                  <span className="flex-1 text-[12.5px] font-medium">{m.name}</span>
+                  <span className="text-[10.5px] text-[#9aa4b4]">
+                    {m.output.toLocaleString()} kg · มาตรฐาน{" "}
+                    {m.standard ? `${m.standard.toLocaleString()} kg/ชม.` : "ยังไม่ตั้ง"}
+                  </span>
+                  <span
+                    className="font-num w-11 text-right text-[13px] font-bold"
+                    style={{ color: oeeColor(m.oee) }}
+                  >
+                    {m.oee}%
+                  </span>
+                </div>
+                <div className="h-[10px] overflow-hidden rounded-[6px] bg-[#eef1f5]">
+                  <div
+                    className="h-full rounded-[6px]"
+                    style={{ width: `${m.oee}%`, background: oeeColor(m.oee) }}
+                  />
+                </div>
+                <div className="mt-1 flex gap-3 text-[10.5px] text-[#9aa4b4]">
+                  <span>A {m.a}%</span>
+                  <span>P {m.p}%</span>
+                  <span>Q {m.q}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Per-machine */}

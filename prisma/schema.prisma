@@ -264,6 +264,13 @@ model Receipt {
   prodLoss      Float? // mode = PRODUCTION, finished-goods loss qty
   reversedAt    DateTime? // set when the document is reversed/voided
   verifiedAt    DateTime? // PRODUCTION receipts wait here until the warehouse verifies; then FG enters stock. PO receipts are verified on create.
+  // OEE capture (PRODUCTION only): the run's line/machine, planned operating time
+  // and breaks (minutes), and downtime events (JSON [{minutes, reason}]). Feeds
+  // Availability & Performance on the OEE dashboard. See lib/calc/oee.ts.
+  oeeLine    String? // production line / machine name (from Settings list)
+  plannedMin Int? // planned operating time this run (min), net of breaks
+  breakMin   Int? // scheduled break within the shift (min), informational
+  downtime   Json? // [{ minutes: number, reason: string }]
   createdAt     DateTime       @default(now())
 
   lines               ReceiptLine[]

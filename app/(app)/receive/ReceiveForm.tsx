@@ -7,6 +7,7 @@ import { confirmReceiptAction, ReceiveLineInput } from "@/lib/actions/receive";
 import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup, CuteBoxKind } from "@/components/ui/CuteBoxPopup";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { OeeProdCapture, ProdDowntime } from "./OeeProdCapture";
 import { takeRedo } from "@/lib/redoTemplate";
 import { fmtDateISO } from "@/lib/calc/date";
 
@@ -54,6 +55,12 @@ export function ReceiveForm({
   const [popup, setPopup] = useState<{ kind: CuteBoxKind; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // OEE capture (production only) — line "" means "don't score this run".
+  const [oeeLine, setOeeLine] = useState("");
+  const [oeePlannedMin, setOeePlannedMin] = useState("");
+  const [oeeBreakMin, setOeeBreakMin] = useState("");
+  const [oeeDowntimes, setOeeDowntimes] = useState<ProdDowntime[]>([]);
 
   const selectedPo = data.pos.find((p) => p.id === poId) ?? null;
 
@@ -246,6 +253,10 @@ export function ReceiveForm({
         mode === "PRODUCTION" && bom
           ? bom.lines.filter((m) => bomExclude[m.id]).map((m) => m.id)
           : undefined,
+      oeeLine: mode === "PRODUCTION" ? oeeLine || null : null,
+      plannedMin: mode === "PRODUCTION" && oeeLine ? Number(oeePlannedMin) || 0 : null,
+      breakMin: mode === "PRODUCTION" && oeeLine ? Number(oeeBreakMin) || 0 : null,
+      downtime: mode === "PRODUCTION" && oeeLine ? oeeDowntimes : undefined,
     };
     try {
       const res = await confirmReceiptAction(payload);
@@ -267,6 +278,10 @@ export function ReceiveForm({
         setProdLot("");
         setProdMfg("");
         setProdExp("");
+        setOeeLine("");
+        setOeePlannedMin("");
+        setOeeBreakMin("");
+        setOeeDowntimes([]);
         router.refresh();
       }
     } catch (e) {
@@ -687,6 +702,23 @@ export function ReceiveForm({
           </button>
         </div>
       </div>
+
+      {mode === "PRODUCTION" && (
+        <OeeProdCapture
+          prodLines={data.prodLines}
+          standards={data.oeeStandards}
+          line={oeeLine}
+          onLine={setOeeLine}
+          plannedMin={oeePlannedMin}
+          onPlannedMin={setOeePlannedMin}
+          breakMin={oeeBreakMin}
+          onBreakMin={setOeeBreakMin}
+          downtimes={oeeDowntimes}
+          onDowntimes={setOeeDowntimes}
+          produced={producedTotal}
+          loss={Number(prodLoss) || 0}
+        />
+      )}
 
       {mode === "PRODUCTION" && bom && (
         <div className="mt-4 overflow-hidden rounded-[14px] border border-[#e7ebf1] bg-white shadow-[0_1px_2px_rgba(20,30,48,.04),0_6px_18px_rgba(20,30,48,.035)]">
