@@ -11,7 +11,14 @@ import { UsersCard } from "./UsersCard";
 import { CountPlanCard } from "./CountPlanCard";
 import { SubtitlesCard } from "./SubtitlesCard";
 import { ListSettingsCard } from "./ListSettingsCard";
-import { ISSUE_TO_KEY, OPERATORS_KEY, BOM_SOURCE_KEY } from "@/lib/settingsKeys";
+import { OeeStandardsCard } from "./OeeStandardsCard";
+import {
+  ISSUE_TO_KEY,
+  OPERATORS_KEY,
+  BOM_SOURCE_KEY,
+  OEE_STANDARDS_KEY,
+  parseOeeStandards,
+} from "@/lib/settingsKeys";
 
 export default async function SettingsPage() {
   const [users, settings, totalLots] = await Promise.all([
@@ -50,6 +57,9 @@ export default async function SettingsPage() {
           operators={settings[OPERATORS_KEY] ?? ""}
           bomSource={settings[BOM_SOURCE_KEY] ?? ""}
         />
+      </div>
+      <div className="mt-4">
+        <OeeStandardsCard standards={parseOeeStandards(settings[OEE_STANDARDS_KEY])} />
       </div>
       <div className="mt-4">
         <SubtitlesCard overrides={subtitleOverrides} />

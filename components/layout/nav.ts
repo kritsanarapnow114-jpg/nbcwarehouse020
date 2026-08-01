@@ -23,6 +23,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "count", href: "/count", icon: "☑", en: "Stock Count", th: "นับสต็อก" },
   { key: "nonstock", href: "/nonstock", icon: "◲", en: "Non-Stock", th: "แปลงเข้าสต็อก" },
   { key: "abc", href: "/abc", icon: "◧", en: "ABC Analysis", th: "วิเคราะห์ ABC" },
+  { key: "oee", href: "/oee", icon: "⚡", en: "OEE", th: "ประสิทธิผลเครื่อง" },
   { key: "reports", href: "/reports", icon: "▥", en: "Reports", th: "รายงานสรุป" },
   { key: "compare", href: "/compare", icon: "⇌", en: "Compare Periods", th: "เทียบช่วงเวลา" },
 ];
@@ -49,7 +50,7 @@ export const NAV_GROUPS: NavGroup[] = [
     key: "analytics",
     en: "Analytics & Reports",
     th: "วิเคราะห์ & รายงาน",
-    items: ["abc", "reports", "compare"],
+    items: ["abc", "oee", "reports", "compare"],
   },
 ];
 
@@ -70,6 +71,7 @@ export const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
   "/count": { title: "Stock Count", sub: "นับสต็อก · Cycle count" },
   "/nonstock": { title: "Non-Stock", sub: "แปลงเข้าสต็อก · Non-Stock holdings → convert to Stock" },
   "/abc": { title: "ABC Analysis", sub: "วิเคราะห์ ABC · Pareto by value (A/B/C)" },
+  "/oee": { title: "OEE", sub: "ประสิทธิผลเครื่อง · Unloading (จาก SILO) + Yield การผลิต" },
   "/reports": { title: "Reports", sub: "รายงานสรุป · Receiving, Issuing, Loss, Production, PO, Transfer, Stock Card" },
   "/settings": { title: "Settings", sub: "ตั้งค่า · Data management" },
   "/search": { title: "Search", sub: "ค้นหา · สินค้า / PO / Invoice / SAP Material Document / Lot" },
