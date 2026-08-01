@@ -32,6 +32,12 @@ export type ConfirmReceiptInput = {
   // BOM lines the operator chose NOT to consume this run (e.g. reused material
   // already on the line) — skip deducting these from stock.
   excludeBomLineIds?: string[];
+  // OEE capture (optional). When a machine is picked, this receipt is scored.
+  oeeMachineId?: string | null;
+  plannedMin?: number | null;
+  breakMin?: number | null;
+  oeeReject?: number | null;
+  downtimes?: { minutes: number; reason: string; note?: string | null }[];
 };
 
 function revalidateAll() {
@@ -59,8 +65,30 @@ export async function confirmReceiptAction(
         docDate,
         producedTotal: input.mode === "PRODUCTION" ? input.producedTotal ?? 0 : null,
         prodLoss: input.mode === "PRODUCTION" ? input.prodLoss ?? 0 : null,
+        oeeMachineId: input.oeeMachineId || null,
+        plannedMin: input.oeeMachineId ? input.plannedMin ?? null : null,
+        breakMin: input.oeeMachineId ? input.breakMin ?? null : null,
+        // Reject only matters for OEE Quality on non-production runs (production
+        // already scores Quality from producedTotal vs prodLoss).
+        oeeReject:
+          input.oeeMachineId && input.mode !== "PRODUCTION" ? input.oeeReject ?? 0 : null,
       },
     });
+
+    if (input.oeeMachineId && input.downtimes?.length) {
+      for (const d of input.downtimes) {
+        if (d.minutes > 0) {
+          await tx.downtime.create({
+            data: {
+              receiptId: receipt.id,
+              minutes: Math.round(d.minutes),
+              reason: d.reason.trim() || "Other",
+              note: d.note?.trim() || null,
+            },
+          });
+        }
+      }
+    }
 
     for (const line of input.lines) {
       if (line.recvQty <= 0) continue;

@@ -3,10 +3,11 @@ import { db } from "@/lib/db";
 import { peekNextDocNumber } from "@/lib/calc/docNumber";
 import { productLabel } from "@/lib/calc/productName";
 import { getAppSetting } from "@/lib/views/settings";
+import { getOeeMachines } from "@/lib/views/oee";
 import { BOM_SOURCE_KEY, parseList } from "@/lib/settingsKeys";
 
 export async function getReceiveFormData() {
-  const [products, pos, locations, lots, bomsRaw, docNo] = await Promise.all([
+  const [products, pos, locations, lots, bomsRaw, docNo, oeeMachines] = await Promise.all([
     db.product.findMany({
       where: { deletedAt: null },
       orderBy: { code: "asc" },
@@ -20,6 +21,7 @@ export async function getReceiveFormData() {
     db.lot.findMany({ select: { lotNo: true }, distinct: ["lotNo"] }),
     db.bom.findMany({ include: { lines: { include: { materialProduct: true } } } }),
     peekNextDocNumber("RC"),
+    getOeeMachines(true),
   ]);
 
   // FIFO-ordered eligible lots for each BOM material, so the production screen
@@ -69,6 +71,7 @@ export async function getReceiveFormData() {
     })),
     locations: locations.map((l) => l.code),
     lotOptions: lots.map((l) => l.lotNo).filter((l) => l !== "-"),
+    oeeMachines,
     boms: bomsRaw.map((b) => ({
       finishedProductCode: b.finishedProductCode,
       lines: b.lines.map((l) => ({

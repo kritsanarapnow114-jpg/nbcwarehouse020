@@ -10,13 +10,16 @@ import { UsersCard } from "./UsersCard";
 import { CountPlanCard } from "./CountPlanCard";
 import { SubtitlesCard } from "./SubtitlesCard";
 import { ListSettingsCard } from "./ListSettingsCard";
+import { OeeMachinesCard } from "./OeeMachinesCard";
+import { getOeeMachines } from "@/lib/views/oee";
 import { ISSUE_TO_KEY, OPERATORS_KEY, BOM_SOURCE_KEY } from "@/lib/settingsKeys";
 
 export default async function SettingsPage() {
-  const [users, settings, totalLots] = await Promise.all([
+  const [users, settings, totalLots, oeeMachines] = await Promise.all([
     getUsers(),
     getAppSettings(),
     db.lot.count(),
+    getOeeMachines(),
   ]);
 
   const subtitleOverrides: Record<string, string> = {};
@@ -49,6 +52,9 @@ export default async function SettingsPage() {
           operators={settings[OPERATORS_KEY] ?? ""}
           bomSource={settings[BOM_SOURCE_KEY] ?? ""}
         />
+      </div>
+      <div className="mt-4">
+        <OeeMachinesCard machines={oeeMachines} />
       </div>
       <div className="mt-4">
         <SubtitlesCard overrides={subtitleOverrides} />

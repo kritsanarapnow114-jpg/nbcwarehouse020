@@ -54,6 +54,11 @@ enum KpiKey {
   DELIVERY
 }
 
+enum OeeOperation {
+  PRODUCTION
+  UNLOADING
+}
+
 model User {
   id             String   @id @default(cuid())
   email          String   @unique
@@ -175,12 +180,24 @@ model Receipt {
   reversedAt    DateTime? // set when the document is reversed/voided
   createdAt     DateTime       @default(now())
 
+  // OEE capture (optional): when a machine is picked, this receipt is also an
+  // OEE run. Availability = (plannedMin − Σ downtime) / plannedMin;
+  // Performance = actual output ÷ (machine standard rate × run time);
+  // Quality = good ÷ (good + reject). See lib/calc/oee.ts.
+  oeeMachineId String?
+  oeeMachine   OeeMachine? @relation(fields: [oeeMachineId], references: [id])
+  plannedMin   Int? // planned operating time this run (min), already net of breaks
+  breakMin     Int? // scheduled break within the shift (min), informational
+  oeeReject    Float? // reject/spillage qty for OEE Quality on non-production runs
+
   lines               ReceiptLine[]
   bomLoss             ReceiptBomLoss[]
   materialConsumption ReceiptMaterialConsumption[]
+  downtimes           Downtime[]
 
   @@index([mode])
   @@index([docDate])
+  @@index([oeeMachineId])
 }
 
 model ReceiptLine {
@@ -353,6 +370,36 @@ model AppSetting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+/** A production/unloading machine with its standard output rate, used to score
+ *  the Performance component of OEE. Managed on the Settings page. */
+model OeeMachine {
+  id           String       @id @default(cuid())
+  name         String
+  operation    OeeOperation @default(PRODUCTION)
+  standardRate Float // output units per hour at full speed (e.g. 1500 kg/hr)
+  rateUnit     String       @default("kg/hr")
+  active       Boolean      @default(true)
+  sortOrder    Int          @default(0)
+  createdAt    DateTime     @default(now())
+
+  receipts Receipt[]
+
+  @@index([operation])
+}
+
+/** A single stop during an OEE run (attached to the production/unloading
+ *  receipt). Total downtime lowers Availability. */
+model Downtime {
+  id        String  @id @default(cuid())
+  receiptId String
+  receipt   Receipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  minutes   Int
+  reason    String
+  note      String?
+
+  @@index([receiptId])
 }
 
 model KpiLog {

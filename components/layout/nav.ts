@@ -20,6 +20,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: "transfer", href: "/transfer", icon: "⇄", en: "Transfer", th: "ย้ายที่เก็บ" },
   { key: "count", href: "/count", icon: "☑", en: "Stock Count", th: "นับสต็อก" },
   { key: "abc", href: "/abc", icon: "◧", en: "ABC Analysis", th: "วิเคราะห์ ABC" },
+  { key: "oee", href: "/oee", icon: "⚡", en: "OEE", th: "ประสิทธิผลเครื่อง" },
   { key: "reports", href: "/reports", icon: "▥", en: "Reports", th: "รายงานสรุป" },
   { key: "compare", href: "/compare", icon: "⇌", en: "Compare Periods", th: "เทียบช่วงเวลา" },
 ];
@@ -38,6 +39,7 @@ export const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
   "/transfer": { title: "Transfer", sub: "ย้ายที่เก็บ · Bin-to-bin transfer" },
   "/count": { title: "Stock Count", sub: "นับสต็อก · Cycle count" },
   "/abc": { title: "ABC Analysis", sub: "วิเคราะห์ ABC · Pareto by value (A/B/C)" },
+  "/oee": { title: "OEE", sub: "ประสิทธิผลเครื่อง · Availability × Performance × Quality (การผลิต + Unloading)" },
   "/reports": { title: "Reports", sub: "รายงานสรุป · Receiving, Issuing, Loss, Production, PO, Transfer, Stock Card" },
   "/settings": { title: "Settings", sub: "ตั้งค่า · Data management" },
   "/search": { title: "Search", sub: "ค้นหา · สินค้า / PO / Invoice / SAP Material Document / Lot" },

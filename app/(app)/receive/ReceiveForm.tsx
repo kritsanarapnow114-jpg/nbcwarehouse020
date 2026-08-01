@@ -7,6 +7,7 @@ import { confirmReceiptAction, ReceiveLineInput } from "@/lib/actions/receive";
 import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup, CuteBoxKind } from "@/components/ui/CuteBoxPopup";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { OeeCapture, DowntimeRow } from "./OeeCapture";
 import { takeRedo } from "@/lib/redoTemplate";
 import { fmtDateISO } from "@/lib/calc/date";
 
@@ -38,6 +39,13 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
   const [popup, setPopup] = useState<{ kind: CuteBoxKind; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // OEE capture (optional) — machine "" means "don't score this receipt".
+  const [oeeMachineId, setOeeMachineId] = useState("");
+  const [oeePlannedMin, setOeePlannedMin] = useState("");
+  const [oeeBreakMin, setOeeBreakMin] = useState("");
+  const [oeeReject, setOeeReject] = useState("");
+  const [oeeDowntimes, setOeeDowntimes] = useState<DowntimeRow[]>([]);
 
   const selectedPo = data.pos.find((p) => p.id === poId) ?? null;
 
@@ -119,6 +127,11 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
   const totalQty = lines.reduce((s, l) => s + (Number(l.recv) || 0), 0);
   const producedTotal = mode === "PRODUCTION" ? totalQty : 0;
 
+  // Output the OEE card scores against: produced qty for a production machine,
+  // received qty for an unloading machine (mirrors the dashboard reduction).
+  const oeeMachine = data.oeeMachines.find((m) => m.id === oeeMachineId) ?? null;
+  const oeeGood = oeeMachine?.operation === "PRODUCTION" ? producedTotal : totalQty;
+
   const bom = useMemo(() => {
     if (mode !== "PRODUCTION" || lines.length === 0) return null;
     return data.boms.find((b) => b.finishedProductCode === lines[0].productCode) ?? null;
@@ -182,6 +195,11 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
         mode === "PRODUCTION" && bom
           ? bom.lines.filter((m) => bomExclude[m.id]).map((m) => m.id)
           : undefined,
+      oeeMachineId: oeeMachineId || null,
+      plannedMin: oeeMachineId ? Number(oeePlannedMin) || 0 : null,
+      breakMin: oeeMachineId ? Number(oeeBreakMin) || 0 : null,
+      oeeReject: oeeMachineId ? Number(oeeReject) || 0 : null,
+      downtimes: oeeMachineId ? oeeDowntimes : undefined,
     };
     try {
       const res = await confirmReceiptAction(payload);
@@ -194,6 +212,11 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
         setInvoiceNo("");
         setMaterialDoc("");
         setRemark("");
+        setOeeMachineId("");
+        setOeePlannedMin("");
+        setOeeBreakMin("");
+        setOeeReject("");
+        setOeeDowntimes([]);
         router.refresh();
       }
     } catch (e) {
@@ -447,6 +470,21 @@ export function ReceiveForm({ data }: { data: ReceiveFormData }) {
           </button>
         </div>
       </div>
+
+      <OeeCapture
+        machines={data.oeeMachines}
+        machineId={oeeMachineId}
+        onMachineId={setOeeMachineId}
+        plannedMin={oeePlannedMin}
+        onPlannedMin={setOeePlannedMin}
+        breakMin={oeeBreakMin}
+        onBreakMin={setOeeBreakMin}
+        reject={oeeReject}
+        onReject={setOeeReject}
+        downtimes={oeeDowntimes}
+        onDowntimes={setOeeDowntimes}
+        good={oeeGood}
+      />
 
       {mode === "PRODUCTION" && bom && (
         <div className="mt-4 overflow-hidden rounded-[14px] border border-[#e7ebf1] bg-white shadow-[0_1px_2px_rgba(20,30,48,.04),0_6px_18px_rgba(20,30,48,.035)]">
