@@ -3,7 +3,13 @@ import { db } from "@/lib/db";
 import { peekNextDocNumber } from "@/lib/calc/docNumber";
 import { productLabel } from "@/lib/calc/productName";
 import { getAppSetting } from "@/lib/views/settings";
-import { BOM_SOURCE_KEY, parseList } from "@/lib/settingsKeys";
+import {
+  BOM_SOURCE_KEY,
+  PROD_LINES_KEY,
+  OEE_STANDARDS_KEY,
+  parseList,
+  parseOeeStandards,
+} from "@/lib/settingsKeys";
 
 export async function getReceiveFormData() {
   const [products, pos, locations, lots, bomsRaw, docNo, suAgg] = await Promise.all([
@@ -31,7 +37,14 @@ export async function getReceiveFormData() {
   ];
   // If a BOM source location is configured (e.g. the packing line), only those
   // bins' stock is eligible to be consumed by production.
-  const bomSource = parseList(await getAppSetting(BOM_SOURCE_KEY));
+  const [bomSourceRaw, prodLinesRaw, oeeStdRaw] = await Promise.all([
+    getAppSetting(BOM_SOURCE_KEY),
+    getAppSetting(PROD_LINES_KEY),
+    getAppSetting(OEE_STANDARDS_KEY),
+  ]);
+  const bomSource = parseList(bomSourceRaw);
+  const prodLines = parseList(prodLinesRaw);
+  const oeeStandards = parseOeeStandards(oeeStdRaw);
   const materialLots = await db.lot.findMany({
     where: {
       productCode: { in: materialCodes },
@@ -73,6 +86,8 @@ export async function getReceiveFormData() {
     })),
     locations: locations.map((l) => l.code),
     lotOptions: lots.map((l) => l.lotNo).filter((l) => l !== "-"),
+    prodLines,
+    oeeStandards,
     boms: bomsRaw.map((b) => ({
       finishedProductCode: b.finishedProductCode,
       lines: b.lines.map((l) => ({

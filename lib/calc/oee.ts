@@ -54,6 +54,30 @@ export function scoreUnloading(input: {
   return oeeFrom(availability, performance, quality);
 }
 
+/**
+ * Score a production run from planned time, downtime and output.
+ *  - plannedMin: planned operating time (min, net of breaks)
+ *  - downtimeMin: total recorded downtime (min)
+ *  - good / reject: finished-goods produced vs loss (same unit as the rate)
+ *  - standardPerHour: the line's standard output rate (kg/hr)
+ */
+export function scoreProduction(input: {
+  plannedMin: number;
+  downtimeMin: number;
+  good: number;
+  reject: number;
+  standardPerHour: number;
+}): OeeParts {
+  const planned = Math.max(0, input.plannedMin || 0);
+  const runMin = Math.max(0, planned - Math.max(0, input.downtimeMin || 0));
+  const total = Math.max(0, (input.good || 0) + (input.reject || 0));
+  const availability = planned > 0 ? runMin / planned : 0;
+  const ideal = input.standardPerHour > 0 ? input.standardPerHour * (runMin / 60) : 0;
+  const performance = ideal > 0 ? total / ideal : 0;
+  const quality = total > 0 ? (input.good || 0) / total : 1;
+  return oeeFrom(availability, performance, quality);
+}
+
 // World-class OEE ~85%. Bands used consistently across the OEE screens.
 export const OEE_GOOD = 85;
 export const OEE_OK = 65;

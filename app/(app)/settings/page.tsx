@@ -16,8 +16,10 @@ import {
   ISSUE_TO_KEY,
   OPERATORS_KEY,
   BOM_SOURCE_KEY,
+  PROD_LINES_KEY,
   OEE_STANDARDS_KEY,
   parseOeeStandards,
+  parseList,
 } from "@/lib/settingsKeys";
 
 export default async function SettingsPage() {
@@ -56,10 +58,14 @@ export default async function SettingsPage() {
           issueTo={settings[ISSUE_TO_KEY] ?? ""}
           operators={settings[OPERATORS_KEY] ?? ""}
           bomSource={settings[BOM_SOURCE_KEY] ?? ""}
+          prodLines={settings[PROD_LINES_KEY] ?? ""}
         />
       </div>
       <div className="mt-4">
-        <OeeStandardsCard standards={parseOeeStandards(settings[OEE_STANDARDS_KEY])} />
+        <OeeStandardsCard
+          standards={parseOeeStandards(settings[OEE_STANDARDS_KEY])}
+          prodLines={parseList(settings[PROD_LINES_KEY])}
+        />
       </div>
       <div className="mt-4">
         <SubtitlesCard overrides={subtitleOverrides} />

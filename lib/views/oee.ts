@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { Range } from "@/lib/views/dashboard";
 import { getAppSetting } from "@/lib/views/settings";
 import { OEE_STANDARDS_KEY, parseOeeStandards } from "@/lib/settingsKeys";
-import { scoreUnloading, oeeFrom, pct } from "@/lib/calc/oee";
+import { scoreUnloading, scoreProduction, oeeFrom, pct } from "@/lib/calc/oee";
 import { fmtDateISO } from "@/lib/calc/date";
 
 // A finished bag-load reduced to the numbers OEE needs.
@@ -73,7 +73,13 @@ export async function getOeeDashboard(range: Range) {
     }),
     db.receipt.findMany({
       where: { mode: "PRODUCTION", reversedAt: null, docDate: { gte: range.start, lte: range.end } },
-      select: { producedTotal: true, prodLoss: true },
+      select: {
+        producedTotal: true,
+        prodLoss: true,
+        oeeLine: true,
+        plannedMin: true,
+        downtime: true,
+      },
     }),
   ]);
 
@@ -155,10 +161,80 @@ export async function getOeeDashboard(range: Range) {
     return pct(scorePool(pooled, std).oee);
   });
 
-  // ---- Production yield (Quality only; A/P not tracked for production) -------
+  // ---- Production: yield always; full A/P/Q for runs that captured a line -----
   const produced = prodReceipts.reduce((s, r) => s + (r.producedTotal ?? 0), 0);
   const loss = prodReceipts.reduce((s, r) => s + (r.prodLoss ?? 0), 0);
   const yieldQ = produced + loss > 0 ? produced / (produced + loss) : 1;
+
+  const dtMinutes = (raw: unknown): number => {
+    if (!Array.isArray(raw)) return 0;
+    return raw.reduce((s, d) => {
+      const m = d && typeof d === "object" ? Number((d as { minutes?: unknown }).minutes) : 0;
+      return s + (Number.isFinite(m) ? m : 0);
+    }, 0);
+  };
+
+  // Runs that captured a line + planned time can be fully scored.
+  const scored = prodReceipts.filter((r) => r.oeeLine && (r.plannedMin ?? 0) > 0);
+  const prodPool = scored.reduce(
+    (acc, r) => {
+      const planned = r.plannedMin ?? 0;
+      const run = Math.max(0, planned - dtMinutes(r.downtime));
+      const good = r.producedTotal ?? 0;
+      const rej = r.prodLoss ?? 0;
+      acc.plannedMin += planned;
+      acc.runMin += run;
+      acc.idealHrOutput += (standards[r.oeeLine as string] ?? 0) * (run / 60);
+      acc.good += good;
+      acc.reject += rej;
+      return acc;
+    },
+    { plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0 }
+  );
+  const prodOutput = prodPool.good + prodPool.reject;
+  const prodParts = scoreProduction({
+    plannedMin: prodPool.plannedMin,
+    downtimeMin: prodPool.plannedMin - prodPool.runMin,
+    good: prodPool.good,
+    reject: prodPool.reject,
+    standardPerHour:
+      prodPool.runMin > 0 ? prodPool.idealHrOutput / (prodPool.runMin / 60) : 0,
+  });
+
+  // Per-line OEE breakdown.
+  const lineMap = new Map<string, typeof prodPool>();
+  for (const r of scored) {
+    const key = r.oeeLine as string;
+    const p = lineMap.get(key) ?? { plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0 };
+    const planned = r.plannedMin ?? 0;
+    const run = Math.max(0, planned - dtMinutes(r.downtime));
+    p.plannedMin += planned;
+    p.runMin += run;
+    p.idealHrOutput += (standards[key] ?? 0) * (run / 60);
+    p.good += r.producedTotal ?? 0;
+    p.reject += r.prodLoss ?? 0;
+    lineMap.set(key, p);
+  }
+  const prodPerLine = [...lineMap.entries()]
+    .map(([name, p]) => {
+      const parts = scoreProduction({
+        plannedMin: p.plannedMin,
+        downtimeMin: p.plannedMin - p.runMin,
+        good: p.good,
+        reject: p.reject,
+        standardPerHour: p.runMin > 0 ? p.idealHrOutput / (p.runMin / 60) : 0,
+      });
+      return {
+        name,
+        oee: pct(parts.oee),
+        a: pct(parts.availability),
+        p: pct(parts.performance),
+        q: pct(parts.quality),
+        output: Math.round(p.good + p.reject),
+        standard: standards[name] ?? 0,
+      };
+    })
+    .sort((x, y) => x.oee - y.oee);
 
   return {
     hasUnloading: loads.length > 0,
@@ -176,6 +252,11 @@ export async function getOeeDashboard(range: Range) {
       produced: Math.round(produced),
       loss: Math.round(loss),
       quality: pct(yieldQ),
+      hasOee: scored.length > 0,
+      scoredRuns: scored.length,
+      output: Math.round(prodOutput),
+      ...toPct(prodParts),
+      perLine: prodPerLine,
     },
     standards,
   };
