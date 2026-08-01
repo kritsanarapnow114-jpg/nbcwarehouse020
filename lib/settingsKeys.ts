@@ -33,6 +33,39 @@ export function parseList(raw: string | undefined | null): string[] {
     .filter((s) => s.length > 0);
 }
 
+// OEE: standard output rate (units/hour) per unloading machine, stored as a JSON
+// map { [machineName]: ratePerHour } in AppSetting. Drives the Performance score.
+export const OEE_STANDARDS_KEY = "oee.standards";
+
+// The unloading machines the SILO feed screen offers (kept in sync with
+// app/(app)/silo/SiloFeed.tsx). OEE scores each of these.
+export const OEE_MACHINES = ["Super Sack Unloading", "Box Unloading", "EBS Unloading"] as const;
+
+// Sensible starting rates (kg/hr) — fully editable on the Settings page.
+export const OEE_STANDARD_DEFAULTS: Record<string, number> = {
+  "Super Sack Unloading": 1500,
+  "Box Unloading": 1000,
+  "EBS Unloading": 2000,
+};
+
+/** Parse the stored OEE standards JSON into a name→rate map, falling back to the
+ *  defaults for any machine without a saved value. */
+export function parseOeeStandards(raw: string | undefined | null): Record<string, number> {
+  const out: Record<string, number> = { ...OEE_STANDARD_DEFAULTS };
+  if (raw) {
+    try {
+      const j = JSON.parse(raw);
+      for (const [k, v] of Object.entries(j)) {
+        const n = Number(v);
+        if (Number.isFinite(n) && n > 0) out[k] = n;
+      }
+    } catch {
+      // ignore malformed JSON — use defaults
+    }
+  }
+  return out;
+}
+
 export const COUNT_PLAN_MONTHLY_KEY = "countPlan.monthly"; // legacy single value (fallback)
 export const COUNT_PLAN_WEEKLY_KEY = "countPlan.weekly"; // legacy single value (fallback)
 export const COUNT_PLAN_MONTHS_KEY = "countPlan.months"; // JSON: 12 values, index 0=Jan
