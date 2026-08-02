@@ -7,7 +7,7 @@ import { nextDocNumber } from "@/lib/calc/docNumber";
 import { eligibleLots } from "@/lib/calc/fefo";
 import { bagSize } from "@/lib/calc/siloBags";
 
-const SILO_PATHS = ["/silo", "/issue", "/dashboard", "/products", "/aging", "/locations", "/map"];
+const SILO_PATHS = ["/silo", "/oee", "/issue", "/dashboard", "/products", "/aging", "/locations", "/map"];
 
 /**
  * Stage material for the SILO: issue it out of warehouse stock now (a real Issue,
@@ -118,7 +118,7 @@ export async function startBagAction(input: {
         },
       });
     });
-    safeRevalidate(["/silo"]);
+    safeRevalidate(["/silo", "/oee"]);
     return {};
   } catch (e) {
     return { error: e instanceof Error ? e.message : "เริ่มโหลดไม่สำเร็จ (failed to start)" };
@@ -139,7 +139,7 @@ export async function finishBagAction(input: { loadId: string }): Promise<{ erro
         data: { qtyLoaded: { increment: ld.qty } },
       });
     });
-    safeRevalidate(["/silo"]);
+    safeRevalidate(["/silo", "/oee"]);
     return {};
   } catch (e) {
     return { error: e instanceof Error ? e.message : "ปิดโหลดไม่สำเร็จ (failed to finish)" };
@@ -159,7 +159,7 @@ export async function cancelBagAction(input: { loadId: string }): Promise<{ erro
       }
       await tx.siloLoad.delete({ where: { id: ld.id } });
     });
-    safeRevalidate(["/silo"]);
+    safeRevalidate(["/silo", "/oee"]);
     return {};
   } catch (e) {
     return { error: e instanceof Error ? e.message : "ยกเลิกไม่สำเร็จ (failed to cancel)" };
@@ -171,7 +171,7 @@ export async function setBagSiloAction(input: { loadId: string; silo: string }):
   try {
     await requireWrite();
     await db.siloLoad.update({ where: { id: input.loadId }, data: { silo: input.silo.trim() || null } });
-    safeRevalidate(["/silo"]);
+    safeRevalidate(["/silo", "/oee"]);
     return {};
   } catch (e) {
     return { error: e instanceof Error ? e.message : "บันทึก SILO ไม่สำเร็จ (failed)" };

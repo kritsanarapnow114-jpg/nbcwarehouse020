@@ -52,7 +52,7 @@ export type ConfirmReceiptInput = {
 };
 
 function revalidateAll() {
-  safeRevalidate(["/receive", "/dashboard", "/products", "/po", "/aging", "/locations", "/map", "/nonstock"]);
+  safeRevalidate(["/receive", "/pack", "/oee", "/dashboard", "/products", "/po", "/aging", "/locations", "/map", "/nonstock"]);
 }
 
 export async function confirmReceiptAction(

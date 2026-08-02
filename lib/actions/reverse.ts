@@ -12,6 +12,9 @@ type Tx = Prisma.TransactionClient;
 function revalidateAll() {
   safeRevalidate([
     "/receive",
+    "/pack",
+    "/oee",
+    "/silo",
     "/issue",
     "/adjust",
     "/transfer",

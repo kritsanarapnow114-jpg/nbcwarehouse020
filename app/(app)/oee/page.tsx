@@ -64,6 +64,8 @@ export default async function OeePage({
 
   return (
     <div className="max-w-[1180px] p-[24px_26px]">
+      <PeriodSelector basePath="/oee" mode={mode} date={dateStr} start={startStr} end={endStr} />
+
       {/* ── Packing Unit Startup Performance · Trial-Run OEE ─────────────── */}
       <TrialRunHeader phase={report.phase} />
 
@@ -309,7 +311,9 @@ export default async function OeePage({
         </Card>
       </div>
 
-      <PeriodSelector basePath="/oee" mode={mode} date={dateStr} start={startStr} end={endStr} />
+      <div className="mb-2 mt-6 text-[13px] font-semibold text-[#16202e]">
+        ข้อมูลจริงตามช่วงเวลา (Live · เลือกช่วงด้านบน)
+      </div>
 
       <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
         {/* Unloading OEE hero */}
