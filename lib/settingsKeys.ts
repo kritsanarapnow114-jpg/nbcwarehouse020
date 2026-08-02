@@ -196,6 +196,124 @@ export const RISK_LEVELS: { level: string; color: string; requirement: string }[
   },
 ];
 
+// ---- OEE analytics: Quality Loss Pareto, Loss Pareto, extra KPIs ------------
+// All settings-driven (JSON in AppSetting) — these are monthly-compiled report
+// figures, not per-transaction data, so no schema change is needed.
+export const OEE_QUALITY_LOSS_KEY = "oee.qualityLoss";
+export const OEE_LOSS_PARETO_KEY = "oee.lossPareto";
+export const OEE_KPIS_KEY = "oee.kpis";
+
+export type QualityLossRow = { reason: string; qty: string; impact: string };
+
+export const QUALITY_LOSS_SEED: QualityLossRow[] = [
+  { reason: "Liner bag bottom tear", qty: "", impact: "Repack / Product loss" },
+  { reason: "Weight out of tolerance", qty: "", impact: "Reweigh / Repack" },
+  { reason: "Incorrect / Unreadable label", qty: "", impact: "Re-label" },
+  { reason: "Package deformation / damage", qty: "", impact: "Hold / Repack" },
+  { reason: "Start-up / Trial product", qty: "", impact: "Hold / Scrap" },
+  { reason: "Other", qty: "", impact: "Investigation" },
+];
+
+export function parseQualityLoss(raw: string | undefined | null): QualityLossRow[] {
+  if (!raw) return QUALITY_LOSS_SEED.map((r) => ({ ...r }));
+  try {
+    const j = JSON.parse(raw);
+    if (Array.isArray(j)) {
+      return j.map((r) => ({
+        reason: String(r?.reason ?? ""),
+        qty: String(r?.qty ?? ""),
+        impact: String(r?.impact ?? ""),
+      }));
+    }
+  } catch {
+    /* ignore */
+  }
+  return QUALITY_LOSS_SEED.map((r) => ({ ...r }));
+}
+
+export const LOSS_CATEGORIES = [
+  "Equipment breakdown",
+  "Process loss",
+  "Quality loss",
+  "Upstream / Silo loss",
+  "Warehouse / Logistics",
+  "SAP / IT loss",
+  "Planned commissioning test",
+] as const;
+
+export const LOSS_STATUSES = ["Open", "In progress", "Closed"] as const;
+
+export type LossParetoRow = {
+  loss: string;
+  category: string;
+  freq: string;
+  lostMin: string;
+  oeeImpact: string; // % (negative), stored as a plain number string e.g. "2.4"
+  owner: string;
+  status: string;
+};
+
+export const LOSS_PARETO_SEED: LossParetoRow[] = [
+  { loss: "Liner bag tear / Repack", category: "Quality loss", freq: "", lostMin: "", oeeImpact: "", owner: "Packaging / Vendor", status: "Open" },
+  { loss: "Conveyor logic fault", category: "Equipment breakdown", freq: "", lostMin: "", oeeImpact: "", owner: "Project / Automation", status: "In progress" },
+  { loss: "Forklift waiting", category: "Warehouse / Logistics", freq: "", lostMin: "", oeeImpact: "", owner: "Warehouse", status: "Open" },
+  { loss: "HMI / Sequence error", category: "SAP / IT loss", freq: "", lostMin: "", oeeImpact: "", owner: "Project / Automation", status: "In progress" },
+  { loss: "Changeover / Setup", category: "Process loss", freq: "", lostMin: "", oeeImpact: "", owner: "Operation / M&R", status: "Open" },
+];
+
+export function parseLossPareto(raw: string | undefined | null): LossParetoRow[] {
+  if (!raw) return LOSS_PARETO_SEED.map((r) => ({ ...r }));
+  try {
+    const j = JSON.parse(raw);
+    if (Array.isArray(j)) {
+      return j.map((r) => ({
+        loss: String(r?.loss ?? ""),
+        category: String(r?.category ?? LOSS_CATEGORIES[0]),
+        freq: String(r?.freq ?? ""),
+        lostMin: String(r?.lostMin ?? ""),
+        oeeImpact: String(r?.oeeImpact ?? ""),
+        owner: String(r?.owner ?? ""),
+        status: String(r?.status ?? "Open"),
+      }));
+    }
+  } catch {
+    /* ignore */
+  }
+  return LOSS_PARETO_SEED.map((r) => ({ ...r }));
+}
+
+export type OeeKpiDef = { key: string; label: string; unit: string; help: string };
+
+export const OEE_KPIS: OeeKpiDef[] = [
+  { key: "totalTonnes", label: "Total packed tonnes", unit: "t", help: "ผลผลิตจริง" },
+  { key: "scheduleAttain", label: "Schedule attainment", unit: "%", help: "ผลิตได้ตามแผน" },
+  { key: "fpy", label: "First Pass Yield", unit: "%", help: "คุณภาพก่อน Rework" },
+  { key: "repackRate", label: "Repack rate", unit: "%", help: "ปัญหาหลักของ Packing" },
+  { key: "autoMode", label: "Auto-mode utilization", unit: "%", help: "เดินเองไม่พึ่ง Manual/Vendor" },
+  { key: "mtbf", label: "MTBF", unit: "hr", help: "ความถี่การเสีย/Trip" },
+  { key: "mttr", label: "MTTR", unit: "min", help: "ความเร็วในการแก้" },
+  { key: "microStops", label: "Micro-stop frequency", unit: "/shift", help: "หยุดสั้นที่ Downtime ไม่เห็น" },
+  { key: "pkgLoss", label: "Packaging material loss", unit: "units", help: "Big Bag/Liner/Octabin เสีย" },
+  { key: "openPunch", label: "Open critical punch items", unit: "", help: "ข้อจำกัดความพร้อม Startup" },
+  { key: "vendorHours", label: "Vendor dependency hours", unit: "hr", help: "ความพร้อมรับมอบระบบ" },
+];
+
+export function parseKpis(raw: string | undefined | null): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const k of OEE_KPIS) out[k.key] = "";
+  if (raw) {
+    try {
+      const j = JSON.parse(raw);
+      if (j && typeof j === "object") {
+        for (const k of OEE_KPIS) if (typeof j[k.key] === "string") out[k.key] = j[k.key];
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return out;
+}
+
 export const COUNT_PLAN_MONTHLY_KEY = "countPlan.monthly"; // legacy single value (fallback)
 export const COUNT_PLAN_WEEKLY_KEY = "countPlan.weekly"; // legacy single value (fallback)
 export const COUNT_PLAN_MONTHS_KEY = "countPlan.months"; // JSON: 12 values, index 0=Jan

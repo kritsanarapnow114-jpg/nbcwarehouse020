@@ -4,13 +4,20 @@ import { PeriodSelector } from "@/components/ui/PeriodSelector";
 import { resolvePeriod } from "@/lib/calc/period";
 import { getOeeDashboard } from "@/lib/views/oee";
 import { oeeColor, OEE_GOOD, fmtDuration } from "@/lib/calc/oee";
-import { getAppSetting } from "@/lib/views/settings";
+import { getAppSettings } from "@/lib/views/settings";
 import {
   OEE_REPORT_KEY,
   OEE_REPORT_ROWS,
   OEE_PHASE_GUIDE,
   RISK_LEVELS,
+  OEE_QUALITY_LOSS_KEY,
+  OEE_LOSS_PARETO_KEY,
+  OEE_KPIS_KEY,
+  OEE_KPIS,
   parseOeeReport,
+  parseQualityLoss,
+  parseLossPareto,
+  parseKpis,
   type OeeReportRowKey,
 } from "@/lib/settingsKeys";
 
@@ -21,15 +28,20 @@ export default async function OeePage({
 }) {
   const params = await searchParams;
   const { mode, range, dateStr, startStr, endStr } = resolvePeriod(params);
-  const [d, report] = await Promise.all([
-    getOeeDashboard(range),
-    getAppSetting(OEE_REPORT_KEY).then(parseOeeReport),
-  ]);
+  const [d, settings] = await Promise.all([getOeeDashboard(range), getAppSettings()]);
+  const report = parseOeeReport(settings[OEE_REPORT_KEY]);
+  const qualityLoss = parseQualityLoss(settings[OEE_QUALITY_LOSS_KEY]).filter((r) => r.reason.trim());
+  const lossPareto = parseLossPareto(settings[OEE_LOSS_PARETO_KEY]).filter((r) => r.loss.trim());
+  const kpis = parseKpis(settings[OEE_KPIS_KEY]);
   const R = report.rows;
   const num = (s: string) => {
     const n = Number(String(s).replace(/,/g, ""));
     return Number.isFinite(n) ? n : null;
   };
+  const qLossTotal = qualityLoss.reduce((s, r) => s + (Number(r.qty) || 0), 0);
+  const lossSorted = [...lossPareto].sort((a, b) => (Number(b.lostMin) || 0) - (Number(a.lostMin) || 0));
+  const lossMax = Math.max(1, ...lossSorted.map((r) => Number(r.lostMin) || 0));
+  const hasKpi = OEE_KPIS.some((def) => (kpis[def.key] ?? "").trim() !== "");
 
   return (
     <div className="max-w-[1180px] p-[24px_26px]">
@@ -93,6 +105,113 @@ export default async function OeePage({
           ค่าเดือนก่อน (July) ใส่ให้จากรายงานเดิมแล้ว
         </p>
       </Card>
+
+      {/* Quality Loss Pareto — explains the Quality gap */}
+      {qualityLoss.length > 0 && (
+        <Card className="mb-4">
+          <CardTitle>
+            Quality Loss Pareto — ทำไม Quality ไม่ถึง 100%
+            {num(R.quality.cur) != null && (
+              <span className="ml-2 font-num text-[12px] font-normal text-[#c53f3f]">
+                loss {(100 - (num(R.quality.cur) as number)).toFixed(1)}%
+              </span>
+            )}
+          </CardTitle>
+          <div className="flex flex-col gap-2.5">
+            {[...qualityLoss]
+              .sort((a, b) => (Number(b.qty) || 0) - (Number(a.qty) || 0))
+              .map((r) => {
+                const qv = Number(r.qty) || 0;
+                const pctLoss = qLossTotal > 0 ? (qv / qLossTotal) * 100 : 0;
+                return (
+                  <div key={r.reason} className="flex items-center gap-3">
+                    <div className="w-[190px] flex-none text-[12px] text-[#3a4658]">{r.reason}</div>
+                    <div className="h-[13px] flex-1 overflow-hidden rounded-[5px] bg-[#eef1f5]">
+                      <div className="h-full rounded-[5px] bg-[#c53f3f]" style={{ width: `${pctLoss}%` }} />
+                    </div>
+                    <div className="font-num w-12 text-right text-[12px] font-semibold text-[#c53f3f]">
+                      {pctLoss.toFixed(0)}%
+                    </div>
+                    <div className="w-16 flex-none text-right font-num text-[11.5px] text-[#9aa4b4]">{r.qty || "—"}</div>
+                    <div className="w-[130px] flex-none text-[10.5px] text-[#9aa4b4]">{r.impact}</div>
+                  </div>
+                );
+              })}
+          </div>
+          {qLossTotal === 0 && (
+            <p className="mt-2 text-[11px] text-[#c8891a]">
+              ใส่จำนวนของเสียแต่ละสาเหตุที่ Settings → OEE Analytics แล้วกราฟจะขึ้น
+            </p>
+          )}
+        </Card>
+      )}
+
+      {/* Loss Pareto — split by function/owner */}
+      {lossSorted.length > 0 && (
+        <Card className="mb-4">
+          <CardTitle>Loss Pareto — แยกตามฝ่ายรับผิดชอบ (Project / Vendor / Operator)</CardTitle>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] border-collapse text-[12px]">
+              <thead>
+                <tr className="bg-[#f7f9fb] text-left text-[11px] text-[#69748a]">
+                  <th className="p-[7px_10px] font-medium">#</th>
+                  <th className="p-[7px_10px] font-medium">Top loss</th>
+                  <th className="p-[7px_10px] font-medium">Category</th>
+                  <th className="p-[7px_10px] text-right font-medium">Freq</th>
+                  <th className="p-[7px_10px] font-medium">Lost time</th>
+                  <th className="p-[7px_10px] text-right font-medium">OEE</th>
+                  <th className="p-[7px_10px] font-medium">Owner</th>
+                  <th className="p-[7px_10px] font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lossSorted.map((r, i) => (
+                  <tr key={i} className="border-t border-[#eef1f5]">
+                    <td className="font-num p-[7px_10px] text-[#9aa4b4]">{i + 1}</td>
+                    <td className="p-[7px_10px] font-medium text-[#3a4658]">{r.loss}</td>
+                    <td className="p-[7px_10px]"><CatChip category={r.category} /></td>
+                    <td className="font-num p-[7px_10px] text-right text-[#69748a]">{r.freq || "—"}</td>
+                    <td className="p-[7px_10px]">
+                      <div className="flex items-center gap-2">
+                        <div className="h-[8px] w-[70px] flex-none overflow-hidden rounded-[4px] bg-[#eef1f5]">
+                          <div className="h-full rounded-[4px] bg-[#c8891a]" style={{ width: `${((Number(r.lostMin) || 0) / lossMax) * 100}%` }} />
+                        </div>
+                        <span className="font-num text-[11.5px] text-[#69748a]">{r.lostMin || "—"} min</span>
+                      </div>
+                    </td>
+                    <td className="font-num p-[7px_10px] text-right text-[#c53f3f]">{r.oeeImpact ? `−${r.oeeImpact}%` : "—"}</td>
+                    <td className="p-[7px_10px] text-[11.5px] text-[#69748a]">{r.owner || "—"}</td>
+                    <td className="p-[7px_10px]"><StatusChip status={r.status} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {/* Extra startup KPIs */}
+      {hasKpi && (
+        <Card className="mb-4">
+          <CardTitle>Startup KPIs (นอกเหนือจาก OEE)</CardTitle>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {OEE_KPIS.filter((def) => (kpis[def.key] ?? "").trim() !== "").map((def) => (
+              <div key={def.key} className="rounded-[12px] border border-[#eef1f5] bg-[#fafbfc] p-[12px_14px]">
+                <div className="text-[11px] text-[#69748a]">{def.label}</div>
+                <div className="font-num text-[22px] font-extrabold text-[#16202e]">
+                  {kpis[def.key]}
+                  {def.unit && <span className="ml-1 text-[12px] font-medium text-[#9aa4b4]">{def.unit}</span>}
+                </div>
+                <div className="text-[10px] text-[#9aa4b4]">{def.help}</div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-[#9aa4b4]">
+            <b className="text-[#3a4658]">Auto-mode utilization</b> สำคัญที่สุด — OEE อาจสูงตอน Vendor ช่วยคุมเครื่อง
+            แต่ยังไม่สะท้อนความพร้อมของทีม Operation
+          </p>
+        </Card>
+      )}
 
       <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
@@ -389,6 +508,35 @@ function Legend({ color, label }: { color: string; label: string }) {
 
 function Empty({ text = "ยังไม่มีข้อมูล" }: { text?: string }) {
   return <div className="py-6 text-center text-[12.5px] text-[#9aa4b4]">{text}</div>;
+}
+
+const CAT_COLORS: Record<string, string> = {
+  "Equipment breakdown": "#c53f3f",
+  "Process loss": "#c8891a",
+  "Quality loss": "#b5477f",
+  "Upstream / Silo loss": "#2f86cf",
+  "Warehouse / Logistics": "#1f9d63",
+  "SAP / IT loss": "#6b6bd6",
+  "Planned commissioning test": "#8d9a92",
+};
+
+function CatChip({ category }: { category: string }) {
+  const c = CAT_COLORS[category] ?? "#8d9a92";
+  return (
+    <span className="rounded-[5px] px-2 py-0.5 text-[10.5px] font-semibold" style={{ background: `${c}1a`, color: c }}>
+      {category}
+    </span>
+  );
+}
+
+function StatusChip({ status }: { status: string }) {
+  const map: Record<string, string> = { Open: "#c53f3f", "In progress": "#c8891a", Closed: "#1f9d63" };
+  const c = map[status] ?? "#8d9a92";
+  return (
+    <span className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold" style={{ background: `${c}1a`, color: c }}>
+      {status}
+    </span>
+  );
 }
 
 function TrialRunHeader({ phase }: { phase: string }) {
