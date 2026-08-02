@@ -71,7 +71,7 @@ export const PAGE_TITLES: Record<string, { title: string; sub: string }> = {
   "/count": { title: "Stock Count", sub: "นับสต็อก · Cycle count" },
   "/nonstock": { title: "Non-Stock", sub: "แปลงเข้าสต็อก · Non-Stock holdings → convert to Stock" },
   "/abc": { title: "ABC Analysis", sub: "วิเคราะห์ ABC · Pareto by value (A/B/C)" },
-  "/oee": { title: "OEE", sub: "ประสิทธิผลเครื่อง · Unloading (จาก SILO) + Yield การผลิต" },
+  "/oee": { title: "OEE", sub: "Packing Unit Startup · Trial-Run OEE · Unloading (SILO) + การผลิต" },
   "/reports": { title: "Reports", sub: "รายงานสรุป · Receiving, Issuing, Loss, Production, PO, Transfer, Stock Card" },
   "/settings": { title: "Settings", sub: "ตั้งค่า · Data management" },
   "/search": { title: "Search", sub: "ค้นหา · สินค้า / PO / Invoice / SAP Material Document / Lot" },

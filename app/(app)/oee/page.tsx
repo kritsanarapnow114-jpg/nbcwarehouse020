@@ -4,6 +4,15 @@ import { PeriodSelector } from "@/components/ui/PeriodSelector";
 import { resolvePeriod } from "@/lib/calc/period";
 import { getOeeDashboard } from "@/lib/views/oee";
 import { oeeColor, OEE_GOOD, fmtDuration } from "@/lib/calc/oee";
+import { getAppSetting } from "@/lib/views/settings";
+import {
+  OEE_REPORT_KEY,
+  OEE_REPORT_ROWS,
+  OEE_PHASE_GUIDE,
+  RISK_LEVELS,
+  parseOeeReport,
+  type OeeReportRowKey,
+} from "@/lib/settingsKeys";
 
 export default async function OeePage({
   searchParams,
@@ -12,10 +21,134 @@ export default async function OeePage({
 }) {
   const params = await searchParams;
   const { mode, range, dateStr, startStr, endStr } = resolvePeriod(params);
-  const d = await getOeeDashboard(range);
+  const [d, report] = await Promise.all([
+    getOeeDashboard(range),
+    getAppSetting(OEE_REPORT_KEY).then(parseOeeReport),
+  ]);
+  const R = report.rows;
+  const num = (s: string) => {
+    const n = Number(String(s).replace(/,/g, ""));
+    return Number.isFinite(n) ? n : null;
+  };
 
   return (
     <div className="max-w-[1180px] p-[24px_26px]">
+      {/* ── Packing Unit Startup Performance · Trial-Run OEE ─────────────── */}
+      <TrialRunHeader phase={report.phase} />
+
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {(["oee", "availability", "performance", "quality"] as OeeReportRowKey[]).map((k) => (
+          <MonthTile
+            key={k}
+            label={k === "oee" ? "OEE" : k[0].toUpperCase() + k.slice(1)}
+            cur={num(R[k].cur)}
+            prev={num(R[k].prev)}
+            suffix="%"
+          />
+        ))}
+      </div>
+
+      <Card className="mb-4">
+        <CardTitle>OEE Calculation Base — เดือนนี้ / เป้า / เดือนก่อน (ตรวจที่มาได้)</CardTitle>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] border-collapse text-[12.5px]">
+            <thead>
+              <tr className="bg-[#f7f9fb] text-[#69748a]">
+                <th className="p-[8px_12px] text-left text-[11.5px] font-medium">OEE Input</th>
+                <th className="p-[8px_12px] text-right text-[11.5px] font-medium">This month</th>
+                <th className="p-[8px_12px] text-right text-[11.5px] font-medium">Target</th>
+                <th className="p-[8px_12px] text-right text-[11.5px] font-medium">Last month</th>
+                <th className="p-[8px_12px] text-center text-[11.5px] font-medium">Trend</th>
+              </tr>
+            </thead>
+            <tbody>
+              {OEE_REPORT_ROWS.map((row) => {
+                const c = R[row.key];
+                const cur = num(c.cur);
+                const prev = num(c.prev);
+                const emphasize = row.key === "oee" || row.pct;
+                // For downtime/repack/scrap, lower is better — flip arrow meaning.
+                const lowerBetter = ["downtimeMin", "repack", "scrap"].includes(row.key);
+                return (
+                  <tr key={row.key} className={`border-t border-[#eef1f5] ${emphasize ? "font-semibold" : ""}`}>
+                    <td className="p-[7px_12px] text-[#3a4658]">
+                      {row.label} <span className="text-[10.5px] font-normal text-[#9aa4b4]">{row.unit}</span>
+                    </td>
+                    <td className="font-num p-[7px_12px] text-right">{c.cur || "—"}</td>
+                    <td className="font-num p-[7px_12px] text-right text-[#69748a]">
+                      {row.hasTarget ? c.target || "—" : "–"}
+                    </td>
+                    <td className="font-num p-[7px_12px] text-right text-[#9aa4b4]">{c.prev || "—"}</td>
+                    <td className="p-[7px_12px] text-center">
+                      <TrendArrow cur={cur} prev={prev} lowerBetter={lowerBetter} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-[11px] text-[#9aa4b4]">
+          กรอก/แก้ตัวเลขได้ที่ <Link href="/settings" className="text-[#2f86cf]">Settings → OEE Report</Link> ·
+          ค่าเดือนก่อน (July) ใส่ให้จากรายงานเดิมแล้ว
+        </p>
+      </Card>
+
+      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card>
+          <CardTitle>Startup Phase Guideline (แทน World-Class)</CardTitle>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[420px] border-collapse text-[12px]">
+              <thead>
+                <tr className="text-left text-[11px] text-[#69748a]">
+                  <th className="p-[6px_10px] font-medium">Phase</th>
+                  <th className="p-[6px_10px] font-medium">OEE guideline</th>
+                  <th className="p-[6px_10px] font-medium">Priority</th>
+                </tr>
+              </thead>
+              <tbody>
+                {OEE_PHASE_GUIDE.map((g) => {
+                  const active = g.phase === report.phase;
+                  return (
+                    <tr
+                      key={g.phase}
+                      className={`border-t border-[#eef1f5] ${active ? "bg-[#e9f6ee]" : ""}`}
+                    >
+                      <td className={`p-[6px_10px] ${active ? "font-bold text-[#1f9d63]" : "text-[#3a4658]"}`}>
+                        {active ? "▶ " : ""}
+                        {g.phase}
+                      </td>
+                      <td className="font-num p-[6px_10px]">{g.range}</td>
+                      <td className="p-[6px_10px] text-[#69748a]">{g.priority}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-[11px] text-[#9aa4b4]">
+            ยังเป็นช่วงทดสอบเครื่อง — <b className="text-[#3a4658]">Trial-Run OEE ไม่ควรเทียบ World-Class 85% โดยตรง</b>
+          </p>
+        </Card>
+
+        <Card>
+          <CardTitle>Risk Level — Management Requirement</CardTitle>
+          <div className="flex flex-col gap-2">
+            {RISK_LEVELS.map((r) => (
+              <div key={r.level} className="flex gap-2.5 text-[12px]">
+                <span
+                  className="mt-0.5 h-fit flex-none rounded-[5px] px-2 py-0.5 text-[11px] font-bold text-white"
+                  style={{ background: r.color }}
+                >
+                  {r.level}
+                </span>
+                <span className="text-[#69748a]">{r.requirement}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
       <PeriodSelector basePath="/oee" mode={mode} date={dateStr} start={startStr} end={endStr} />
 
       <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
@@ -256,6 +389,75 @@ function Legend({ color, label }: { color: string; label: string }) {
 
 function Empty({ text = "ยังไม่มีข้อมูล" }: { text?: string }) {
   return <div className="py-6 text-center text-[12.5px] text-[#9aa4b4]">{text}</div>;
+}
+
+function TrialRunHeader({ phase }: { phase: string }) {
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[14px] border border-[#e7ebf1] bg-gradient-to-r from-[#eef6ff] to-white p-[16px_20px] shadow-[0_1px_2px_rgba(20,30,48,.04)]">
+      <div className="flex-1">
+        <div className="text-[16px] font-bold text-[#16202e]">
+          Packing Unit Startup Performance · Trial-Run OEE
+        </div>
+        <div className="text-[12px] text-[#69748a]">
+          ยังเป็นช่วงทดสอบเครื่อง — Commissioning OEE · ไม่เทียบ World-Class โดยตรง
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-[11.5px] text-[#69748a]">Phase:</span>
+        <span className="rounded-full bg-[#1f9d63] px-3 py-1 text-[12.5px] font-bold text-white">{phase}</span>
+      </div>
+    </div>
+  );
+}
+
+function MonthTile({
+  label,
+  cur,
+  prev,
+  suffix = "",
+}: {
+  label: string;
+  cur: number | null;
+  prev: number | null;
+  suffix?: string;
+}) {
+  const color = cur != null && suffix === "%" ? oeeColor(cur) : "#16202e";
+  return (
+    <div className="rounded-[14px] border border-[#e7ebf1] bg-white p-[14px_16px] shadow-[0_1px_2px_rgba(20,30,48,.04)]">
+      <div className="text-[11px] text-[#69748a]">{label}</div>
+      <div className="font-num text-[26px] font-extrabold leading-tight" style={{ color }}>
+        {cur != null ? `${cur}${suffix}` : "—"}
+      </div>
+      <div className="text-[10.5px] text-[#9aa4b4]">
+        <TrendArrow cur={cur} prev={prev} inline /> เดือนก่อน {prev != null ? `${prev}${suffix}` : "—"}
+      </div>
+    </div>
+  );
+}
+
+function TrendArrow({
+  cur,
+  prev,
+  lowerBetter,
+  inline,
+}: {
+  cur: number | null;
+  prev: number | null;
+  lowerBetter?: boolean;
+  inline?: boolean;
+}) {
+  if (cur == null || prev == null) return <span className="text-[#c9d0da]">–</span>;
+  const diff = cur - prev;
+  if (Math.abs(diff) < 1e-9) return <span className="text-[#9aa4b4]">→</span>;
+  const up = diff > 0;
+  const good = lowerBetter ? !up : up;
+  const color = good ? "#1f9d63" : "#c53f3f";
+  return (
+    <span style={{ color }} className={inline ? "" : "font-semibold"}>
+      {up ? "↑" : "↓"}
+      {!inline && ` ${diff > 0 ? "+" : ""}${Math.round(diff * 10) / 10}`}
+    </span>
+  );
 }
 
 /** Static SVG line chart of 7-day OEE. Null days leave a gap. */

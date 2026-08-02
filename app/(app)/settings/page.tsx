@@ -12,13 +12,16 @@ import { CountPlanCard } from "./CountPlanCard";
 import { SubtitlesCard } from "./SubtitlesCard";
 import { ListSettingsCard } from "./ListSettingsCard";
 import { OeeStandardsCard } from "./OeeStandardsCard";
+import { OeeReportCard } from "./OeeReportCard";
 import {
   ISSUE_TO_KEY,
   OPERATORS_KEY,
   BOM_SOURCE_KEY,
   PROD_LINES_KEY,
   OEE_STANDARDS_KEY,
+  OEE_REPORT_KEY,
   parseOeeStandards,
+  parseOeeReport,
   parseList,
 } from "@/lib/settingsKeys";
 
@@ -66,6 +69,9 @@ export default async function SettingsPage() {
           standards={parseOeeStandards(settings[OEE_STANDARDS_KEY])}
           prodLines={parseList(settings[PROD_LINES_KEY])}
         />
+      </div>
+      <div className="mt-4">
+        <OeeReportCard report={parseOeeReport(settings[OEE_REPORT_KEY])} />
       </div>
       <div className="mt-4">
         <SubtitlesCard overrides={subtitleOverrides} />
