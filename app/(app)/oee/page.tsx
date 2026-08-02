@@ -480,6 +480,83 @@ export default async function OeePage({
           <Trend days={d.trend.days} oee={d.trend.oee} />
         </Card>
       </div>
+
+      {/* ── OEE per run — each production run & each unloading session ─────── */}
+      {d.productionRuns.length > 0 && (
+        <Card className="mb-4">
+          <CardTitle>OEE รายครั้ง · การผลิต (แต่ละใบ Pack Order)</CardTitle>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[620px] border-collapse text-[12px]">
+              <thead>
+                <tr className="bg-[#f7f9fb] text-left text-[11px] text-[#69748a]">
+                  <th className="p-[7px_10px] font-medium">เอกสาร</th>
+                  <th className="p-[7px_10px] font-medium">วันที่</th>
+                  <th className="p-[7px_10px] font-medium">สายผลิต</th>
+                  <th className="p-[7px_10px] text-right font-medium">A</th>
+                  <th className="p-[7px_10px] text-right font-medium">P</th>
+                  <th className="p-[7px_10px] text-right font-medium">Q</th>
+                  <th className="p-[7px_10px] text-right font-medium">OEE</th>
+                  <th className="p-[7px_10px] text-right font-medium">ผลิต</th>
+                  <th className="p-[7px_10px] text-right font-medium">Downtime</th>
+                </tr>
+              </thead>
+              <tbody>
+                {d.productionRuns.map((r) => (
+                  <tr key={r.doc} className="border-t border-[#eef1f5]">
+                    <td className="font-num p-[7px_10px] text-[#2f86cf]">{r.doc}</td>
+                    <td className="font-num p-[7px_10px] text-[#69748a]">{r.day}</td>
+                    <td className="p-[7px_10px]">{r.line}</td>
+                    <td className="font-num p-[7px_10px] text-right text-[#69748a]">{r.a}%</td>
+                    <td className="font-num p-[7px_10px] text-right text-[#69748a]">{r.p}%</td>
+                    <td className="font-num p-[7px_10px] text-right text-[#69748a]">{r.q}%</td>
+                    <td className="font-num p-[7px_10px] text-right font-bold" style={{ color: oeeColor(r.oee) }}>{r.oee}%</td>
+                    <td className="font-num p-[7px_10px] text-right">{r.produced.toLocaleString()}</td>
+                    <td className="font-num p-[7px_10px] text-right text-[#c8891a]">{r.downtimeMin} น.</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+      {d.unloadingRuns.length > 0 && (
+        <Card className="mb-4">
+          <CardTitle>OEE รายครั้ง · Unloading (แต่ละรอบโหลดเข้า SILO)</CardTitle>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] border-collapse text-[12px]">
+              <thead>
+                <tr className="bg-[#f7f9fb] text-left text-[11px] text-[#69748a]">
+                  <th className="p-[7px_10px] font-medium">เอกสาร</th>
+                  <th className="p-[7px_10px] font-medium">วันที่</th>
+                  <th className="p-[7px_10px] font-medium">เครื่อง</th>
+                  <th className="p-[7px_10px] text-right font-medium">A</th>
+                  <th className="p-[7px_10px] text-right font-medium">P</th>
+                  <th className="p-[7px_10px] text-right font-medium">OEE</th>
+                  <th className="p-[7px_10px] text-right font-medium">ถุง</th>
+                  <th className="p-[7px_10px] text-right font-medium">ปริมาณ</th>
+                  <th className="p-[7px_10px] text-right font-medium">เวลาโหลด</th>
+                </tr>
+              </thead>
+              <tbody>
+                {d.unloadingRuns.map((r) => (
+                  <tr key={r.doc} className="border-t border-[#eef1f5]">
+                    <td className="font-num p-[7px_10px] text-[#2f86cf]">{r.doc}</td>
+                    <td className="font-num p-[7px_10px] text-[#69748a]">{r.day}</td>
+                    <td className="p-[7px_10px]">{r.machine}</td>
+                    <td className="font-num p-[7px_10px] text-right text-[#69748a]">{r.a}%</td>
+                    <td className="font-num p-[7px_10px] text-right text-[#69748a]">{r.p}%</td>
+                    <td className="font-num p-[7px_10px] text-right font-bold" style={{ color: oeeColor(r.oee) }}>{r.oee}%</td>
+                    <td className="font-num p-[7px_10px] text-right">{r.bags}</td>
+                    <td className="font-num p-[7px_10px] text-right">{r.output.toLocaleString()} kg</td>
+                    <td className="font-num p-[7px_10px] text-right text-[#69748a]">{fmtDuration(r.loadingMs)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

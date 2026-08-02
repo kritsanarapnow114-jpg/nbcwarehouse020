@@ -13,6 +13,8 @@ type Load = {
   startMs: number;
   endMs: number;
   qty: number;
+  stagingId: string;
+  stagingDoc: string;
 };
 
 /** Pooled timing/output for a machine (or the whole operation) over the range. */
@@ -75,11 +77,20 @@ export async function getOeeDashboard(range: Range) {
         loadedAt: { gte: range.start, lt: endExclusive },
         startedAt: { not: null },
       },
-      select: { machine: true, qty: true, startedAt: true, loadedAt: true },
+      select: {
+        machine: true,
+        qty: true,
+        startedAt: true,
+        loadedAt: true,
+        stagingId: true,
+        staging: { select: { docNo: true } },
+      },
     }),
     db.receipt.findMany({
       where: { mode: "PRODUCTION", reversedAt: null, docDate: { gte: range.start, lte: range.end } },
       select: {
+        docNo: true,
+        docDate: true,
         producedTotal: true,
         prodLoss: true,
         oeeLine: true,
@@ -102,8 +113,51 @@ export async function getOeeDashboard(range: Range) {
         startMs: (l.startedAt as Date).getTime(),
         endMs: end.getTime(),
         qty: l.qty,
+        stagingId: l.stagingId,
+        stagingDoc: l.staging?.docNo ?? l.stagingId,
       };
     });
+
+  // ---- Unloading: per-run (one row per staged item / SILO session) ----------
+  const runMap = new Map<
+    string,
+    { doc: string; machine: string; day: string; startMs: number; endMs: number; loadingMs: number; output: number; bags: number }
+  >();
+  for (const l of loads) {
+    const g =
+      runMap.get(l.stagingId) ??
+      { doc: l.stagingDoc, machine: l.machine, day: l.day, startMs: l.startMs, endMs: l.endMs, loadingMs: 0, output: 0, bags: 0 };
+    g.startMs = Math.min(g.startMs, l.startMs);
+    g.endMs = Math.max(g.endMs, l.endMs);
+    g.loadingMs += Math.max(0, l.endMs - l.startMs);
+    g.output += l.qty;
+    g.bags += 1;
+    g.day = l.day;
+    runMap.set(l.stagingId, g);
+  }
+  const unloadingRuns = [...runMap.values()]
+    .map((g) => {
+      const parts = scoreUnloading({
+        windowMs: g.endMs - g.startMs,
+        loadingMs: g.loadingMs,
+        output: g.output,
+        staged: g.output,
+        standardPerHour: standards[g.machine] ?? 0,
+      });
+      return {
+        doc: g.doc,
+        day: g.day,
+        machine: g.machine,
+        a: pct(parts.availability),
+        p: pct(parts.performance),
+        oee: pct(parts.oee),
+        bags: g.bags,
+        output: Math.round(g.output),
+        loadingMs: g.loadingMs,
+      };
+    })
+    .sort((a, b) => b.day.localeCompare(a.day))
+    .slice(0, 50);
 
   // ---- Unloading: per machine + overall -------------------------------------
   const perMachinePool = poolByMachineDay(loads);
@@ -183,6 +237,33 @@ export async function getOeeDashboard(range: Range) {
 
   // Runs that captured a line + planned time can be fully scored.
   const scored = prodReceipts.filter((r) => r.oeeLine && (r.plannedMin ?? 0) > 0);
+
+  // Per-run (one row per Pack Order that captured OEE).
+  const productionRuns = scored
+    .map((r) => {
+      const dt = dtMinutes(r.downtime);
+      const parts = scoreProduction({
+        plannedMin: r.plannedMin ?? 0,
+        downtimeMin: dt,
+        good: r.producedTotal ?? 0,
+        reject: r.prodLoss ?? 0,
+        standardPerHour: standards[r.oeeLine as string] ?? 0,
+      });
+      return {
+        doc: r.docNo,
+        day: fmtDateISO(new Date(Date.UTC(r.docDate.getUTCFullYear(), r.docDate.getUTCMonth(), r.docDate.getUTCDate()))),
+        line: r.oeeLine as string,
+        a: pct(parts.availability),
+        p: pct(parts.performance),
+        q: pct(parts.quality),
+        oee: pct(parts.oee),
+        produced: Math.round(r.producedTotal ?? 0),
+        loss: Math.round(r.prodLoss ?? 0),
+        downtimeMin: dt,
+      };
+    })
+    .sort((a, b) => b.day.localeCompare(a.day))
+    .slice(0, 50);
   const prodPool = scored.reduce(
     (acc, r) => {
       const planned = r.plannedMin ?? 0;
@@ -289,6 +370,8 @@ export async function getOeeDashboard(range: Range) {
 
   return {
     hasUnloading: loads.length > 0,
+    productionRuns,
+    unloadingRuns,
     captured: {
       qualityLoss: capturedQualityLoss,
       lossPareto: capturedLossPareto,
