@@ -14,6 +14,7 @@ import {
   OEE_LOSS_PARETO_KEY,
   OEE_KPIS_KEY,
   OEE_KPIS,
+  QUALITY_LOSS_SEED,
   parseOeeReport,
   parseQualityLoss,
   parseLossPareto,
@@ -30,9 +31,27 @@ export default async function OeePage({
   const { mode, range, dateStr, startStr, endStr } = resolvePeriod(params);
   const [d, settings] = await Promise.all([getOeeDashboard(range), getAppSettings()]);
   const report = parseOeeReport(settings[OEE_REPORT_KEY]);
-  const qualityLoss = parseQualityLoss(settings[OEE_QUALITY_LOSS_KEY]).filter((r) => r.reason.trim());
-  const lossPareto = parseLossPareto(settings[OEE_LOSS_PARETO_KEY]).filter((r) => r.loss.trim());
   const kpis = parseKpis(settings[OEE_KPIS_KEY]);
+
+  // Prefer data captured at the Pack Order; fall back to the monthly Settings input.
+  const impactFor = (reason: string) =>
+    QUALITY_LOSS_SEED.find((s) => s.reason === reason)?.impact ?? "";
+  const qualitySource: "capture" | "settings" = d.captured.hasQuality ? "capture" : "settings";
+  const qualityLoss = d.captured.hasQuality
+    ? d.captured.qualityLoss.map((r) => ({ reason: r.reason, qty: String(r.qty), impact: impactFor(r.reason) }))
+    : parseQualityLoss(settings[OEE_QUALITY_LOSS_KEY]).filter((r) => r.reason.trim());
+  const lossSource: "capture" | "settings" = d.captured.hasLoss ? "capture" : "settings";
+  const lossPareto = d.captured.hasLoss
+    ? d.captured.lossPareto.map((r) => ({
+        loss: r.loss,
+        category: r.category,
+        freq: String(r.freq),
+        lostMin: String(r.lostMin),
+        oeeImpact: "",
+        owner: r.owner,
+        status: "",
+      }))
+    : parseLossPareto(settings[OEE_LOSS_PARETO_KEY]).filter((r) => r.loss.trim());
   const R = report.rows;
   const num = (s: string) => {
     const n = Number(String(s).replace(/,/g, ""));
@@ -116,6 +135,7 @@ export default async function OeePage({
                 loss {(100 - (num(R.quality.cur) as number)).toFixed(1)}%
               </span>
             )}
+            <SourceTag source={qualitySource} />
           </CardTitle>
           <div className="flex flex-col gap-2.5">
             {[...qualityLoss]
@@ -149,7 +169,10 @@ export default async function OeePage({
       {/* Loss Pareto — split by function/owner */}
       {lossSorted.length > 0 && (
         <Card className="mb-4">
-          <CardTitle>Loss Pareto — แยกตามฝ่ายรับผิดชอบ (Project / Vendor / Operator)</CardTitle>
+          <CardTitle>
+            Loss Pareto — แยกตามฝ่ายรับผิดชอบ (Project / Vendor / Operator)
+            <SourceTag source={lossSource} />
+          </CardTitle>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] border-collapse text-[12px]">
               <thead>
@@ -181,7 +204,7 @@ export default async function OeePage({
                     </td>
                     <td className="font-num p-[7px_10px] text-right text-[#c53f3f]">{r.oeeImpact ? `−${r.oeeImpact}%` : "—"}</td>
                     <td className="p-[7px_10px] text-[11.5px] text-[#69748a]">{r.owner || "—"}</td>
-                    <td className="p-[7px_10px]"><StatusChip status={r.status} /></td>
+                    <td className="p-[7px_10px]">{r.status ? <StatusChip status={r.status} /> : <span className="text-[#c9d0da]">—</span>}</td>
                   </tr>
                 ))}
               </tbody>
@@ -191,10 +214,28 @@ export default async function OeePage({
       )}
 
       {/* Extra startup KPIs */}
-      {hasKpi && (
+      {(hasKpi || d.captured.repack > 0 || d.captured.scrap > 0) && (
         <Card className="mb-4">
           <CardTitle>Startup KPIs (นอกเหนือจาก OEE)</CardTitle>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {(d.captured.repack > 0 || d.captured.scrap > 0) && (
+              <>
+                <div className="rounded-[12px] border border-[#eef1f5] bg-[#fafbfc] p-[12px_14px]">
+                  <div className="text-[11px] text-[#69748a]">Repack (จาก Pack Order)</div>
+                  <div className="font-num text-[22px] font-extrabold text-[#c8891a]">
+                    {d.captured.repack.toLocaleString()}<span className="ml-1 text-[12px] font-medium text-[#9aa4b4]">units</span>
+                  </div>
+                  <div className="text-[10px] text-[#9aa4b4]">รวมจากที่บันทึกจริง</div>
+                </div>
+                <div className="rounded-[12px] border border-[#eef1f5] bg-[#fafbfc] p-[12px_14px]">
+                  <div className="text-[11px] text-[#69748a]">Scrap (จาก Pack Order)</div>
+                  <div className="font-num text-[22px] font-extrabold text-[#c53f3f]">
+                    {d.captured.scrap.toLocaleString()}<span className="ml-1 text-[12px] font-medium text-[#9aa4b4]">units</span>
+                  </div>
+                  <div className="text-[10px] text-[#9aa4b4]">รวมจากที่บันทึกจริง</div>
+                </div>
+              </>
+            )}
             {OEE_KPIS.filter((def) => (kpis[def.key] ?? "").trim() !== "").map((def) => (
               <div key={def.key} className="rounded-[12px] border border-[#eef1f5] bg-[#fafbfc] p-[12px_14px]">
                 <div className="text-[11px] text-[#69748a]">{def.label}</div>
@@ -525,6 +566,19 @@ function CatChip({ category }: { category: string }) {
   return (
     <span className="rounded-[5px] px-2 py-0.5 text-[10.5px] font-semibold" style={{ background: `${c}1a`, color: c }}>
       {category}
+    </span>
+  );
+}
+
+function SourceTag({ source }: { source: "capture" | "settings" }) {
+  const cap = source === "capture";
+  return (
+    <span
+      className="ml-2 rounded-[5px] px-2 py-0.5 text-[10px] font-semibold"
+      style={cap ? { background: "#e9f6ee", color: "#1f9d63" } : { background: "#eef1f5", color: "#8d9a92" }}
+      title={cap ? "รวมจากที่บันทึกใน Pack Order จริง" : "จากค่าที่กรอกใน Settings"}
+    >
+      {cap ? "จาก Pack Order" : "จาก Settings"}
     </span>
   );
 }

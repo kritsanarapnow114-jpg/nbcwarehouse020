@@ -7,7 +7,7 @@ import { confirmReceiptAction, ReceiveLineInput } from "@/lib/actions/receive";
 import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup, CuteBoxKind } from "@/components/ui/CuteBoxPopup";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
-import { OeeProdCapture, ProdDowntime } from "./OeeProdCapture";
+import { OeeProdCapture, ProdDowntime, ProdQualityLoss } from "./OeeProdCapture";
 import { takeRedo } from "@/lib/redoTemplate";
 import { fmtDateISO } from "@/lib/calc/date";
 
@@ -61,6 +61,9 @@ export function ReceiveForm({
   const [oeePlannedMin, setOeePlannedMin] = useState("");
   const [oeeBreakMin, setOeeBreakMin] = useState("");
   const [oeeDowntimes, setOeeDowntimes] = useState<ProdDowntime[]>([]);
+  const [oeeQualityLosses, setOeeQualityLosses] = useState<ProdQualityLoss[]>([]);
+  const [oeeRepack, setOeeRepack] = useState("");
+  const [oeeScrap, setOeeScrap] = useState("");
 
   const selectedPo = data.pos.find((p) => p.id === poId) ?? null;
 
@@ -257,6 +260,14 @@ export function ReceiveForm({
       plannedMin: mode === "PRODUCTION" && oeeLine ? Number(oeePlannedMin) || 0 : null,
       breakMin: mode === "PRODUCTION" && oeeLine ? Number(oeeBreakMin) || 0 : null,
       downtime: mode === "PRODUCTION" && oeeLine ? oeeDowntimes : undefined,
+      oeeQuality:
+        mode === "PRODUCTION" && oeeLine
+          ? {
+              repack: Number(oeeRepack) || 0,
+              scrap: Number(oeeScrap) || 0,
+              losses: oeeQualityLosses,
+            }
+          : undefined,
     };
     try {
       const res = await confirmReceiptAction(payload);
@@ -282,6 +293,9 @@ export function ReceiveForm({
         setOeePlannedMin("");
         setOeeBreakMin("");
         setOeeDowntimes([]);
+        setOeeQualityLosses([]);
+        setOeeRepack("");
+        setOeeScrap("");
         router.refresh();
       }
     } catch (e) {
@@ -715,6 +729,12 @@ export function ReceiveForm({
           onBreakMin={setOeeBreakMin}
           downtimes={oeeDowntimes}
           onDowntimes={setOeeDowntimes}
+          qualityLosses={oeeQualityLosses}
+          onQualityLosses={setOeeQualityLosses}
+          repack={oeeRepack}
+          onRepack={setOeeRepack}
+          scrap={oeeScrap}
+          onScrap={setOeeScrap}
           produced={producedTotal}
           loss={Number(prodLoss) || 0}
         />

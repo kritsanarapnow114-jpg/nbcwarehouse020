@@ -18,7 +18,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Migrations a Neon cold-start left failed that are safe to re-apply (idempotent
 // SQL). Cleared before each deploy attempt.
-const RECOVERABLE_FAILED = ["20260801130000_oee_production"];
+const RECOVERABLE_FAILED = ["20260801130000_oee_production", "20260802120000_oee_quality"];
 
 function clearFailedMigrations() {
   for (const name of RECOVERABLE_FAILED) {

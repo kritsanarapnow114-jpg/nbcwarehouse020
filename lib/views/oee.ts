@@ -85,6 +85,7 @@ export async function getOeeDashboard(range: Range) {
         oeeLine: true,
         plannedMin: true,
         downtime: true,
+        oeeQuality: true,
       },
     }),
   ]);
@@ -242,8 +243,60 @@ export async function getOeeDashboard(range: Range) {
     })
     .sort((x, y) => x.oee - y.oee);
 
+  // ---- Captured-at-source analytics (from the Pack Order OEE card) ---------
+  const qLossMap = new Map<string, number>();
+  const lossAggMap = new Map<
+    string,
+    { loss: string; category: string; owner: string; freq: number; lostMin: number }
+  >();
+  let repackTotal = 0;
+  let scrapTotal = 0;
+  for (const r of prodReceipts) {
+    const oq = r.oeeQuality as
+      | { repack?: number; scrap?: number; losses?: { reason?: string; qty?: number }[] }
+      | null;
+    if (oq && typeof oq === "object") {
+      repackTotal += Number(oq.repack) || 0;
+      scrapTotal += Number(oq.scrap) || 0;
+      for (const l of oq.losses ?? []) {
+        const reason = String(l?.reason ?? "").trim();
+        const qty = Number(l?.qty) || 0;
+        if (reason && qty > 0) qLossMap.set(reason, (qLossMap.get(reason) ?? 0) + qty);
+      }
+    }
+    const dt = r.downtime;
+    if (Array.isArray(dt)) {
+      for (const d of dt) {
+        if (!d || typeof d !== "object") continue;
+        const e = d as { minutes?: unknown; reason?: unknown; category?: unknown; owner?: unknown };
+        const minutes = Number(e.minutes) || 0;
+        if (minutes <= 0) continue;
+        const reason = String(e.reason ?? "").trim() || "อื่น ๆ";
+        const category = String(e.category ?? "").trim() || "Process loss";
+        const owner = String(e.owner ?? "").trim();
+        const key = `${reason}||${category}||${owner}`;
+        const g = lossAggMap.get(key) ?? { loss: reason, category, owner, freq: 0, lostMin: 0 };
+        g.freq += 1;
+        g.lostMin += minutes;
+        lossAggMap.set(key, g);
+      }
+    }
+  }
+  const capturedQualityLoss = [...qLossMap.entries()]
+    .map(([reason, qty]) => ({ reason, qty }))
+    .sort((a, b) => b.qty - a.qty);
+  const capturedLossPareto = [...lossAggMap.values()].sort((a, b) => b.lostMin - a.lostMin);
+
   return {
     hasUnloading: loads.length > 0,
+    captured: {
+      qualityLoss: capturedQualityLoss,
+      lossPareto: capturedLossPareto,
+      repack: Math.round(repackTotal),
+      scrap: Math.round(scrapTotal),
+      hasQuality: capturedQualityLoss.length > 0,
+      hasLoss: capturedLossPareto.length > 0,
+    },
     unloading: {
       ...toPct(overallParts),
       loads: overall.loads,

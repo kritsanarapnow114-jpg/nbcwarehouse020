@@ -38,11 +38,17 @@ export type ConfirmReceiptInput = {
   // BOM lines the operator chose NOT to consume this run (e.g. reused material
   // already on the line) — skip deducting these from stock.
   excludeBomLineIds?: string[];
-  // OEE capture (PRODUCTION only): line/machine, planned+break minutes, downtime.
+  // OEE capture (PRODUCTION only): line/machine, planned+break minutes, downtime
+  // (with responsible function), quality-loss breakdown and repack/scrap.
   oeeLine?: string | null;
   plannedMin?: number | null;
   breakMin?: number | null;
-  downtime?: { minutes: number; reason: string }[];
+  downtime?: { minutes: number; reason: string; category?: string; owner?: string }[];
+  oeeQuality?: {
+    repack: number;
+    scrap: number;
+    losses: { reason: string; qty: number }[];
+  };
 };
 
 function revalidateAll() {
@@ -82,6 +88,14 @@ export async function confirmReceiptAction(
         downtime:
           isProduction && input.oeeLine && input.downtime?.length
             ? input.downtime.filter((d) => d.minutes > 0)
+            : undefined,
+        oeeQuality:
+          isProduction && input.oeeLine && input.oeeQuality
+            ? {
+                repack: input.oeeQuality.repack || 0,
+                scrap: input.oeeQuality.scrap || 0,
+                losses: (input.oeeQuality.losses ?? []).filter((l) => l.qty > 0),
+              }
             : undefined,
       },
     });

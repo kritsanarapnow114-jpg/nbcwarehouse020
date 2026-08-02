@@ -270,7 +270,8 @@ model Receipt {
   oeeLine    String? // production line / machine name (from Settings list)
   plannedMin Int? // planned operating time this run (min), net of breaks
   breakMin   Int? // scheduled break within the shift (min), informational
-  downtime   Json? // [{ minutes: number, reason: string }]
+  downtime   Json? // [{ minutes, reason, category?, owner? }] — feeds Loss Pareto
+  oeeQuality Json? // { repack, scrap, losses: [{ reason, qty }] } — feeds Quality Pareto + FPY
   createdAt     DateTime       @default(now())
 
   lines               ReceiptLine[]
