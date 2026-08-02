@@ -13,7 +13,6 @@ import { SubtitlesCard } from "./SubtitlesCard";
 import { ListSettingsCard } from "./ListSettingsCard";
 import { OeeStandardsCard } from "./OeeStandardsCard";
 import { OeeReportCard } from "./OeeReportCard";
-import { OeeAnalyticsCard } from "./OeeAnalyticsCard";
 import {
   ISSUE_TO_KEY,
   OPERATORS_KEY,
@@ -21,14 +20,8 @@ import {
   PROD_LINES_KEY,
   OEE_STANDARDS_KEY,
   OEE_REPORT_KEY,
-  OEE_QUALITY_LOSS_KEY,
-  OEE_LOSS_PARETO_KEY,
-  OEE_KPIS_KEY,
   parseOeeStandards,
   parseOeeReport,
-  parseQualityLoss,
-  parseLossPareto,
-  parseKpis,
   parseList,
 } from "@/lib/settingsKeys";
 
@@ -79,13 +72,6 @@ export default async function SettingsPage() {
       </div>
       <div className="mt-4">
         <OeeReportCard report={parseOeeReport(settings[OEE_REPORT_KEY])} />
-      </div>
-      <div className="mt-4">
-        <OeeAnalyticsCard
-          quality={parseQualityLoss(settings[OEE_QUALITY_LOSS_KEY])}
-          loss={parseLossPareto(settings[OEE_LOSS_PARETO_KEY])}
-          kpis={parseKpis(settings[OEE_KPIS_KEY])}
-        />
       </div>
       <div className="mt-4">
         <SubtitlesCard overrides={subtitleOverrides} />
