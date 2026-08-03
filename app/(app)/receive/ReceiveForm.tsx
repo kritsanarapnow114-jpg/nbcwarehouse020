@@ -215,6 +215,16 @@ export function ReceiveForm({
       )
     : 0;
 
+  // Baht value of the quality loss — the figure that actually shows the impact
+  // even when the % barely moves. Pellet price = finished-good price − packaging
+  // cost per unit (as requested); packaging pieces valued at their own price.
+  const finishedPrice = bom ? data.products.find((p) => p.code === bom.finishedProductCode)?.price ?? 0 : 0;
+  const pkgCostPerUnit = bom
+    ? bom.lines.reduce((s, m) => s + m.materialPrice * (m.perQty > 0 ? m.qtyPerUnit / m.perQty : m.qtyPerUnit), 0)
+    : 0;
+  const pelletUnitPrice = Math.max(0, finishedPrice - pkgCostPerUnit);
+  const qualityLossValue = (Number(prodLoss) || 0) * pelletUnitPrice + bomLossValue;
+
   async function handleConfirm() {
     setError(null);
 
@@ -888,6 +898,7 @@ export function ReceiveForm({
           onScrap={setOeeScrap}
           produced={producedTotal}
           loss={Number(prodLoss) || 0}
+          lossValue={qualityLossValue}
         />
       )}
 

@@ -33,6 +33,7 @@ export function OeeProdCapture({
   onScrap,
   produced,
   loss,
+  lossValue,
 }: {
   prodLines: string[];
   standards: Record<string, number>;
@@ -50,6 +51,7 @@ export function OeeProdCapture({
   onScrap: (v: string) => void;
   produced: number;
   loss: number;
+  lossValue?: number;
 }) {
   const [dtMin, setDtMin] = useState("");
   const [dtReason, setDtReason] = useState(REASONS[0]);
@@ -130,6 +132,12 @@ export function OeeProdCapture({
               ผลิตได้ <b className="font-num text-[#0c7f93]">{produced.toLocaleString()}</b> · ของเสีย{" "}
               <b className="font-num text-[#c53f3f]">{loss.toLocaleString()}</b>
             </div>
+            {lossValue != null && lossValue > 0 && (
+              <div className="rounded-[8px] border border-[#f0d3c6] bg-[#fbeee6] px-2.5 py-1.5 text-[11.5px] text-[#69748a]">
+                มูลค่าของเสีย <b className="font-num text-[#c05621]">฿{Math.round(lossValue).toLocaleString()}</b>
+                <span className="text-[10.5px] text-[#9aa4b4]"> (เม็ด+Packaging)</span>
+              </div>
+            )}
             {standard <= 0 && <div className="text-[11px] text-[#c8891a]">* ยังไม่ตั้งมาตรฐาน {line} → Performance = 0%</div>}
           </div>
 
@@ -169,7 +177,8 @@ export function OeeProdCapture({
             <div className="grid grid-cols-4 gap-px border-t border-[#eef1f5] bg-[#eef1f5]">
               <Cell k="Availability" v={pct(result.availability)} color="#2f86cf" />
               <Cell k="Performance" v={pct(result.performance)} color="#c8891a" />
-              <Cell k="Quality" v={pct(result.quality)} color="#1f9d63" />
+              {/* Quality shown to 1 decimal — small losses (e.g. 20/5250 = 99.6%) must not round to 100% */}
+              <Cell k="Quality" v={Math.round(result.quality * 1000) / 10} color="#1f9d63" />
               <Cell k="OEE" v={pct(result.oee)} color={oeeColor(pct(result.oee))} main />
             </div>
           )}
