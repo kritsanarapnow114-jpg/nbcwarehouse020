@@ -70,6 +70,7 @@ export async function getReceiveFormData() {
       unit: p.unit,
       price: p.price,
       pallet: p.pallet, // standard pallet size — a Full pallet is received as this
+      category: p.category,
     })),
     pos: pos.map((po) => ({
       id: po.id,

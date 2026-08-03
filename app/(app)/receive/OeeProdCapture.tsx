@@ -101,9 +101,15 @@ export function OeeProdCapture({
             เวลา + downtime (ใคร/ฝ่ายไหน) + ของเสียแยกสาเหตุ + repack/scrap → หน้า OEE สรุป Pareto ให้เอง
           </div>
         </div>
-        {prodLines.length > 0 ? (
+        {prodLines.length === 1 ? (
+          // Only one line — fixed, no need to choose.
+          <span className="rounded-[8px] bg-[#e9f6ee] px-3 py-1.5 text-[13px] font-semibold text-[#1f9d63]">
+            {line || prodLines[0]}
+            {standards[line || prodLines[0]] ? ` · ${standards[line || prodLines[0]].toLocaleString()} kg/hr` : ""}
+          </span>
+        ) : prodLines.length > 1 ? (
           <select value={line} onChange={(e) => onLine(e.target.value)} className={`${inputCls} min-w-[200px]`}>
-            <option value="">— ไม่บันทึก OEE —</option>
+            <option value="">— เลือกสายผลิต —</option>
             {prodLines.map((l) => (
               <option key={l} value={l}>
                 {l}

@@ -90,6 +90,15 @@ export function ReceiveForm({
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [data.products, lockMode]);
 
+  // Only one production line? Pick it automatically so OEE is ready without a
+  // manual choice (re-applies after a save resets the field).
+  useEffect(() => {
+    if (mode === "PRODUCTION" && data.prodLines.length === 1 && !oeeLine) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOeeLine(data.prodLines[0]);
+    }
+  }, [mode, data.prodLines, oeeLine]);
+
   function selectPo(id: string) {
     setPoId(id);
     const po = data.pos.find((p) => p.id === id);
@@ -698,9 +707,16 @@ export function ReceiveForm({
 
         <div className="flex items-center gap-2 border-t border-[#eef1f5] p-[12px_16px]">
           <SearchableSelect
-            options={data.products.map((p) => ({ value: p.code, label: `${p.code} · ${p.name}` }))}
+            options={data.products
+              // Pack Order records finished goods produced — only offer FG there.
+              .filter((p) => mode !== "PRODUCTION" || p.category === "FINISHED_GOODS")
+              .map((p) => ({ value: p.code, label: `${p.code} · ${p.name}` }))}
             onSelect={addLine}
-            placeholder="+ Add line (เพิ่มรายการ) — พิมพ์ค้นหาสินค้า…"
+            placeholder={
+              mode === "PRODUCTION"
+                ? "+ เพิ่มรายการ — พิมพ์ค้นหาสินค้าสำเร็จรูป (FG)…"
+                : "+ Add line (เพิ่มรายการ) — พิมพ์ค้นหาสินค้า…"
+            }
           />
         </div>
 
@@ -728,29 +744,6 @@ export function ReceiveForm({
           </button>
         </div>
       </div>
-
-      {mode === "PRODUCTION" && (
-        <OeeProdCapture
-          prodLines={data.prodLines}
-          standards={data.oeeStandards}
-          line={oeeLine}
-          onLine={setOeeLine}
-          plannedMin={oeePlannedMin}
-          onPlannedMin={setOeePlannedMin}
-          breakMin={oeeBreakMin}
-          onBreakMin={setOeeBreakMin}
-          downtimes={oeeDowntimes}
-          onDowntimes={setOeeDowntimes}
-          qualityLosses={oeeQualityLosses}
-          onQualityLosses={setOeeQualityLosses}
-          repack={oeeRepack}
-          onRepack={setOeeRepack}
-          scrap={oeeScrap}
-          onScrap={setOeeScrap}
-          produced={producedTotal}
-          loss={Number(prodLoss) || 0}
-        />
-      )}
 
       {mode === "PRODUCTION" && bom && (
         <div className="mt-4 overflow-hidden rounded-[14px] border border-[#e7ebf1] bg-white shadow-[0_1px_2px_rgba(20,30,48,.04),0_6px_18px_rgba(20,30,48,.035)]">
@@ -867,6 +860,29 @@ export function ReceiveForm({
             </div>
           </div>
         </div>
+      )}
+
+      {mode === "PRODUCTION" && (
+        <OeeProdCapture
+          prodLines={data.prodLines}
+          standards={data.oeeStandards}
+          line={oeeLine}
+          onLine={setOeeLine}
+          plannedMin={oeePlannedMin}
+          onPlannedMin={setOeePlannedMin}
+          breakMin={oeeBreakMin}
+          onBreakMin={setOeeBreakMin}
+          downtimes={oeeDowntimes}
+          onDowntimes={setOeeDowntimes}
+          qualityLosses={oeeQualityLosses}
+          onQualityLosses={setOeeQualityLosses}
+          repack={oeeRepack}
+          onRepack={setOeeRepack}
+          scrap={oeeScrap}
+          onScrap={setOeeScrap}
+          produced={producedTotal}
+          loss={Number(prodLoss) || 0}
+        />
       )}
 
       {popup && (
