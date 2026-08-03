@@ -215,6 +215,18 @@ export function ReceiveForm({
       return;
     }
 
+    // Production must record OEE before it's sent for verification.
+    if (mode === "PRODUCTION") {
+      if (!oeeLine) {
+        setError("กรุณาบันทึก OEE — เลือกสายผลิตในการ์ด OEE ก่อนส่งตรวจสอบ");
+        return;
+      }
+      if (!(Number(oeePlannedMin) > 0)) {
+        setError("กรุณาใส่เวลาวางแผนเดินเครื่อง (OEE) ก่อนส่งตรวจสอบ");
+        return;
+      }
+    }
+
     setSaving(true);
     const payload = {
       mode,

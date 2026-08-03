@@ -5,6 +5,7 @@ import { getAppSetting } from "@/lib/views/settings";
 import { OEE_STANDARDS_KEY, parseOeeStandards } from "@/lib/settingsKeys";
 import { scoreUnloading, scoreProduction, oeeFrom, pct } from "@/lib/calc/oee";
 import { fmtDateISO } from "@/lib/calc/date";
+import { productLabel } from "@/lib/calc/productName";
 
 // A finished bag-load reduced to the numbers OEE needs.
 type Load = {
@@ -69,7 +70,7 @@ export async function getOeeDashboard(range: Range) {
   const endExclusive = new Date(range.end);
   endExclusive.setDate(endExclusive.getDate() + 1);
 
-  const [standardsRaw, siloLoads, prodReceipts] = await Promise.all([
+  const [standardsRaw, siloLoads, prodReceipts, bomLosses] = await Promise.all([
     getAppSetting(OEE_STANDARDS_KEY),
     // Finished loads with both timestamps (legacy finish-only loads can't be timed).
     db.siloLoad.findMany({
@@ -99,9 +100,33 @@ export async function getOeeDashboard(range: Range) {
         oeeQuality: true,
       },
     }),
+    // Packaging material loss (liner / bag / box…) captured on the BOM card —
+    // a different metric from finished-goods quality loss.
+    db.receiptBomLoss.findMany({
+      where: {
+        receipt: { mode: "PRODUCTION", reversedAt: null, docDate: { gte: range.start, lte: range.end } },
+      },
+      include: { bomLine: { include: { materialProduct: true } } },
+    }),
   ]);
 
   const standards = parseOeeStandards(standardsRaw);
+
+  // Packaging Material Loss (from BOM loss) — total + by material, no re-entry.
+  const pkgMap = new Map<string, number>();
+  let pkgTotal = 0;
+  for (const bl of bomLosses) {
+    if (bl.lossQty <= 0) continue;
+    const name = productLabel(bl.bomLine.materialProduct.nameEn, bl.bomLine.materialProduct.nameTh);
+    pkgMap.set(name, (pkgMap.get(name) ?? 0) + bl.lossQty);
+    pkgTotal += bl.lossQty;
+  }
+  const packagingLoss = {
+    total: Math.round(pkgTotal),
+    byMaterial: [...pkgMap.entries()]
+      .map(([name, qty]) => ({ name, qty: Math.round(qty) }))
+      .sort((a, b) => b.qty - a.qty),
+  };
 
   const loads: Load[] = siloLoads
     .filter((l) => l.startedAt && l.loadedAt)
@@ -370,6 +395,7 @@ export async function getOeeDashboard(range: Range) {
 
   return {
     hasUnloading: loads.length > 0,
+    packagingLoss,
     productionRuns,
     unloadingRuns,
     captured: {

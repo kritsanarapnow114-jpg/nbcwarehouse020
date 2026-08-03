@@ -65,6 +65,8 @@ export function OeeProdCapture({
 
   const standard = line ? standards[line] ?? 0 : 0;
   const downtimeTotal = downtimes.reduce((s, d) => s + d.minutes, 0);
+  const qSum = qualityLosses.reduce((s, q) => s + q.qty, 0);
+  const qRemain = Math.round((loss - qSum) * 100) / 100;
   const result = line
     ? scoreProduction({
         plannedMin: Number(plannedMin) || 0,
@@ -94,7 +96,7 @@ export function OeeProdCapture({
       <div className="flex flex-wrap items-center gap-3 border-b border-[#eef1f5] p-[16px_22px]">
         <span className="flex h-7 w-7 items-center justify-center rounded-[9px] bg-[#e9f6ee] text-[14px] text-[#1f9d63]">⚡</span>
         <div className="flex-1">
-          <div className="text-[14px] font-semibold">OEE — บันทึกที่เดียวจบ (ไม่บังคับ)</div>
+          <div className="text-[14px] font-semibold">OEE — บันทึกที่เดียวจบ (บังคับก่อนส่งตรวจสอบ)</div>
           <div className="text-[11.5px] text-[#69748a]">
             เวลา + downtime (ใคร/ฝ่ายไหน) + ของเสียแยกสาเหตุ + repack/scrap → หน้า OEE สรุป Pareto ให้เอง
           </div>
@@ -174,8 +176,26 @@ export function OeeProdCapture({
 
           {/* Quality loss breakdown */}
           <div className="border-t border-[#eef1f5] p-[14px_22px]">
-            <div className="mb-2 text-[12.5px] font-semibold text-[#3a4658]">
-              Quality loss แยกสาเหตุ (อธิบายของเสีย → Quality Pareto)
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="text-[12.5px] font-semibold text-[#3a4658]">
+                Quality loss แยกสาเหตุ (แตกจากของเสีย {loss.toLocaleString()})
+              </span>
+              {loss > 0 && (
+                <span
+                  className="rounded-[5px] px-2 py-0.5 text-[11px] font-semibold"
+                  style={
+                    qRemain === 0
+                      ? { background: "#e9f6ee", color: "#1f9d63" }
+                      : { background: "#fbf1de", color: "#c8891a" }
+                  }
+                >
+                  {qRemain === 0
+                    ? "ครบแล้ว ✓"
+                    : qRemain > 0
+                      ? `เหลืออีก ${qRemain.toLocaleString()}`
+                      : `เกินไป ${Math.abs(qRemain).toLocaleString()}`}
+                </span>
+              )}
             </div>
             {qualityLosses.length > 0 && (
               <div className="mb-2 flex flex-col gap-1.5">
