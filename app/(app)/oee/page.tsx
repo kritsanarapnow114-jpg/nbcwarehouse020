@@ -110,18 +110,16 @@ export default async function OeePage({
         </p>
       </Card>
 
-      {/* Quality Loss Pareto — from Pack Order captures only */}
+      {/* Quality Loss Pareto — pulled from the BOM material loss */}
       <Card className="mb-4">
         <CardTitle>
-          Quality Loss Pareto — ทำไม Quality ไม่ถึง 100%
-          {num(R.quality.cur) != null && (
-            <span className="ml-2 font-num text-[12px] font-normal text-[#c53f3f]">
-              loss {(100 - (num(R.quality.cur) as number)).toFixed(1)}%
-            </span>
-          )}
+          Quality Loss Pareto — วัสดุที่เสีย (จาก BOM)
+          <span className="ml-2 rounded-[5px] bg-[#e9f6ee] px-2 py-0.5 text-[10px] font-semibold text-[#1f9d63]">
+            จาก BOM อัตโนมัติ
+          </span>
         </CardTitle>
         {qualityLoss.length === 0 ? (
-          <CaptureHint what="ของเสียแยกสาเหตุ" />
+          <CaptureHint what="Loss ในการ์ด BOM" />
         ) : (
           <div className="flex flex-col gap-2.5">
             {qualityLoss.map((r) => {
@@ -205,31 +203,6 @@ export default async function OeePage({
         </Card>
       )}
 
-      {/* Packaging Material Loss — auto from the BOM loss card (no re-entry) */}
-      {d.packagingLoss.total > 0 && (
-        <Card className="mb-4">
-          <CardTitle>
-            Packaging Material Loss (จาก BOM)
-            <span className="ml-2 font-num text-[12px] font-normal text-[#c53f3f]">
-              รวม {d.packagingLoss.total.toLocaleString()}
-            </span>
-            <span className="ml-2 rounded-[5px] bg-[#e9f6ee] px-2 py-0.5 text-[10px] font-semibold text-[#1f9d63]">
-              จาก BOM อัตโนมัติ
-            </span>
-          </CardTitle>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {d.packagingLoss.byMaterial.map((m) => (
-              <div key={m.name} className="rounded-[12px] border border-[#eef1f5] bg-[#fafbfc] p-[12px_14px]">
-                <div className="truncate text-[11px] text-[#69748a]" title={m.name}>{m.name}</div>
-                <div className="font-num text-[20px] font-extrabold text-[#b5477f]">{m.qty.toLocaleString()}</div>
-              </div>
-            ))}
-          </div>
-          <p className="mt-2 text-[11px] text-[#9aa4b4]">
-            Big Bag / Liner / Octabin ที่เสีย — ดึงจากช่อง Loss ในการ์ด BOM ตอนบันทึก Pack Order (ไม่ต้องคีย์ซ้ำ)
-          </p>
-        </Card>
-      )}
 
       <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>

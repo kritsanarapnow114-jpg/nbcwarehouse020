@@ -7,7 +7,7 @@ import { confirmReceiptAction, ReceiveLineInput } from "@/lib/actions/receive";
 import { buttonClass } from "@/components/ui/Button";
 import { CuteBoxPopup, CuteBoxKind } from "@/components/ui/CuteBoxPopup";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
-import { OeeProdCapture, ProdDowntime, ProdQualityLoss } from "./OeeProdCapture";
+import { OeeProdCapture, ProdDowntime } from "./OeeProdCapture";
 import { takeRedo } from "@/lib/redoTemplate";
 import { fmtDateISO } from "@/lib/calc/date";
 
@@ -68,7 +68,6 @@ export function ReceiveForm({
   const [oeePlannedMin, setOeePlannedMin] = useState("");
   const [oeeBreakMin, setOeeBreakMin] = useState("");
   const [oeeDowntimes, setOeeDowntimes] = useState<ProdDowntime[]>([]);
-  const [oeeQualityLosses, setOeeQualityLosses] = useState<ProdQualityLoss[]>([]);
   const [oeeRepack, setOeeRepack] = useState("");
   const [oeeScrap, setOeeScrap] = useState("");
 
@@ -293,7 +292,7 @@ export function ReceiveForm({
           ? {
               repack: Number(oeeRepack) || 0,
               scrap: Number(oeeScrap) || 0,
-              losses: oeeQualityLosses,
+              losses: [], // quality-loss reasons come from the BOM material loss
             }
           : undefined,
     };
@@ -324,7 +323,6 @@ export function ReceiveForm({
         setOeePlannedMin("");
         setOeeBreakMin("");
         setOeeDowntimes([]);
-        setOeeQualityLosses([]);
         setOeeRepack("");
         setOeeScrap("");
         router.refresh();
@@ -884,8 +882,6 @@ export function ReceiveForm({
           onBreakMin={setOeeBreakMin}
           downtimes={oeeDowntimes}
           onDowntimes={setOeeDowntimes}
-          qualityLosses={oeeQualityLosses}
-          onQualityLosses={setOeeQualityLosses}
           repack={oeeRepack}
           onRepack={setOeeRepack}
           scrap={oeeScrap}

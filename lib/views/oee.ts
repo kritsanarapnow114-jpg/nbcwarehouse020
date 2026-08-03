@@ -350,7 +350,6 @@ export async function getOeeDashboard(range: Range) {
     .sort((x, y) => x.oee - y.oee);
 
   // ---- Captured-at-source analytics (from the Pack Order OEE card) ---------
-  const qLossMap = new Map<string, number>();
   const lossAggMap = new Map<
     string,
     { loss: string; category: string; owner: string; freq: number; lostMin: number }
@@ -364,11 +363,6 @@ export async function getOeeDashboard(range: Range) {
     if (oq && typeof oq === "object") {
       repackTotal += Number(oq.repack) || 0;
       scrapTotal += Number(oq.scrap) || 0;
-      for (const l of oq.losses ?? []) {
-        const reason = String(l?.reason ?? "").trim();
-        const qty = Number(l?.qty) || 0;
-        if (reason && qty > 0) qLossMap.set(reason, (qLossMap.get(reason) ?? 0) + qty);
-      }
     }
     const dt = r.downtime;
     if (Array.isArray(dt)) {
@@ -388,9 +382,9 @@ export async function getOeeDashboard(range: Range) {
       }
     }
   }
-  const capturedQualityLoss = [...qLossMap.entries()]
-    .map(([reason, qty]) => ({ reason, qty }))
-    .sort((a, b) => b.qty - a.qty);
+  // Quality Loss Pareto comes straight from the BOM material loss (packaging
+  // defects: liner tear, box damage…) — pulled from the BOM card, no re-entry.
+  const capturedQualityLoss = packagingLoss.byMaterial.map((m) => ({ reason: m.name, qty: m.qty }));
   const capturedLossPareto = [...lossAggMap.values()].sort((a, b) => b.lostMin - a.lostMin);
 
   return {

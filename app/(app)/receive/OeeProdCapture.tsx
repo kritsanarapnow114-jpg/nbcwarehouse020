@@ -2,20 +2,19 @@
 
 import { useState } from "react";
 import { scoreProduction, pct, oeeColor } from "@/lib/calc/oee";
-import { LOSS_CATEGORIES, QUALITY_LOSS_SEED } from "@/lib/settingsKeys";
+import { LOSS_CATEGORIES } from "@/lib/settingsKeys";
 
 export type ProdDowntime = { minutes: number; reason: string; category: string; owner: string };
-export type ProdQualityLoss = { reason: string; qty: number };
 
 const REASONS = ["เครื่องเสีย", "รอวัตถุดิบ", "เปลี่ยนรุ่น", "ทำความสะอาด", "รอบรรจุภัณฑ์", "อื่น ๆ"];
-const QUALITY_REASONS = QUALITY_LOSS_SEED.map((r) => r.reason);
 
 const inputCls =
   "rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px] outline-none focus:border-[#2f86cf]";
 const sm = "rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px] outline-none focus:border-[#2f86cf]";
 
 /** OEE capture for a production (Pack Order) run — one place to record line/time,
- *  downtime (with responsible function), quality-loss breakdown and repack/scrap.
+ *  downtime (with responsible function) and repack/scrap. Quality-loss reasons are
+ *  pulled automatically from the BOM material loss, so they aren't keyed here.
  *  Controlled: the parent owns the values so they flow into the receipt payload. */
 export function OeeProdCapture({
   prodLines,
@@ -28,8 +27,6 @@ export function OeeProdCapture({
   onBreakMin,
   downtimes,
   onDowntimes,
-  qualityLosses,
-  onQualityLosses,
   repack,
   onRepack,
   scrap,
@@ -47,8 +44,6 @@ export function OeeProdCapture({
   onBreakMin: (v: string) => void;
   downtimes: ProdDowntime[];
   onDowntimes: (rows: ProdDowntime[]) => void;
-  qualityLosses: ProdQualityLoss[];
-  onQualityLosses: (rows: ProdQualityLoss[]) => void;
   repack: string;
   onRepack: (v: string) => void;
   scrap: string;
@@ -60,13 +55,9 @@ export function OeeProdCapture({
   const [dtReason, setDtReason] = useState(REASONS[0]);
   const [dtCat, setDtCat] = useState<string>(LOSS_CATEGORIES[0]);
   const [dtOwner, setDtOwner] = useState("");
-  const [qReason, setQReason] = useState(QUALITY_REASONS[0]);
-  const [qQty, setQQty] = useState("");
 
   const standard = line ? standards[line] ?? 0 : 0;
   const downtimeTotal = downtimes.reduce((s, d) => s + d.minutes, 0);
-  const qSum = qualityLosses.reduce((s, q) => s + q.qty, 0);
-  const qRemain = Math.round((loss - qSum) * 100) / 100;
   const result = line
     ? scoreProduction({
         plannedMin: Number(plannedMin) || 0,
@@ -84,12 +75,6 @@ export function OeeProdCapture({
     setDtMin("");
     setDtOwner("");
   }
-  function addQuality() {
-    const q = Number(qQty) || 0;
-    if (q <= 0) return;
-    onQualityLosses([...qualityLosses, { reason: qReason, qty: q }]);
-    setQQty("");
-  }
 
   return (
     <div className="mt-4 overflow-hidden rounded-[14px] border border-[#e7ebf1] bg-white shadow-[0_1px_2px_rgba(20,30,48,.04),0_6px_18px_rgba(20,30,48,.035)]">
@@ -98,7 +83,7 @@ export function OeeProdCapture({
         <div className="flex-1">
           <div className="text-[14px] font-semibold">OEE — บันทึกที่เดียวจบ (บังคับก่อนส่งตรวจสอบ)</div>
           <div className="text-[11.5px] text-[#69748a]">
-            เวลา + downtime (ใคร/ฝ่ายไหน) + ของเสียแยกสาเหตุ + repack/scrap → หน้า OEE สรุป Pareto ให้เอง
+            เวลา + downtime (ใคร/ฝ่ายไหน) + repack/scrap · Quality loss ดึงจากการ์ด BOM ให้เอง
           </div>
         </div>
         {prodLines.length === 1 ? (
@@ -177,49 +162,6 @@ export function OeeProdCapture({
               <input value={dtOwner} onChange={(e) => setDtOwner(e.target.value)} placeholder="Owner (เช่น Vendor)" className={`w-[130px] ${sm}`} />
               <input value={dtMin} onChange={(e) => setDtMin(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addDowntime()} inputMode="numeric" placeholder="นาที" className={`font-num w-[80px] ${sm}`} />
               <button onClick={addDowntime} className="rounded-[8px] border border-dashed border-[#c8891a] px-3 py-1.5 text-[12.5px] font-semibold text-[#c8891a] hover:bg-[#fbf1de]">＋ เพิ่ม</button>
-            </div>
-          </div>
-
-          {/* Quality loss breakdown */}
-          <div className="border-t border-[#eef1f5] p-[14px_22px]">
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <span className="text-[12.5px] font-semibold text-[#3a4658]">
-                Quality loss แยกสาเหตุ (แตกจากของเสีย {loss.toLocaleString()})
-              </span>
-              {loss > 0 && (
-                <span
-                  className="rounded-[5px] px-2 py-0.5 text-[11px] font-semibold"
-                  style={
-                    qRemain === 0
-                      ? { background: "#e9f6ee", color: "#1f9d63" }
-                      : { background: "#fbf1de", color: "#c8891a" }
-                  }
-                >
-                  {qRemain === 0
-                    ? "ครบแล้ว ✓"
-                    : qRemain > 0
-                      ? `เหลืออีก ${qRemain.toLocaleString()}`
-                      : `เกินไป ${Math.abs(qRemain).toLocaleString()}`}
-                </span>
-              )}
-            </div>
-            {qualityLosses.length > 0 && (
-              <div className="mb-2 flex flex-col gap-1.5">
-                {qualityLosses.map((q, i) => (
-                  <div key={i} className="flex items-center gap-3 rounded-[8px] bg-[#fbeeee] px-3 py-1.5 text-[12px]">
-                    <span className="flex-1 text-[#3a4658]">{q.reason}</span>
-                    <span className="font-num text-[#c53f3f]">{q.qty.toLocaleString()}</span>
-                    <button onClick={() => onQualityLosses(qualityLosses.filter((_, idx) => idx !== i))} className="text-[15px] text-[#c2606f]">×</button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="flex flex-wrap items-center gap-2">
-              <select value={qReason} onChange={(e) => setQReason(e.target.value)} className={sm}>
-                {QUALITY_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
-              <input value={qQty} onChange={(e) => setQQty(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addQuality()} inputMode="numeric" placeholder="จำนวน" className={`font-num w-[90px] ${sm}`} />
-              <button onClick={addQuality} className="rounded-[8px] border border-dashed border-[#c53f3f] px-3 py-1.5 text-[12.5px] font-semibold text-[#c53f3f] hover:bg-[#fbeeee]">＋ เพิ่มสาเหตุ</button>
             </div>
           </div>
 
