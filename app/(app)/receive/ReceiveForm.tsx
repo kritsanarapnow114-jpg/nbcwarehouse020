@@ -317,6 +317,9 @@ export function ReceiveForm({
         setProdLot("");
         setProdMfg("");
         setProdExp("");
+        setProdLoss("0");
+        setBomLossByLine({});
+        setBomExclude({});
         setOeeLine("");
         setOeePlannedMin("");
         setOeeBreakMin("");
