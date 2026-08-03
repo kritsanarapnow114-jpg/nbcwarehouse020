@@ -38,13 +38,13 @@ export const NAV_GROUPS: NavGroup[] = [
     key: "inventory",
     en: "Inventory",
     th: "สินค้าคงคลัง",
-    items: ["products", "aging", "locations", "map"],
+    items: ["products", "aging", "locations", "map", "receive", "po", "issue", "adjust", "count", "nonstock"],
   },
   {
     key: "operations",
     en: "Operations",
     th: "งานประจำวัน",
-    items: ["receive", "pack", "po", "plan", "issue", "silo", "adjust", "transfer", "count", "nonstock"],
+    items: ["pack", "plan", "silo", "transfer"],
   },
   {
     key: "analytics",
