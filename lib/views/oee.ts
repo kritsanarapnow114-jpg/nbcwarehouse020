@@ -99,7 +99,6 @@ export async function getOeeDashboard(range: Range) {
         plannedMin: true,
         downtime: true,
         oeeQuality: true,
-        _count: { select: { lines: true } }, // bag count (pallets) for bag-based Quality
       },
     }),
     // Packaging material loss (liner / bag / box…) captured on the BOM card —
@@ -138,16 +137,9 @@ export async function getOeeDashboard(range: Range) {
     if (bl.lossQty <= 0) continue;
     pkgLossByReceipt.set(bl.receiptId, (pkgLossByReceipt.get(bl.receiptId) ?? 0) + bl.lossQty);
   }
-  // Good ÷ (good + defect). Units in [0,1].
+  // Good ÷ (good + pellet loss + packaging pieces lost). Units in [0,1].
   const qualityFrac = (good: number, reject: number) =>
     good + reject > 0 ? good / (good + reject) : 1;
-  // Bag-based Quality: good bags vs defect bags. Packaging pieces count as bags
-  // directly; pellet loss (kg) is converted to bag-equivalents so a defective
-  // packaging piece (~one bag) is comparable to a produced bag.
-  const bagQuality = (bags: number, producedKg: number, pelletLoss: number, pkgPieces: number) => {
-    const pelletBags = producedKg > 0 ? pelletLoss * (bags / producedKg) : 0;
-    return qualityFrac(bags, pkgPieces + pelletBags);
-  };
 
   const loads: Load[] = siloLoads
     .filter((l) => l.startedAt && l.loadedAt)
@@ -271,9 +263,8 @@ export async function getOeeDashboard(range: Range) {
   // ---- Production: yield always; full A/P/Q for runs that captured a line -----
   const produced = prodReceipts.reduce((s, r) => s + (r.producedTotal ?? 0), 0);
   const loss = prodReceipts.reduce((s, r) => s + (r.prodLoss ?? 0), 0);
-  const producedBagsAll = prodReceipts.reduce((s, r) => s + (r._count?.lines ?? 0), 0);
-  // Quality yield is bag-based: good bags vs packaging pieces + pellet-as-bags.
-  const yieldQ = bagQuality(producedBagsAll, produced, loss, pkgTotal);
+  // Quality yield folds in packaging pieces lost (each = one defective bag).
+  const yieldQ = qualityFrac(produced, loss + pkgTotal);
 
   const dtMinutes = (raw: unknown): number => {
     if (!Array.isArray(raw)) return 0;
@@ -297,9 +288,9 @@ export async function getOeeDashboard(range: Range) {
         reject: r.prodLoss ?? 0,
         standardPerHour: standards[r.oeeLine as string] ?? 0,
       });
-      // Bag-based Quality (packaging pieces + pellet-as-bags), Quality only, A×P×Q.
+      // Fold packaging loss into Quality only, then recombine A×P×Q.
       const pkg = pkgLossByReceipt.get(r.id) ?? 0;
-      const qf = bagQuality(r._count?.lines ?? 0, r.producedTotal ?? 0, r.prodLoss ?? 0, pkg);
+      const qf = qualityFrac(r.producedTotal ?? 0, (r.prodLoss ?? 0) + pkg);
       const oeeF = parts.availability * parts.performance * qf;
       return {
         doc: r.docNo,
@@ -329,10 +320,9 @@ export async function getOeeDashboard(range: Range) {
       acc.good += good;
       acc.reject += rej;
       acc.pkg += pkgLossByReceipt.get(r.id) ?? 0;
-      acc.bags += r._count?.lines ?? 0;
       return acc;
     },
-    { plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0, pkg: 0, bags: 0 }
+    { plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0, pkg: 0 }
   );
   const prodOutput = prodPool.good + prodPool.reject;
   const prodParts = scoreProduction({
@@ -343,15 +333,15 @@ export async function getOeeDashboard(range: Range) {
     standardPerHour:
       prodPool.runMin > 0 ? prodPool.idealHrOutput / (prodPool.runMin / 60) : 0,
   });
-  // Aggregate Quality is bag-based, then A×P×Q.
-  const prodQ = bagQuality(prodPool.bags, prodPool.good, prodPool.reject, prodPool.pkg);
+  // Aggregate Quality with packaging loss folded in, then A×P×Q.
+  const prodQ = qualityFrac(prodPool.good, prodPool.reject + prodPool.pkg);
   const prodOeeF = prodParts.availability * prodParts.performance * prodQ;
 
   // Per-line OEE breakdown.
   const lineMap = new Map<string, typeof prodPool>();
   for (const r of scored) {
     const key = r.oeeLine as string;
-    const p = lineMap.get(key) ?? { plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0, pkg: 0, bags: 0 };
+    const p = lineMap.get(key) ?? { plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0, pkg: 0 };
     const planned = r.plannedMin ?? 0;
     const run = Math.max(0, planned - dtMinutes(r.downtime));
     p.plannedMin += planned;
@@ -360,7 +350,6 @@ export async function getOeeDashboard(range: Range) {
     p.good += r.producedTotal ?? 0;
     p.reject += r.prodLoss ?? 0;
     p.pkg += pkgLossByReceipt.get(r.id) ?? 0;
-    p.bags += r._count?.lines ?? 0;
     lineMap.set(key, p);
   }
   const prodPerLine = [...lineMap.entries()]
@@ -372,7 +361,7 @@ export async function getOeeDashboard(range: Range) {
         reject: p.reject,
         standardPerHour: p.runMin > 0 ? p.idealHrOutput / (p.runMin / 60) : 0,
       });
-      const qf = bagQuality(p.bags, p.good, p.reject, p.pkg);
+      const qf = qualityFrac(p.good, p.reject + p.pkg);
       const oeeF = parts.availability * parts.performance * qf;
       return {
         name,

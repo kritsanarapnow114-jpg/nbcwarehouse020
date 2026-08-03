@@ -34,8 +34,6 @@ export function OeeProdCapture({
   produced,
   loss,
   pkgLoss = 0,
-  qGood,
-  qDefect,
   lossValue,
 }: {
   prodLines: string[];
@@ -55,8 +53,6 @@ export function OeeProdCapture({
   produced: number;
   loss: number;
   pkgLoss?: number;
-  qGood?: number; // good bags (Quality is bag-based, not kg)
-  qDefect?: number; // defect bags = packaging pieces + pellet loss as bag-equivalents
   lossValue?: number;
 }) {
   const [dtMin, setDtMin] = useState("");
@@ -75,12 +71,9 @@ export function OeeProdCapture({
         standardPerHour: standard,
       })
     : null;
-  // Quality is counted in BAGS: good bags vs defect bags (packaging pieces +
-  // pellet loss as bag-equivalents). It affects Quality only, never Performance.
-  // Falls back to the kg count if bag figures weren't supplied. OEE = A × P × Q.
-  const good = qGood ?? produced;
-  const defect = qDefect ?? loss + pkgLoss;
-  const qualityFrac = good + defect > 0 ? good / (good + defect) : 1;
+  // Quality folds in BOTH pellet loss and BOM packaging pieces (each = one defect);
+  // packaging affects Quality only, never Performance. OEE = A × P × Q.
+  const qualityFrac = produced + loss + pkgLoss > 0 ? produced / (produced + loss + pkgLoss) : 1;
   const result = base
     ? { ...base, quality: qualityFrac, oee: base.availability * base.performance * qualityFrac }
     : null;
@@ -144,14 +137,8 @@ export function OeeProdCapture({
               <input value={scrap} onChange={(e) => onScrap(e.target.value)} inputMode="numeric" placeholder="0" className={`font-num w-[90px] ${inputCls}`} />
             </label>
             <div className="rounded-[8px] border border-[#cfe4f6] bg-[#e8f2fb] px-2.5 py-1.5 text-[11.5px] text-[#69748a]">
-              ผลิตได้ <b className="font-num text-[#0c7f93]">{produced.toLocaleString()}</b> kg · เม็ดเสีย{" "}
-              <b className="font-num text-[#c53f3f]">{loss.toLocaleString()}</b> kg
-              {qGood != null && (
-                <>
-                  {" · "}Q ฐานถุง: ดี <b className="font-num text-[#0c7f93]">{qGood}</b> · เสีย{" "}
-                  <b className="font-num text-[#c53f3f]">{(qDefect ?? 0).toFixed(1)}</b>
-                </>
-              )}
+              ผลิตได้ <b className="font-num text-[#0c7f93]">{produced.toLocaleString()}</b> · ของเสีย{" "}
+              <b className="font-num text-[#c53f3f]">{loss.toLocaleString()}</b>
             </div>
             {lossValue != null && lossValue > 0 && (
               <div className="rounded-[8px] border border-[#f0d3c6] bg-[#fbeee6] px-2.5 py-1.5 text-[11.5px] text-[#69748a]">
