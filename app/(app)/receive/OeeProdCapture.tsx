@@ -33,6 +33,7 @@ export function OeeProdCapture({
   onScrap,
   produced,
   loss,
+  pkgLoss = 0,
   lossValue,
 }: {
   prodLines: string[];
@@ -51,6 +52,7 @@ export function OeeProdCapture({
   onScrap: (v: string) => void;
   produced: number;
   loss: number;
+  pkgLoss?: number;
   lossValue?: number;
 }) {
   const [dtMin, setDtMin] = useState("");
@@ -60,14 +62,20 @@ export function OeeProdCapture({
 
   const standard = line ? standards[line] ?? 0 : 0;
   const downtimeTotal = downtimes.reduce((s, d) => s + d.minutes, 0);
-  const result = line
+  const base = line
     ? scoreProduction({
         plannedMin: Number(plannedMin) || 0,
         downtimeMin: downtimeTotal,
         good: produced,
-        reject: loss,
+        reject: loss, // pellet loss only → drives Availability/Performance (throughput)
         standardPerHour: standard,
       })
+    : null;
+  // Quality folds in BOTH pellet loss and BOM packaging pieces (each = one defect);
+  // packaging affects Quality only, never Performance. OEE = A × P × Q.
+  const qualityFrac = produced + loss + pkgLoss > 0 ? produced / (produced + loss + pkgLoss) : 1;
+  const result = base
+    ? { ...base, quality: qualityFrac, oee: base.availability * base.performance * qualityFrac }
     : null;
 
   function addDowntime() {

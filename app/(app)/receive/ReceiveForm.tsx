@@ -203,9 +203,16 @@ export function ReceiveForm({
     return data.boms.find((b) => b.finishedProductCode === lines[0].productCode) ?? null;
   }, [mode, lines, data.boms]);
 
+  // Packaging pieces lost this run (from the BOM card) — a defect too, so it
+  // counts toward Quality just like pellet loss (each piece = one defect).
+  const pkgLossQty = bom
+    ? bom.lines.reduce((s, m) => (bomExclude[m.id] ? s : s + (Number(bomLossByLine[m.id] ?? 0) || 0)), 0)
+    : 0;
+
+  const totalQualityLoss = Number(prodLoss || 0) + pkgLossQty;
   const yieldPct =
-    producedTotal + Number(prodLoss || 0) > 0
-      ? (producedTotal / (producedTotal + Number(prodLoss || 0))) * 100
+    producedTotal + totalQualityLoss > 0
+      ? (producedTotal / (producedTotal + totalQualityLoss)) * 100
       : 100;
 
   const bomLossValue = bom
@@ -773,7 +780,7 @@ export function ReceiveForm({
               Produced (ผลิตได้): <b className="font-num text-[#16202e]">{producedTotal.toLocaleString()}</b>
             </div>
             <label className="flex items-center gap-2 text-[12px] text-[#3a4658]">
-              Loss (ของเสีย)
+              เม็ดพลาสติก (ของเสีย)
               <input
                 value={prodLoss}
                 onChange={(e) => setProdLoss(e.target.value)}
@@ -782,6 +789,7 @@ export function ReceiveForm({
             </label>
             <div className="rounded-[8px] border border-[#cfe4f6] bg-[#e8f2fb] px-2.5 py-1.5 text-[12px] text-[#69748a]">
               Yield → Quality KPI: <b className="font-num text-[#0c7f93]">{yieldPct.toFixed(1)}%</b>
+              <span className="ml-1 text-[10.5px] text-[#9aa4b4]">(เม็ด+Packaging)</span>
             </div>
           </div>
           <table className="w-full border-collapse text-[13px]">
@@ -898,6 +906,7 @@ export function ReceiveForm({
           onScrap={setOeeScrap}
           produced={producedTotal}
           loss={Number(prodLoss) || 0}
+          pkgLoss={pkgLossQty}
           lossValue={qualityLossValue}
         />
       )}
