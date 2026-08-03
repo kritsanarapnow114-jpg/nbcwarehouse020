@@ -211,10 +211,22 @@ export async function getMapLocationData() {
     );
     const extraArea = extras.reduce((s, e) => s + e.pallets, 0) * DEFAULT_PALLET_M2;
     const areaUsed = realArea + extraArea;
-    const footPerPallet = pallets > 0 ? areaUsed / pallets : DEFAULT_PALLET_M2;
-    const freeArea = Math.max(0, areaCap - areaUsed);
-    const freeSlots = footPerPallet > 0 ? Math.floor(freeArea / footPerPallet) : 0;
-    const capacity = Math.max(1, pallets + freeSlots);
+    // Pallet capacity, counted in whole floor SPOTS (not leftover area). A new
+    // pallet needs a full floor footprint (footprint × stack), so a sliver of
+    // free edge area must NOT read as "room for one more" — it only counts once
+    // a whole spot fits. Empty slots on top of already-used spots do count.
+    let capacity: number;
+    if (pallets === 0) {
+      capacity = Math.max(1, Math.floor(areaCap / DEFAULT_PALLET_M2));
+    } else {
+      const footPerPallet = areaUsed / pallets; // per pallet (already ÷ stack)
+      const footPerSpot = footPerPallet * actualStack; // one full floor spot
+      const usedSpots = Math.ceil(pallets / actualStack);
+      const freeFloorArea = Math.max(0, areaCap - usedSpots * footPerSpot);
+      const addSpots = footPerSpot > 0 ? Math.floor((freeFloorArea + 1e-6) / footPerSpot) : 0;
+      const topFree = usedSpots * actualStack - pallets; // empty slots atop used spots
+      capacity = Math.max(pallets, pallets + topFree + addSpots * actualStack);
+    }
     // dominant container type = the one holding the most pallets
     const byType = new Map<string, number>();
     for (const l of cellLots) byType.set(l.containerType, (byType.get(l.containerType) ?? 0) + l.pallets);
@@ -237,7 +249,7 @@ export async function getMapLocationData() {
       pallets,
       stack: actualStack,
       stackMax,
-      status: pallets === 0 ? "free" : freeArea < footPerPallet ? "full" : "partial",
+      status: pallets === 0 ? "free" : capacity - pallets <= 0 ? "full" : "partial",
       containerType: dom,
       topLot: cellLots[0]?.name ?? null,
       lots: cellLots,
