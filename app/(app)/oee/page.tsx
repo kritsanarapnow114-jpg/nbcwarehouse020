@@ -267,7 +267,7 @@ export default async function OeePage({
       <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
         {/* Unloading OEE hero */}
         <Card>
-          <CardTitle>Unloading เข้า SILO · OEE</CardTitle>
+          <CardTitle>Unloading เข้า SILO · OEE = P × Q</CardTitle>
           {!d.hasUnloading ? (
             <Empty text="ยังไม่มีการโหลดเข้า SILO ที่จับเวลาในช่วงนี้ — ดูที่หน้า Feed to SILO" />
           ) : (
@@ -275,17 +275,21 @@ export default async function OeePage({
               <div className="flex items-center gap-6">
                 <Gauge value={d.unloading.oee} />
                 <div className="flex flex-1 flex-col gap-2.5">
-                  <Bar label="Availability" sub="เวลาโหลด/ช่วงเปิดเครื่อง" v={d.unloading.a} />
                   <Bar label="Performance" sub="เทียบมาตรฐาน kg/ชม." v={d.unloading.p} />
                   <Bar label="Quality" sub="ไม่นับของเสีย = 100%" v={d.unloading.q} />
+                  <Bar label="การใช้งาน" sub="โหลดจริง/ช่วงเปิดเครื่อง (info)" v={d.unloading.a} />
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-5 border-t border-[#eef1f5] pt-3 text-[12px] text-[#69748a]">
                 <Foot k="โหลดทั้งหมด" v={`${d.unloading.loads} ถุง`} />
                 <Foot k="ปริมาณ" v={`${d.unloading.output.toLocaleString()} kg`} />
                 <Foot k="เวลาโหลดจริง" v={fmtDuration(d.unloading.loadingMs)} />
-                <Foot k="เวลาว่าง (idle)" v={fmtDuration(d.unloading.idleMs)} />
+                <Foot k="ว่าง (ไม่มีงาน)" v={fmtDuration(d.unloading.idleMs)} />
               </div>
+              <p className="mt-2 rounded-[9px] bg-[#f7f9fb] p-2.5 text-[11px] leading-relaxed text-[#69748a]">
+                <b className="text-[#3a4658]">หมายเหตุ:</b> Unloading ไม่คิด Availability ใน OEE — ช่วงว่างระหว่างถุงคือ
+                ช่วงไม่มีใบสั่ง ไม่ใช่เครื่องเสีย · <b>การใช้งาน</b> แสดงเป็นข้อมูลเฉย ๆ (ช่วง startup ใบสั่งน้อย = ปกติ)
+              </p>
             </>
           )}
         </Card>
@@ -401,8 +405,8 @@ export default async function OeePage({
                     />
                   </div>
                   <div className="mt-1 flex gap-3 text-[10.5px] text-[#9aa4b4]">
-                    <span>A {m.a}%</span>
                     <span>P {m.p}%</span>
+                    <span>ใช้งาน {m.a}%</span>
                     <span>ว่าง {fmtDuration(m.idleMs)}</span>
                   </div>
                 </div>
@@ -483,7 +487,7 @@ export default async function OeePage({
                   <th className="p-[7px_10px] font-medium">เอกสาร</th>
                   <th className="p-[7px_10px] font-medium">วันที่</th>
                   <th className="p-[7px_10px] font-medium">เครื่อง</th>
-                  <th className="p-[7px_10px] text-right font-medium">A</th>
+                  <th className="p-[7px_10px] text-right font-medium">ใช้งาน</th>
                   <th className="p-[7px_10px] text-right font-medium">P</th>
                   <th className="p-[7px_10px] text-right font-medium">OEE</th>
                   <th className="p-[7px_10px] text-right font-medium">ถุง</th>

@@ -46,12 +46,17 @@ export function scoreUnloading(input: {
   staged: number;
   standardPerHour: number;
 }): OeeParts {
-  const availability = input.windowMs > 0 ? input.loadingMs / input.windowMs : 0;
+  // "utilization" = how much of the in-use window was actually loading. It is
+  // NOT folded into OEE: gaps between sporadic load orders mean "no work", not a
+  // machine fault — so unloading OEE = Performance × Quality only. Utilization is
+  // reported separately as information (kept on the `availability` field).
+  const utilization = input.windowMs > 0 ? input.loadingMs / input.windowMs : 0;
   const loadingHours = input.loadingMs / 3_600_000;
   const ideal = input.standardPerHour > 0 ? input.standardPerHour * loadingHours : 0;
   const performance = ideal > 0 ? input.output / ideal : 0;
   const quality = input.staged > 0 ? input.output / input.staged : 1;
-  return oeeFrom(availability, performance, quality);
+  const parts = oeeFrom(utilization, performance, quality);
+  return { ...parts, oee: parts.performance * parts.quality };
 }
 
 /**
