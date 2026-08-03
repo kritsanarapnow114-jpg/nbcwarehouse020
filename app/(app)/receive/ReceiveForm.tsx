@@ -28,6 +28,13 @@ type Line = {
   stockType: "STOCK" | "NON_STOCK";
 };
 
+// Auto-format a 24h time as you type: digits only, colon inserted after HH.
+// "1430" → "14:30", "9" → "9", "143" → "14:3".
+function fmtTime24(v: string): string {
+  const d = v.replace(/\D/g, "").slice(0, 4);
+  return d.length <= 2 ? d : `${d.slice(0, 2)}:${d.slice(2)}`;
+}
+
 export function ReceiveForm({
   data,
   lockMode,
@@ -604,7 +611,7 @@ export function ReceiveForm({
                       <td className="p-[11px_16px]">
                         <input
                           value={l.time}
-                          onChange={(e) => updateLine(i, { time: e.target.value })}
+                          onChange={(e) => updateLine(i, { time: fmtTime24(e.target.value) })}
                           inputMode="numeric"
                           maxLength={5}
                           placeholder="00:00"
