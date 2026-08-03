@@ -44,7 +44,7 @@ export function ReceiveForm({
   const [stockType, setStockType] = useState<"STOCK" | "NON_STOCK">("STOCK");
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
   const [lines, setLines] = useState<Line[]>([]);
-  const [prodLoss, setProdLoss] = useState("20");
+  const [prodLoss, setProdLoss] = useState("0"); // เม็ดพลาสติกที่เสีย — เริ่ม 0 ให้คีย์เอง
   // Production: one Lot / Mfg / Expiry shared by every pallet (typed once).
   const [prodLot, setProdLot] = useState("");
   const [prodMfg, setProdMfg] = useState("");
