@@ -70,7 +70,7 @@ export async function getOeeDashboard(range: Range) {
   const endExclusive = new Date(range.end);
   endExclusive.setDate(endExclusive.getDate() + 1);
 
-  const [standardsRaw, siloLoads, prodReceipts, bomLosses] = await Promise.all([
+  const [standardsRaw, siloLoads, prodReceipts, bomLosses, products, boms] = await Promise.all([
     getAppSetting(OEE_STANDARDS_KEY),
     // Finished loads with both timestamps (legacy finish-only loads can't be timed).
     db.siloLoad.findMany({
@@ -99,6 +99,7 @@ export async function getOeeDashboard(range: Range) {
         plannedMin: true,
         downtime: true,
         oeeQuality: true,
+        lines: { select: { productCode: true }, take: 1 }, // finished good → its price
       },
     }),
     // Packaging material loss (liner / bag / box…) captured on the BOM card —
@@ -109,6 +110,9 @@ export async function getOeeDashboard(range: Range) {
       },
       include: { bomLine: { include: { materialProduct: true } } },
     }),
+    // Prices for value-based Quality: finished-good price + packaging cost/unit.
+    db.product.findMany({ select: { code: true, price: true } }),
+    db.bom.findMany({ include: { lines: { include: { materialProduct: true } } } }),
   ]);
 
   const standards = parseOeeStandards(standardsRaw);
@@ -129,17 +133,41 @@ export async function getOeeDashboard(range: Range) {
       .sort((a, b) => b.qty - a.qty),
   };
 
-  // Packaging pieces lost, per production receipt — each defective packaging
-  // piece counts as one defective bag toward Quality (chosen model). It affects
-  // Q only, never Performance (a torn liner doesn't change kg throughput).
-  const pkgLossByReceipt = new Map<string, number>();
+  // Packaging pieces + packaging ฿ value lost, per production receipt.
+  const pkgLossByReceipt = new Map<string, number>(); // pieces (for display)
+  const pkgLossValueByReceipt = new Map<string, number>(); // ฿
   for (const bl of bomLosses) {
     if (bl.lossQty <= 0) continue;
     pkgLossByReceipt.set(bl.receiptId, (pkgLossByReceipt.get(bl.receiptId) ?? 0) + bl.lossQty);
+    const val = bl.lossQty * (bl.bomLine.materialProduct.price ?? 0);
+    pkgLossValueByReceipt.set(bl.receiptId, (pkgLossValueByReceipt.get(bl.receiptId) ?? 0) + val);
   }
-  // Good ÷ (good + pellet loss + packaging pieces lost). Units in [0,1].
-  const qualityFrac = (good: number, reject: number) =>
-    good + reject > 0 ? good / (good + reject) : 1;
+
+  // Value-based Quality inputs. Pellet price/kg = finished-good price − packaging
+  // cost per unit (e.g. ฿9/kg − ฿2.67/kg = ฿6.33/kg → ฿4,750 per 750-kg bag).
+  const priceOf = new Map(products.map((p) => [p.code, p.price]));
+  const pkgCostPerUnit = new Map<string, number>();
+  for (const b of boms) {
+    const cost = b.lines.reduce(
+      (s, l) => s + (l.materialProduct.price ?? 0) * (l.perQty > 0 ? l.qtyPerUnit / l.perQty : l.qtyPerUnit),
+      0
+    );
+    pkgCostPerUnit.set(b.finishedProductCode, cost);
+  }
+  // ฿ value of good ÷ (฿ good + ฿ loss).
+  const valueQuality = (goodVal: number, lossVal: number) =>
+    goodVal + lossVal > 0 ? goodVal / (goodVal + lossVal) : 1;
+  // Per-receipt good value and quality-loss value (pellet + packaging), in ฿.
+  const receiptGoodValue = (r: { producedTotal: number | null; lines: { productCode: string }[] }) => {
+    const code = r.lines[0]?.productCode;
+    return (r.producedTotal ?? 0) * (code ? priceOf.get(code) ?? 0 : 0);
+  };
+  const receiptLossValue = (r: { id: string; prodLoss: number | null; lines: { productCode: string }[] }) => {
+    const code = r.lines[0]?.productCode;
+    const price = code ? priceOf.get(code) ?? 0 : 0;
+    const pelletPrice = Math.max(0, price - (code ? pkgCostPerUnit.get(code) ?? 0 : 0));
+    return (r.prodLoss ?? 0) * pelletPrice + (pkgLossValueByReceipt.get(r.id) ?? 0);
+  };
 
   const loads: Load[] = siloLoads
     .filter((l) => l.startedAt && l.loadedAt)
@@ -263,8 +291,10 @@ export async function getOeeDashboard(range: Range) {
   // ---- Production: yield always; full A/P/Q for runs that captured a line -----
   const produced = prodReceipts.reduce((s, r) => s + (r.producedTotal ?? 0), 0);
   const loss = prodReceipts.reduce((s, r) => s + (r.prodLoss ?? 0), 0);
-  // Quality yield folds in packaging pieces lost (each = one defective bag).
-  const yieldQ = qualityFrac(produced, loss + pkgTotal);
+  // Quality yield is value-based: ฿ good ÷ (฿ good + ฿ pellet loss + ฿ packaging loss).
+  const goodValueAll = prodReceipts.reduce((s, r) => s + receiptGoodValue(r), 0);
+  const lossValueAll = prodReceipts.reduce((s, r) => s + receiptLossValue(r), 0);
+  const yieldQ = valueQuality(goodValueAll, lossValueAll);
 
   const dtMinutes = (raw: unknown): number => {
     if (!Array.isArray(raw)) return 0;
@@ -288,9 +318,9 @@ export async function getOeeDashboard(range: Range) {
         reject: r.prodLoss ?? 0,
         standardPerHour: standards[r.oeeLine as string] ?? 0,
       });
-      // Fold packaging loss into Quality only, then recombine A×P×Q.
+      // Value-based Quality (Quality only), then recombine A×P×Q.
       const pkg = pkgLossByReceipt.get(r.id) ?? 0;
-      const qf = qualityFrac(r.producedTotal ?? 0, (r.prodLoss ?? 0) + pkg);
+      const qf = valueQuality(receiptGoodValue(r), receiptLossValue(r));
       const oeeF = parts.availability * parts.performance * qf;
       return {
         doc: r.docNo,
@@ -319,10 +349,11 @@ export async function getOeeDashboard(range: Range) {
       acc.idealHrOutput += (standards[r.oeeLine as string] ?? 0) * (run / 60);
       acc.good += good;
       acc.reject += rej;
-      acc.pkg += pkgLossByReceipt.get(r.id) ?? 0;
+      acc.gv += receiptGoodValue(r);
+      acc.lv += receiptLossValue(r);
       return acc;
     },
-    { plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0, pkg: 0 }
+    { plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0, gv: 0, lv: 0 }
   );
   const prodOutput = prodPool.good + prodPool.reject;
   const prodParts = scoreProduction({
@@ -333,15 +364,15 @@ export async function getOeeDashboard(range: Range) {
     standardPerHour:
       prodPool.runMin > 0 ? prodPool.idealHrOutput / (prodPool.runMin / 60) : 0,
   });
-  // Aggregate Quality with packaging loss folded in, then A×P×Q.
-  const prodQ = qualityFrac(prodPool.good, prodPool.reject + prodPool.pkg);
+  // Aggregate value-based Quality, then A×P×Q.
+  const prodQ = valueQuality(prodPool.gv, prodPool.lv);
   const prodOeeF = prodParts.availability * prodParts.performance * prodQ;
 
   // Per-line OEE breakdown.
   const lineMap = new Map<string, typeof prodPool>();
   for (const r of scored) {
     const key = r.oeeLine as string;
-    const p = lineMap.get(key) ?? { plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0, pkg: 0 };
+    const p = lineMap.get(key) ?? { plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0, gv: 0, lv: 0 };
     const planned = r.plannedMin ?? 0;
     const run = Math.max(0, planned - dtMinutes(r.downtime));
     p.plannedMin += planned;
@@ -349,7 +380,8 @@ export async function getOeeDashboard(range: Range) {
     p.idealHrOutput += (standards[key] ?? 0) * (run / 60);
     p.good += r.producedTotal ?? 0;
     p.reject += r.prodLoss ?? 0;
-    p.pkg += pkgLossByReceipt.get(r.id) ?? 0;
+    p.gv += receiptGoodValue(r);
+    p.lv += receiptLossValue(r);
     lineMap.set(key, p);
   }
   const prodPerLine = [...lineMap.entries()]
@@ -361,7 +393,7 @@ export async function getOeeDashboard(range: Range) {
         reject: p.reject,
         standardPerHour: p.runMin > 0 ? p.idealHrOutput / (p.runMin / 60) : 0,
       });
-      const qf = qualityFrac(p.good, p.reject + p.pkg);
+      const qf = valueQuality(p.gv, p.lv);
       const oeeF = parts.availability * parts.performance * qf;
       return {
         name,
@@ -443,7 +475,9 @@ export async function getOeeDashboard(range: Range) {
       hasOee: scored.length > 0,
       scoredRuns: scored.length,
       output: Math.round(prodOutput),
-      pkgLoss: Math.round(prodPool.pkg),
+      pkgLoss: packagingLoss.total,
+      goodValue: Math.round(prodPool.gv),
+      lossValue: Math.round(prodPool.lv),
       a: pct(prodParts.availability),
       p: pct(prodParts.performance),
       q: pct(prodQ),

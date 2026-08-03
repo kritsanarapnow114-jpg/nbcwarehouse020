@@ -209,12 +209,6 @@ export function ReceiveForm({
     ? bom.lines.reduce((s, m) => (bomExclude[m.id] ? s : s + (Number(bomLossByLine[m.id] ?? 0) || 0)), 0)
     : 0;
 
-  const totalQualityLoss = Number(prodLoss || 0) + pkgLossQty;
-  const yieldPct =
-    producedTotal + totalQualityLoss > 0
-      ? (producedTotal / (producedTotal + totalQualityLoss)) * 100
-      : 100;
-
   const bomLossValue = bom
     ? bom.lines.reduce(
         (s, m) => (bomExclude[m.id] ? s : s + (Number(bomLossByLine[m.id] ?? 0) || 0) * m.materialPrice),
@@ -222,15 +216,19 @@ export function ReceiveForm({
       )
     : 0;
 
-  // Baht value of the quality loss — the figure that actually shows the impact
-  // even when the % barely moves. Pellet price = finished-good price − packaging
-  // cost per unit (as requested); packaging pieces valued at their own price.
+  // Value-based Quality. Pellet price = finished-good price − packaging cost per
+  // unit (e.g. 1 bag ฿6,750 − packaging ฿2,000 = pellet ฿4,750/bag). Packaging
+  // pieces are valued at their own material price.
   const finishedPrice = bom ? data.products.find((p) => p.code === bom.finishedProductCode)?.price ?? 0 : 0;
   const pkgCostPerUnit = bom
     ? bom.lines.reduce((s, m) => s + m.materialPrice * (m.perQty > 0 ? m.qtyPerUnit / m.perQty : m.qtyPerUnit), 0)
     : 0;
   const pelletUnitPrice = Math.max(0, finishedPrice - pkgCostPerUnit);
   const qualityLossValue = (Number(prodLoss) || 0) * pelletUnitPrice + bomLossValue;
+  const goodValue = producedTotal * finishedPrice;
+  // Quality = value of good ÷ (value of good + value of loss).
+  const yieldPct =
+    goodValue + qualityLossValue > 0 ? (goodValue / (goodValue + qualityLossValue)) * 100 : 100;
 
   async function handleConfirm() {
     setError(null);
@@ -789,7 +787,7 @@ export function ReceiveForm({
             </label>
             <div className="rounded-[8px] border border-[#cfe4f6] bg-[#e8f2fb] px-2.5 py-1.5 text-[12px] text-[#69748a]">
               Yield → Quality KPI: <b className="font-num text-[#0c7f93]">{yieldPct.toFixed(1)}%</b>
-              <span className="ml-1 text-[10.5px] text-[#9aa4b4]">(เม็ด+Packaging)</span>
+              <span className="ml-1 text-[10.5px] text-[#9aa4b4]">(ตามมูลค่า ฿)</span>
             </div>
           </div>
           <table className="w-full border-collapse text-[13px]">
@@ -907,6 +905,7 @@ export function ReceiveForm({
           produced={producedTotal}
           loss={Number(prodLoss) || 0}
           pkgLoss={pkgLossQty}
+          goodValue={goodValue}
           lossValue={qualityLossValue}
         />
       )}

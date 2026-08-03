@@ -34,6 +34,7 @@ export function OeeProdCapture({
   produced,
   loss,
   pkgLoss = 0,
+  goodValue,
   lossValue,
 }: {
   prodLines: string[];
@@ -53,7 +54,8 @@ export function OeeProdCapture({
   produced: number;
   loss: number;
   pkgLoss?: number;
-  lossValue?: number;
+  goodValue?: number; // ฿ value of good output (Quality is value-based)
+  lossValue?: number; // ฿ value of the quality loss (pellet + packaging)
 }) {
   const [dtMin, setDtMin] = useState("");
   const [dtReason, setDtReason] = useState(REASONS[0]);
@@ -71,9 +73,17 @@ export function OeeProdCapture({
         standardPerHour: standard,
       })
     : null;
-  // Quality folds in BOTH pellet loss and BOM packaging pieces (each = one defect);
-  // packaging affects Quality only, never Performance. OEE = A × P × Q.
-  const qualityFrac = produced + loss + pkgLoss > 0 ? produced / (produced + loss + pkgLoss) : 1;
+  // Quality is value-based: ฿ good ÷ (฿ good + ฿ loss), where ฿ loss = pellet
+  // loss × pellet price + packaging pieces × their price. Affects Quality only,
+  // never Performance. Falls back to a quantity ratio if values weren't supplied.
+  const qualityFrac =
+    goodValue != null && lossValue != null
+      ? goodValue + lossValue > 0
+        ? goodValue / (goodValue + lossValue)
+        : 1
+      : produced + loss + pkgLoss > 0
+        ? produced / (produced + loss + pkgLoss)
+        : 1;
   const result = base
     ? { ...base, quality: qualityFrac, oee: base.availability * base.performance * qualityFrac }
     : null;
@@ -143,7 +153,9 @@ export function OeeProdCapture({
             {lossValue != null && lossValue > 0 && (
               <div className="rounded-[8px] border border-[#f0d3c6] bg-[#fbeee6] px-2.5 py-1.5 text-[11.5px] text-[#69748a]">
                 มูลค่าของเสีย <b className="font-num text-[#c05621]">฿{Math.round(lossValue).toLocaleString()}</b>
-                <span className="text-[10.5px] text-[#9aa4b4]"> (เม็ด+Packaging)</span>
+                {goodValue != null && (
+                  <span className="text-[10.5px] text-[#9aa4b4]"> / ผลิตดี ฿{Math.round(goodValue).toLocaleString()} → Q ตามมูลค่า</span>
+                )}
               </div>
             )}
             {standard <= 0 && <div className="text-[11px] text-[#c8891a]">* ยังไม่ตั้งมาตรฐาน {line} → Performance = 0%</div>}
