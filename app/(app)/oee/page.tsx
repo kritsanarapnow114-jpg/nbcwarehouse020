@@ -305,12 +305,13 @@ export default async function OeePage({
                 <div className="flex flex-1 flex-col gap-2.5">
                   <Bar label="Availability" sub="เดินจริง/แผน" v={d.production.a} />
                   <Bar label="Performance" sub="เทียบมาตรฐาน" v={d.production.p} />
-                  <Bar label="Quality" sub="ผลิตดี/ทั้งหมด" v={d.production.q} />
+                  <Bar label="Quality" sub="ผลิตดี/(ผลิต+เม็ดเสีย+Packaging)" v={d.production.q} />
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-5 border-t border-[#eef1f5] pt-3 text-[12px] text-[#69748a]">
                 <Foot k="ผลิตได้" v={`${d.production.produced.toLocaleString()} kg`} />
-                <Foot k="ของเสีย" v={`${d.production.loss.toLocaleString()} kg`} />
+                <Foot k="เม็ดเสีย" v={`${d.production.loss.toLocaleString()} kg`} />
+                <Foot k="Packaging เสีย" v={`${d.production.pkgLoss.toLocaleString()} ชิ้น`} />
                 <Foot k="รอบที่วัด OEE" v={`${d.production.scoredRuns}/${d.production.docs}`} />
               </div>
             </>
