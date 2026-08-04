@@ -195,7 +195,7 @@ export async function getOeeDashboard(range: Range) {
         oee: pct(parts.oee),
         bags: g.bags,
         output: Math.round(g.output),
-        loadingMs: g.loadingMs,
+        loadingMs: Math.max(0, g.endMs - g.startMs), // elapsed span (time used)
         plannedMin: Math.round(g.plannedMs / 60_000),
         hasPlan: g.plannedMs > 0,
       };
@@ -220,8 +220,8 @@ export async function getOeeDashboard(range: Range) {
         p: pct(parts.performance),
         loads: a.bags,
         output: Math.round(a.output),
-        loadingMs: a.loadingMs,
-        idleMs: a.plannedMs > 0 ? Math.max(0, a.plannedMs - a.loadingMs) : Math.max(0, a.windowMs - a.loadingMs),
+        loadingMs: a.windowMs, // elapsed span (time used)
+        idleMs: a.plannedMs > 0 ? Math.max(0, a.plannedMs - a.windowMs) : 0,
         plannedMin: Math.round(a.plannedMs / 60_000),
         standard: standards[name] ?? 0,
       };
@@ -429,13 +429,10 @@ export async function getOeeDashboard(range: Range) {
       ...toPct(overallParts),
       loads: overall.bags,
       output: Math.round(overall.output),
-      loadingMs: overall.loadingMs,
+      loadingMs: overall.windowMs, // elapsed span (time used)
       plannedMin: Math.round(overall.plannedMs / 60_000),
       hasPlan: overall.plannedMs > 0,
-      idleMs:
-        overall.plannedMs > 0
-          ? Math.max(0, overall.plannedMs - overall.loadingMs)
-          : Math.max(0, overall.windowMs - overall.loadingMs),
+      idleMs: overall.plannedMs > 0 ? Math.max(0, overall.plannedMs - overall.windowMs) : 0,
     },
     perMachine,
     trend: { days, oee: trend },

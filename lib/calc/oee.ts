@@ -41,25 +41,37 @@ export function oeeFrom(availability: number, performance: number, quality: numb
  */
 export function scoreUnloading(input: {
   plannedMs?: number; // planned unloading time for this session (from the plan)
-  windowMs: number;
-  loadingMs: number;
+  windowMs: number; // elapsed span: first bag start → last bag finish (operating time)
+  loadingMs: number; // Σ per-bag hands-on time (kept for info; can be ~0 if tapped fast)
   output: number;
   staged: number;
   standardPerHour: number;
 }): OeeParts {
-  const loadingHours = input.loadingMs / 3_600_000;
-  const ideal = input.standardPerHour > 0 ? input.standardPerHour * loadingHours : 0;
-  const performance = ideal > 0 ? input.output / ideal : 0;
   const quality = input.staged > 0 ? input.output / input.staged : 1;
   const planned = input.plannedMs ?? 0;
-  if (planned > 0) {
-    // A plan was set → Availability = actual loading time ÷ planned time. Idle
-    // time within the plan (waiting between bags) lowers A. OEE = A × P × Q.
-    return oeeFrom(input.loadingMs / planned, performance, quality);
+  // Operating time = the elapsed session span, not the fragile per-bag sum (which
+  // is ~0 when start/finish are tapped together). Fall back to loadingMs if window
+  // is missing (legacy single-tap loads).
+  const operatingMs = input.windowMs > 0 ? input.windowMs : input.loadingMs;
+
+  if (planned > 0 && input.standardPerHour > 0) {
+    // Availability = schedule adherence to the plan. Finishing WITHIN the planned
+    // time (early or on-time) is 100% — a generous plan must never be a penalty.
+    // Only an overrun beyond the plan lowers A (= planned ÷ actual).
+    const availability = operatingMs <= planned ? 1 : clamp01(planned / operatingMs);
+    // Performance = actual loading rate vs standard, over the time actually used
+    // (fall back to the planned time if the elapsed span is unusable).
+    const perfHours = (operatingMs > 0 ? operatingMs : planned) / 3_600_000;
+    const performance = clamp01(input.output / (input.standardPerHour * perfHours));
+    return oeeFrom(availability, performance, quality); // OEE = A × P × Q
   }
-  // No plan → can't judge availability: gaps between sporadic load orders mean
-  // "no work", not a machine fault. Show utilization (load ÷ in-use window) as
-  // info on the `availability` field, and keep OEE = P × Q.
+
+  // No plan (or no standard) → can't judge availability: gaps between sporadic
+  // load orders mean "no work", not a machine fault. Show utilization as info on
+  // the `availability` field, and keep OEE = P × Q.
+  const opHours = operatingMs / 3_600_000;
+  const ideal = input.standardPerHour > 0 ? input.standardPerHour * opHours : 0;
+  const performance = ideal > 0 ? input.output / ideal : 0;
   const utilization = input.windowMs > 0 ? input.loadingMs / input.windowMs : 0;
   const parts = oeeFrom(utilization, performance, quality);
   return { ...parts, oee: parts.performance * parts.quality };

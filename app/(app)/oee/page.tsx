@@ -275,7 +275,7 @@ export default async function OeePage({
                 <Gauge value={d.unloading.oee} />
                 <div className="flex flex-1 flex-col gap-2.5">
                   {d.unloading.hasPlan ? (
-                    <Bar label="Availability" sub="โหลดจริง/แผน" v={d.unloading.a} />
+                    <Bar label="Availability" sub="เสร็จในแผน=100% · เกินแผนถึงลด" v={d.unloading.a} />
                   ) : (
                     <Bar label="การใช้งาน" sub="โหลดจริง/ช่วงเปิดเครื่อง (info)" v={d.unloading.a} />
                   )}
@@ -286,15 +286,16 @@ export default async function OeePage({
               <div className="mt-4 flex flex-wrap gap-5 border-t border-[#eef1f5] pt-3 text-[12px] text-[#69748a]">
                 <Foot k="โหลดทั้งหมด" v={`${d.unloading.loads} ถุง`} />
                 <Foot k="ปริมาณ" v={`${d.unloading.output.toLocaleString()} kg`} />
-                <Foot k="เวลาโหลดจริง" v={fmtDuration(d.unloading.loadingMs)} />
+                <Foot k="เวลาที่ใช้โหลด" v={fmtDuration(d.unloading.loadingMs)} />
                 {d.unloading.hasPlan && <Foot k="แผนเวลา" v={`${d.unloading.plannedMin} นาที`} />}
                 <Foot k={d.unloading.hasPlan ? "ว่าง (เทียบแผน)" : "ว่าง (ไม่มีงาน)"} v={fmtDuration(d.unloading.idleMs)} />
               </div>
               <p className="mt-2 rounded-[9px] bg-[#f7f9fb] p-2.5 text-[11px] leading-relaxed text-[#69748a]">
                 {d.unloading.hasPlan ? (
                   <>
-                    <b className="text-[#3a4658]">Availability = เวลาโหลดจริง ÷ แผนเวลาโหลด</b> ที่ตั้งตอนเบิกเข้า SILO ·
-                    OEE = A × P × Q · รอบไหนไม่ได้ตั้งแผน จะไม่คิด A (ใช้ P × Q แทน)
+                    <b className="text-[#3a4658]">Availability</b> = โหลดเสร็จภายในแผน → 100% (เสร็จเร็ว/ตรงเวลาไม่โดนหัก) ·
+                    ถ้า<b>เกินแผน</b>ถึงจะลด (แผน ÷ เวลาจริง) · <b>Performance</b> = อัตราโหลดจริงเทียบมาตรฐาน ·
+                    OEE = A × P × Q · รอบไหนไม่ตั้งแผน = ใช้ P × Q
                   </>
                 ) : (
                   <>
