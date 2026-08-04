@@ -113,6 +113,7 @@ model SiloStaging {
   sourceLoc   String
   qtyStaged   Float
   qtyLoaded   Float    @default(0)
+  plannedMin  Float? // planned unloading time (min) for this session → OEE Availability = actual load ÷ planned
   palletSize  Float? // standard weight per pallet/bag at stage time — used to split into individual bags
   machine     String? // unloading machine chosen at stage time (applies to all bags)
   issueId     String? // the Issue created when staging, so deleting the staging can return the stock

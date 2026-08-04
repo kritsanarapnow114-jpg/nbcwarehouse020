@@ -274,20 +274,34 @@ export default async function OeePage({
               <div className="flex items-center gap-6">
                 <Gauge value={d.unloading.oee} />
                 <div className="flex flex-1 flex-col gap-2.5">
+                  {d.unloading.hasPlan ? (
+                    <Bar label="Availability" sub="โหลดจริง/แผน" v={d.unloading.a} />
+                  ) : (
+                    <Bar label="การใช้งาน" sub="โหลดจริง/ช่วงเปิดเครื่อง (info)" v={d.unloading.a} />
+                  )}
                   <Bar label="Performance" sub="เทียบมาตรฐาน kg/ชม." v={d.unloading.p} />
                   <Bar label="Quality" sub="ไม่นับของเสีย = 100%" v={d.unloading.q} />
-                  <Bar label="การใช้งาน" sub="โหลดจริง/ช่วงเปิดเครื่อง (info)" v={d.unloading.a} />
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap gap-5 border-t border-[#eef1f5] pt-3 text-[12px] text-[#69748a]">
                 <Foot k="โหลดทั้งหมด" v={`${d.unloading.loads} ถุง`} />
                 <Foot k="ปริมาณ" v={`${d.unloading.output.toLocaleString()} kg`} />
                 <Foot k="เวลาโหลดจริง" v={fmtDuration(d.unloading.loadingMs)} />
-                <Foot k="ว่าง (ไม่มีงาน)" v={fmtDuration(d.unloading.idleMs)} />
+                {d.unloading.hasPlan && <Foot k="แผนเวลา" v={`${d.unloading.plannedMin} นาที`} />}
+                <Foot k={d.unloading.hasPlan ? "ว่าง (เทียบแผน)" : "ว่าง (ไม่มีงาน)"} v={fmtDuration(d.unloading.idleMs)} />
               </div>
               <p className="mt-2 rounded-[9px] bg-[#f7f9fb] p-2.5 text-[11px] leading-relaxed text-[#69748a]">
-                <b className="text-[#3a4658]">หมายเหตุ:</b> Unloading ไม่คิด Availability ใน OEE — ช่วงว่างระหว่างถุงคือ
-                ช่วงไม่มีใบสั่ง ไม่ใช่เครื่องเสีย · <b>การใช้งาน</b> แสดงเป็นข้อมูลเฉย ๆ (ช่วง startup ใบสั่งน้อย = ปกติ)
+                {d.unloading.hasPlan ? (
+                  <>
+                    <b className="text-[#3a4658]">Availability = เวลาโหลดจริง ÷ แผนเวลาโหลด</b> ที่ตั้งตอนเบิกเข้า SILO ·
+                    OEE = A × P × Q · รอบไหนไม่ได้ตั้งแผน จะไม่คิด A (ใช้ P × Q แทน)
+                  </>
+                ) : (
+                  <>
+                    <b className="text-[#3a4658]">หมายเหตุ:</b> รอบนี้ยังไม่ได้ตั้ง <b>แผนเวลาโหลด</b> → ไม่คิด Availability
+                    (OEE = P × Q) · ตั้งแผนตอนเบิกเข้า SILO เพื่อให้ได้ A ครบ
+                  </>
+                )}
               </p>
             </>
           )}

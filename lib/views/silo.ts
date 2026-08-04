@@ -107,6 +107,7 @@ export async function getStagingList() {
       sourceLoc: s.sourceLoc,
       palletSize: s.palletSize ?? null,
       machine: s.machine ?? "",
+      plannedMin: s.plannedMin ?? 0,
       qtyStaged: s.qtyStaged,
       qtyLoaded: s.qtyLoaded,
       remaining: r3(s.qtyStaged - s.qtyLoaded),

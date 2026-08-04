@@ -16,52 +16,8 @@ type Load = {
   qty: number;
   stagingId: string;
   stagingDoc: string;
+  plannedMin: number; // planned unloading time for the session (0 = none set)
 };
-
-/** Pooled timing/output for a machine (or the whole operation) over the range. */
-type Pool = { windowMs: number; loadingMs: number; output: number; loads: number };
-
-function emptyPool(): Pool {
-  return { windowMs: 0, loadingMs: 0, output: 0, loads: 0 };
-}
-
-// Bucket loads by machine+day so idle gaps *within* a day lower Availability, but
-// the overnight gap between days does not. Window = first start → last finish of
-// that machine on that day; loading = Σ(finish − start).
-function poolByMachineDay(loads: Load[]): Map<string, Pool> {
-  const dayKey = (l: Load) => `${l.machine}||${l.day}`;
-  const groups = new Map<string, Load[]>();
-  for (const l of loads) {
-    const k = dayKey(l);
-    (groups.get(k) ?? groups.set(k, []).get(k)!).push(l);
-  }
-  // machine → pooled totals across its days
-  const perMachine = new Map<string, Pool>();
-  for (const [k, ls] of groups) {
-    const machine = k.split("||")[0];
-    const windowMs = Math.max(...ls.map((l) => l.endMs)) - Math.min(...ls.map((l) => l.startMs));
-    const loadingMs = ls.reduce((s, l) => s + Math.max(0, l.endMs - l.startMs), 0);
-    const output = ls.reduce((s, l) => s + l.qty, 0);
-    const p = perMachine.get(machine) ?? emptyPool();
-    p.windowMs += Math.max(0, windowMs);
-    p.loadingMs += loadingMs;
-    p.output += output;
-    p.loads += ls.length;
-    perMachine.set(machine, p);
-  }
-  return perMachine;
-}
-
-function scorePool(p: Pool, standardPerHour: number) {
-  // Quality isn't measured at unloading (no scrap capture) → treat as 100%.
-  return scoreUnloading({
-    windowMs: p.windowMs,
-    loadingMs: p.loadingMs,
-    output: p.output,
-    staged: p.output, // makes Q = 1
-    standardPerHour,
-  });
-}
 
 export async function getOeeDashboard(range: Range) {
   // SiloLoad.loadedAt is a real timestamp, but range.end is the *start* of the
@@ -84,7 +40,7 @@ export async function getOeeDashboard(range: Range) {
         startedAt: true,
         loadedAt: true,
         stagingId: true,
-        staging: { select: { docNo: true } },
+        staging: { select: { docNo: true, plannedMin: true } },
       },
     }),
     db.receipt.findMany({
@@ -181,18 +137,22 @@ export async function getOeeDashboard(range: Range) {
         qty: l.qty,
         stagingId: l.stagingId,
         stagingDoc: l.staging?.docNo ?? l.stagingId,
+        plannedMin: l.staging?.plannedMin ?? 0,
       };
     });
 
-  // ---- Unloading: per-run (one row per staged item / SILO session) ----------
-  const runMap = new Map<
-    string,
-    { doc: string; machine: string; day: string; startMs: number; endMs: number; loadingMs: number; output: number; bags: number }
-  >();
+  // ---- Unloading: aggregate per SILO session (staging) ----------------------
+  // Availability now comes from the session's plan (plannedMin), so we pool by
+  // staging — each staging carries its own plan once (not once per bag).
+  type URun = {
+    doc: string; machine: string; day: string;
+    startMs: number; endMs: number; loadingMs: number; output: number; bags: number; plannedMs: number;
+  };
+  const runMap = new Map<string, URun>();
   for (const l of loads) {
     const g =
       runMap.get(l.stagingId) ??
-      { doc: l.stagingDoc, machine: l.machine, day: l.day, startMs: l.startMs, endMs: l.endMs, loadingMs: 0, output: 0, bags: 0 };
+      { doc: l.stagingDoc, machine: l.machine, day: l.day, startMs: l.startMs, endMs: l.endMs, loadingMs: 0, output: 0, bags: 0, plannedMs: l.plannedMin * 60_000 };
     g.startMs = Math.min(g.startMs, l.startMs);
     g.endMs = Math.max(g.endMs, l.endMs);
     g.loadingMs += Math.max(0, l.endMs - l.startMs);
@@ -201,9 +161,25 @@ export async function getOeeDashboard(range: Range) {
     g.day = l.day;
     runMap.set(l.stagingId, g);
   }
-  const unloadingRuns = [...runMap.values()]
+  const runs = [...runMap.values()];
+
+  // Aggregate a set of sessions into one OEE (planned time summed across them).
+  type UAgg = { plannedMs: number; loadingMs: number; windowMs: number; output: number; bags: number };
+  const emptyAgg = (): UAgg => ({ plannedMs: 0, loadingMs: 0, windowMs: 0, output: 0, bags: 0 });
+  const addRun = (a: UAgg, g: URun) => {
+    a.plannedMs += g.plannedMs;
+    a.loadingMs += g.loadingMs;
+    a.windowMs += Math.max(0, g.endMs - g.startMs);
+    a.output += g.output;
+    a.bags += g.bags;
+  };
+  const scoreAgg = (a: UAgg, std: number) =>
+    scoreUnloading({ plannedMs: a.plannedMs, windowMs: a.windowMs, loadingMs: a.loadingMs, output: a.output, staged: a.output, standardPerHour: std });
+
+  const unloadingRuns = runs
     .map((g) => {
       const parts = scoreUnloading({
+        plannedMs: g.plannedMs,
         windowMs: g.endMs - g.startMs,
         loadingMs: g.loadingMs,
         output: g.output,
@@ -220,48 +196,46 @@ export async function getOeeDashboard(range: Range) {
         bags: g.bags,
         output: Math.round(g.output),
         loadingMs: g.loadingMs,
+        plannedMin: Math.round(g.plannedMs / 60_000),
+        hasPlan: g.plannedMs > 0,
       };
     })
     .sort((a, b) => b.day.localeCompare(a.day))
     .slice(0, 50);
 
   // ---- Unloading: per machine + overall -------------------------------------
-  const perMachinePool = poolByMachineDay(loads);
-  const perMachine = [...perMachinePool.keys()]
-    .map((name) => {
-      const p = perMachinePool.get(name)!;
-      const parts = scorePool(p, standards[name] ?? 0);
+  const byMachine = new Map<string, UAgg>();
+  for (const g of runs) {
+    const a = byMachine.get(g.machine) ?? emptyAgg();
+    addRun(a, g);
+    byMachine.set(g.machine, a);
+  }
+  const perMachine = [...byMachine.entries()]
+    .map(([name, a]) => {
+      const parts = scoreAgg(a, standards[name] ?? 0);
       return {
         name,
         oee: pct(parts.oee),
         a: pct(parts.availability),
         p: pct(parts.performance),
-        loads: p.loads,
-        output: Math.round(p.output),
-        loadingMs: p.loadingMs,
-        idleMs: Math.max(0, p.windowMs - p.loadingMs),
+        loads: a.bags,
+        output: Math.round(a.output),
+        loadingMs: a.loadingMs,
+        idleMs: a.plannedMs > 0 ? Math.max(0, a.plannedMs - a.loadingMs) : Math.max(0, a.windowMs - a.loadingMs),
+        plannedMin: Math.round(a.plannedMs / 60_000),
         standard: standards[name] ?? 0,
       };
     })
     .sort((x, y) => x.oee - y.oee);
 
-  const overall = [...perMachinePool.values()].reduce((acc, p) => {
-    acc.windowMs += p.windowMs;
-    acc.loadingMs += p.loadingMs;
-    acc.output += p.output;
-    acc.loads += p.loads;
-    return acc;
-  }, emptyPool());
+  const overall = runs.reduce((a, g) => (addRun(a, g), a), emptyAgg());
   // Overall Performance uses an output-weighted average standard rate so a single
   // shared "standard" is meaningful across mixed machines.
   const outWeightedStd =
     overall.output > 0
-      ? [...perMachinePool.entries()].reduce(
-          (s, [name, p]) => s + (standards[name] ?? 0) * p.output,
-          0
-        ) / overall.output
+      ? [...byMachine.entries()].reduce((s, [name, a]) => s + (standards[name] ?? 0) * a.output, 0) / overall.output
       : 0;
-  const overallParts = scorePool(overall, outWeightedStd);
+  const overallParts = scoreAgg(overall, outWeightedStd);
 
   // ---- 7-day trend (OEE per day, all machines) ------------------------------
   const days: string[] = [];
@@ -271,21 +245,14 @@ export async function getOeeDashboard(range: Range) {
     days.push(fmtDateISO(dd));
   }
   const trend = days.map((day) => {
-    const dayLoads = loads.filter((l) => l.day === day);
-    if (dayLoads.length === 0) return null;
-    const pools = poolByMachineDay(dayLoads);
-    const pooled = [...pools.values()].reduce((acc, p) => {
-      acc.windowMs += p.windowMs;
-      acc.loadingMs += p.loadingMs;
-      acc.output += p.output;
-      return acc;
-    }, emptyPool());
+    const dayRuns = runs.filter((g) => g.day === day);
+    if (dayRuns.length === 0) return null;
+    const agg = dayRuns.reduce((a, g) => (addRun(a, g), a), emptyAgg());
     const std =
-      pooled.output > 0
-        ? [...pools.entries()].reduce((s, [name, p]) => s + (standards[name] ?? 0) * p.output, 0) /
-          pooled.output
+      agg.output > 0
+        ? dayRuns.reduce((s, g) => s + (standards[g.machine] ?? 0) * g.output, 0) / agg.output
         : 0;
-    return pct(scorePool(pooled, std).oee);
+    return pct(scoreAgg(agg, std).oee);
   });
 
   // ---- Production: yield always; full A/P/Q for runs that captured a line -----
@@ -460,10 +427,15 @@ export async function getOeeDashboard(range: Range) {
     },
     unloading: {
       ...toPct(overallParts),
-      loads: overall.loads,
+      loads: overall.bags,
       output: Math.round(overall.output),
       loadingMs: overall.loadingMs,
-      idleMs: Math.max(0, overall.windowMs - overall.loadingMs),
+      plannedMin: Math.round(overall.plannedMs / 60_000),
+      hasPlan: overall.plannedMs > 0,
+      idleMs:
+        overall.plannedMs > 0
+          ? Math.max(0, overall.plannedMs - overall.loadingMs)
+          : Math.max(0, overall.windowMs - overall.loadingMs),
     },
     perMachine,
     trend: { days, oee: trend },

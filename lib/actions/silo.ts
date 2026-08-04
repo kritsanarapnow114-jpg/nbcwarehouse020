@@ -19,6 +19,7 @@ export async function stageForSiloAction(input: {
   lotId: string;
   qty: number;
   machine?: string | null;
+  plannedMin?: number | null;
   stagedBy?: string | null;
   docDate: string;
 }): Promise<{ docNo?: string; error?: string }> {
@@ -77,6 +78,7 @@ export async function stageForSiloAction(input: {
           lotNo: sel.lotNo,
           sourceLoc: sel.locationCode,
           qtyStaged: qty,
+          plannedMin: input.plannedMin && input.plannedMin > 0 ? input.plannedMin : null,
           palletSize: sel.product.pallet > 0 ? sel.product.pallet : null,
           machine: input.machine?.trim() || null,
           issueId: issue.id,

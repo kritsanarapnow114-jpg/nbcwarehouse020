@@ -97,6 +97,7 @@ export function SiloFeed({
   const [lotId, setLotId] = useState("");
   const [qty, setQty] = useState("");
   const [machine, setMachine] = useState(MACHINES[0]);
+  const [plannedMin, setPlannedMin] = useState("");
   const [stagedBy, setStagedBy] = useState("");
   const [date, setDate] = useState(fmtDateISO(new Date()));
   const [staging0, setStaging0] = useState(false);
@@ -120,6 +121,7 @@ export function SiloFeed({
     setProd(null);
     setLotId("");
     setQty("");
+    setPlannedMin("");
     setStageErr(null);
     setPickerKey((k) => k + 1);
   }
@@ -131,6 +133,7 @@ export function SiloFeed({
       lotId,
       qty: Number(qty) || 0,
       machine,
+      plannedMin: Number(plannedMin) || null,
       stagedBy: stagedBy || null,
       docDate: date,
     });
@@ -313,6 +316,11 @@ export function SiloFeed({
               ⚙ {s.machine}
             </span>
           )}
+          {s.plannedMin > 0 && (
+            <span className="rounded-full bg-[#f1eefb] px-2 py-0.5 text-[10.5px] font-semibold text-[#6b4fb0]">
+              ⏱ แผน {s.plannedMin} นาที
+            </span>
+          )}
           <span className="font-num text-[12px] text-[#69748a]">
             เบิก <b className="text-[#3a4658]">{s.qtyStaged.toLocaleString()}</b> · โหลดแล้ว{" "}
             <b className="text-[#1f9d63]">{s.qtyLoaded.toLocaleString()}</b> · เหลือ{" "}
@@ -414,6 +422,17 @@ export function SiloFeed({
                   </option>
                 ))}
               </select>
+            </label>
+            <label className="flex w-[150px] flex-col gap-1">
+              <span className="text-[11.5px] font-medium text-[#69748a]">แผนเวลาโหลด (นาที)</span>
+              <input
+                value={plannedMin}
+                onChange={(e) => setPlannedMin(e.target.value.replace(/\D/g, ""))}
+                inputMode="numeric"
+                placeholder="เช่น 90"
+                className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-2 text-[13px] outline-none focus:border-[#2f86cf]"
+                title="ใช้คิด OEE Availability = เวลาโหลดจริง ÷ แผน"
+              />
             </label>
             <label className="flex w-[150px] flex-col gap-1">
               <span className="text-[11.5px] font-medium text-[#69748a]">ผู้เบิก</span>

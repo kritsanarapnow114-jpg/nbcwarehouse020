@@ -40,21 +40,27 @@ export function oeeFrom(availability: number, performance: number, quality: numb
  *  - standardPerHour: the machine's standard output rate (kg/hr)
  */
 export function scoreUnloading(input: {
+  plannedMs?: number; // planned unloading time for this session (from the plan)
   windowMs: number;
   loadingMs: number;
   output: number;
   staged: number;
   standardPerHour: number;
 }): OeeParts {
-  // "utilization" = how much of the in-use window was actually loading. It is
-  // NOT folded into OEE: gaps between sporadic load orders mean "no work", not a
-  // machine fault — so unloading OEE = Performance × Quality only. Utilization is
-  // reported separately as information (kept on the `availability` field).
-  const utilization = input.windowMs > 0 ? input.loadingMs / input.windowMs : 0;
   const loadingHours = input.loadingMs / 3_600_000;
   const ideal = input.standardPerHour > 0 ? input.standardPerHour * loadingHours : 0;
   const performance = ideal > 0 ? input.output / ideal : 0;
   const quality = input.staged > 0 ? input.output / input.staged : 1;
+  const planned = input.plannedMs ?? 0;
+  if (planned > 0) {
+    // A plan was set → Availability = actual loading time ÷ planned time. Idle
+    // time within the plan (waiting between bags) lowers A. OEE = A × P × Q.
+    return oeeFrom(input.loadingMs / planned, performance, quality);
+  }
+  // No plan → can't judge availability: gaps between sporadic load orders mean
+  // "no work", not a machine fault. Show utilization (load ÷ in-use window) as
+  // info on the `availability` field, and keep OEE = P × Q.
+  const utilization = input.windowMs > 0 ? input.loadingMs / input.windowMs : 0;
   const parts = oeeFrom(utilization, performance, quality);
   return { ...parts, oee: parts.performance * parts.quality };
 }
