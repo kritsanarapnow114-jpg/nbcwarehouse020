@@ -70,11 +70,46 @@ export async function getCountLotsAction(
     }))
     .filter((r) => r.sysQty > 0);
 
-  // Sum by LOT (across every bin it sits in) so one lot is one line to count —
-  // not split per bin. The Location column then lists all the bins that lot is in.
-  // The count only records numbers (it never moves stock), so recording against
-  // one representative lot id with the merged sysQty keeps the accuracy figures
-  // correct.
+  // "By Location" pull: one row per bin, with System = the sum of EVERY lot in
+  // that bin (across products/lots), not one row per lot. The Lot and Material
+  // columns then list all lots/products that bin holds. The count only records
+  // numbers (it never moves stock), so recording against one representative lot
+  // id with the bin's total sysQty keeps the accuracy figures correct.
+  if (mode === "location") {
+    const merged = new Map<
+      string,
+      (typeof rows)[number] & { products: Set<string>; names: Set<string>; lotNos: Set<string> }
+    >();
+    for (const r of rows) {
+      const key = r.locationCode;
+      const ex = merged.get(key);
+      if (ex) {
+        ex.sysQty = Math.round((ex.sysQty + r.sysQty) * 1000) / 1000;
+        ex.products.add(r.productCode);
+        ex.names.add(r.name);
+        ex.lotNos.add(r.lotNo);
+      } else {
+        merged.set(key, {
+          ...r,
+          products: new Set([r.productCode]),
+          names: new Set([r.name]),
+          lotNos: new Set([r.lotNo]),
+        });
+      }
+    }
+    return [...merged.values()].map(({ products, names, lotNos, ...r }) => ({
+      ...r,
+      productCode: [...products].sort().join(", "),
+      name: [...names].sort().join(", "),
+      lotNo: [...lotNos].sort().join(", "),
+    }));
+  }
+
+  // "By Zone" / "By Lot" pull: sum by LOT (across every bin it sits in) so one
+  // lot is one line to count — not split per bin. The Location column then lists
+  // all the bins that lot is in. The count only records numbers (it never moves
+  // stock), so recording against one representative lot id with the merged sysQty
+  // keeps the accuracy figures correct.
   const merged = new Map<string, (typeof rows)[number] & { bins: Set<string> }>();
   for (const r of rows) {
     const key = `${r.productCode}||${r.lotNo}`;

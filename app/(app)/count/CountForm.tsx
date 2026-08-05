@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCountLotsAction, confirmCountAction } from "@/lib/actions/count";
 import { LotOption, ProductOption } from "@/lib/views/docCommon";
@@ -75,6 +75,13 @@ export function CountForm({
 
   const available = lots.filter((l) => !lines.some((x) => x.id === l.id));
 
+  // Auto-pull bookkeeping: `redoApplied` blocks the first auto-pull from wiping a
+  // restored "Redo" count; `firstPull` marks that first run; `pullSeq` drops a
+  // stale response when the user changes the scope again before it returns.
+  const redoApplied = useRef(false);
+  const firstPull = useRef(true);
+  const pullSeq = useRef(0);
+
   // Prefill from a "Redo" of a reversed stock count (one-shot, client-only storage).
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
@@ -84,6 +91,8 @@ export function CountForm({
       offSystemLines: { productCode: string; lotNo: string; locationCode: string; counted: string }[];
     }>("count");
     if (!p) return;
+    // A Redo is restoring an existing count → don't let the auto-pull overwrite it.
+    redoApplied.current = true;
     // stored pullZone is a display label; only re-select it if it maps to a code
     if (p.pullZone) {
       const match = ZONE_OPTS.find((z) => z.label === p.pullZone || z.code === p.pullZone);
@@ -123,21 +132,32 @@ export function CountForm({
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [lots, products]);
 
-  async function handlePull() {
+  // Pull the current scope and REPLACE the table with it. Runs automatically
+  // whenever the scope changes (mode / zone / location / lot / as-of date), and
+  // also on the "Pull lots" button as a manual refresh.
+  const doPull = useCallback(async () => {
+    const seq = ++pullSeq.current;
     setPulling(true);
-    const rows = await getCountLotsAction(pullMode, pullValue, asOfDate || undefined);
-    setLines((existing) => {
-      const existingIds = new Set(existing.map((l) => l.id));
-      const merged = [...existing];
-      for (const r of rows) {
-        if (!existingIds.has(r.id)) merged.push({ ...r, counted: String(r.sysQty) });
-      }
-      return merged;
-    });
-    // Counting a past snapshot → date the document to that day too.
-    if (asOfDate) setDocDate(asOfDate);
-    setPulling(false);
-  }
+    try {
+      const rows = await getCountLotsAction(pullMode, pullValue, asOfDate || undefined);
+      if (seq !== pullSeq.current) return; // a newer pull already superseded this one
+      setLines(rows.map((r) => ({ ...r, counted: String(r.sysQty) })));
+      // Counting a past snapshot → date the document to that day too.
+      if (asOfDate) setDocDate(asOfDate);
+    } finally {
+      if (seq === pullSeq.current) setPulling(false);
+    }
+  }, [pullMode, pullValue, asOfDate]);
+
+  // Auto-pull on mount and on every scope change. Skip the very first run if a
+  // Redo just restored a count, so we don't clobber the restored lines.
+  useEffect(() => {
+    if (firstPull.current) {
+      firstPull.current = false;
+      if (redoApplied.current) return;
+    }
+    void doPull();
+  }, [doPull]);
 
   function addLine(id: string) {
     const lot = lots.find((l) => l.id === id);
@@ -327,7 +347,7 @@ export function CountForm({
               className="font-num rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
             />
           </div>
-          <button onClick={handlePull} disabled={pulling} className={buttonClass("accent")}>
+          <button onClick={() => doPull()} disabled={pulling} className={buttonClass("accent")}>
             {pulling ? "Pulling…" : asOfDate ? "⤓ ดึงยอดวันนั้น" : "⤓ Pull lots"}
           </button>
           <div className="flex-1" />
@@ -444,7 +464,7 @@ export function CountForm({
               {lines.length === 0 && offLines.length === 0 && (
                 <tr>
                   <td colSpan={8} className="p-6 text-center text-[#9aa4b4]">
-                    Choose a zone and click &quot;Pull lots&quot;, or add a lot below.
+                    {pulling ? "Pulling…" : "No lots in this scope — change the selection above, or add a lot below."}
                   </td>
                 </tr>
               )}
