@@ -221,7 +221,7 @@ export function CountForm({
     downloadExcel(
       "stock-count-draft.xls",
       "Stock Count",
-      ["SAP Material Master", "Material Description", "Lot", "Location", "SysQty", "CountedQty", "Variance"],
+      ["SAP Material Master", "Material Description", "Lots", "Location", "SysQty", "CountedQty", "Variance"],
       lines.map((l) => [
         l.productCode,
         l.name,
@@ -351,7 +351,7 @@ export function CountForm({
               <tr className="bg-[#f7f9fb] text-left text-[#69748a]">
                 <th className="p-[10px_16px] text-[11.5px] font-medium">SAP Material Master</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Material Description</th>
-                <th className="p-[10px_16px] text-[11.5px] font-medium">Lot</th>
+                <th className="p-[10px_16px] text-[11.5px] font-medium">Lots</th>
                 <th className="p-[10px_16px] text-[11.5px] font-medium">Location</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">System</th>
                 <th className="p-[10px_16px] text-right text-[11.5px] font-medium">Counted</th>
