@@ -70,25 +70,26 @@ export async function getCountLotsAction(
     }))
     .filter((r) => r.sysQty > 0);
 
-  // Sum by LOT (across every bin it sits in) so one lot is one line to count —
-  // not split per bin. The Location column then lists all the bins that lot is in.
+  // Sum by LOCATION (bin): every lot of a product sitting in the same bin becomes
+  // one line to count — you count what is physically in that spot, not each lot
+  // separately. The Lot column then lists all the lot numbers found in that bin.
   // The count only records numbers (it never moves stock), so recording against
   // one representative lot id with the merged sysQty keeps the accuracy figures
   // correct.
-  const merged = new Map<string, (typeof rows)[number] & { bins: Set<string> }>();
+  const merged = new Map<string, (typeof rows)[number] & { lotNos: Set<string> }>();
   for (const r of rows) {
-    const key = `${r.productCode}||${r.lotNo}`;
+    const key = `${r.productCode}||${r.locationCode}`;
     const ex = merged.get(key);
     if (ex) {
       ex.sysQty = Math.round((ex.sysQty + r.sysQty) * 1000) / 1000;
-      ex.bins.add(r.locationCode);
+      ex.lotNos.add(r.lotNo);
     } else {
-      merged.set(key, { ...r, bins: new Set([r.locationCode]) });
+      merged.set(key, { ...r, lotNos: new Set([r.lotNo]) });
     }
   }
-  return [...merged.values()].map(({ bins, ...r }) => ({
+  return [...merged.values()].map(({ lotNos, ...r }) => ({
     ...r,
-    locationCode: [...bins].sort().join(", "),
+    lotNo: [...lotNos].sort().join(", "),
   }));
 }
 
