@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { peekNextDocNumber } from "@/lib/calc/docNumber";
 import { productLabel } from "@/lib/calc/productName";
+import { fmtDateISO } from "@/lib/calc/date";
 import { getAppSetting } from "@/lib/views/settings";
 import {
   BOM_SOURCE_KEY,
@@ -61,6 +62,26 @@ export async function getReceiveFormData() {
     lotsByCode.set(l.productCode, arr);
   }
 
+  // Lots that already carry a Mfg and/or Expiry, newest first — so re-receiving a
+  // known lot can auto-fill its production/expiry dates. Keyed both by
+  // `product||lot` (exact match) and by `lot` alone (fallback across products);
+  // newest wins because we iterate newest→oldest and only fill an empty key.
+  const datedLots = await db.lot.findMany({
+    where: { lotNo: { not: "-" }, OR: [{ mfgDate: { not: null } }, { expDate: { not: null } }] },
+    select: { productCode: true, lotNo: true, mfgDate: true, expDate: true },
+    orderBy: { recvDate: "desc" },
+  });
+  const lotMeta: Record<string, { mfg: string | null; exp: string | null }> = {};
+  for (const l of datedLots) {
+    const meta = {
+      mfg: l.mfgDate ? fmtDateISO(l.mfgDate) : null,
+      exp: l.expDate ? fmtDateISO(l.expDate) : null,
+    };
+    const exact = `${l.productCode}||${l.lotNo}`;
+    if (!(exact in lotMeta)) lotMeta[exact] = meta;
+    if (!(l.lotNo in lotMeta)) lotMeta[l.lotNo] = meta;
+  }
+
   return {
     docNo,
     nextSuNo,
@@ -87,6 +108,7 @@ export async function getReceiveFormData() {
     })),
     locations: locations.map((l) => l.code),
     lotOptions: lots.map((l) => l.lotNo).filter((l) => l !== "-"),
+    lotMeta,
     prodLines,
     oeeStandards,
     boms: bomsRaw.map((b) => ({
