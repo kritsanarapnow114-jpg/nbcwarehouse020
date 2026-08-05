@@ -159,6 +159,21 @@ export function ReceiveForm({
     setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
   }
 
+  // Re-receiving a lot that was received before? Auto-fill its Mfg/Expiry from
+  // the last time it came in — exact product+lot first, then any lot with that
+  // number. Only fills a date the known lot actually has, so it never blanks a
+  // date you've already typed, and a brand-new lot leaves your entries untouched.
+  function changeLot(i: number, lot: string) {
+    setLines((ls) =>
+      ls.map((l, idx) => {
+        if (idx !== i) return l;
+        const meta = data.lotMeta[`${l.productCode}||${lot}`] ?? data.lotMeta[lot];
+        if (!meta) return { ...l, lot };
+        return { ...l, lot, mfg: meta.mfg ?? l.mfg, exp: meta.exp ?? l.exp };
+      })
+    );
+  }
+
   function removeLine(i: number) {
     setLines((ls) => ls.filter((_, idx) => idx !== i));
   }
@@ -651,8 +666,9 @@ export function ReceiveForm({
                       <td className="p-[11px_16px]">
                         <input
                           value={l.lot}
-                          onChange={(e) => updateLine(i, { lot: e.target.value })}
+                          onChange={(e) => changeLot(i, e.target.value)}
                           list="nbLots"
+                          title="ล็อตที่เคยรับ จะเติมวันผลิต/หมดอายุให้อัตโนมัติ"
                           className="font-num w-[118px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
                         />
                       </td>
