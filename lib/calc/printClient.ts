@@ -95,8 +95,8 @@ export function printCountSheet(opts: {
   table { width:100%; border-collapse:collapse; table-layout:fixed; }
   thead { display:table-header-group; }
   tr { page-break-inside:avoid; }
-  th { background:#12557e; color:#fff; border:1px solid #9fb0c3; padding:2px 3px; text-align:center; vertical-align:middle; font-size:7.5pt; line-height:1.1; white-space:normal; text-transform:uppercase; font-weight:bold; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  td { border:1px solid #b9c2cd; padding:1px 4px; font-size:8.5pt; line-height:1.12; height:0.4cm; white-space:normal; overflow:visible; word-break:break-word; overflow-wrap:anywhere; vertical-align:middle; }
+  th { background:#12557e; color:#fff; border:1px solid #9fb0c3; padding:2px 3px; text-align:center; vertical-align:middle; font-size:7pt; line-height:1.1; white-space:normal; text-transform:uppercase; font-weight:bold; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  td { border:1px solid #b9c2cd; padding:1px 4px; font-size:7.5pt; line-height:1.1; height:0.4cm; white-space:normal; overflow:visible; word-break:break-word; overflow-wrap:anywhere; vertical-align:middle; }
   th.wrap { white-space:normal; }
   td.write { min-width:52px; }
   tbody tr { height:0.4cm; }
