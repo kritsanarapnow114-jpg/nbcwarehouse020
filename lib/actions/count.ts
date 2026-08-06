@@ -70,28 +70,12 @@ export async function getCountLotsAction(
     }))
     .filter((r) => r.sysQty > 0);
 
-  // "By Location" pull: one row per (bin, product). Different products in the
-  // same bin stay on separate rows — they're never merged together. But multiple
-  // lots of the SAME product in that bin are summed into one row (System = that
-  // product's total in the bin), and the Lot column lists those lots. The count
-  // only records numbers (it never moves stock), so recording against one
-  // representative lot id with the merged sysQty keeps the accuracy figures right.
+  // "By Location" pull: one row per lot exactly as it sits in the bin — nothing
+  // is merged. Different products and different lots each get their own row (so a
+  // bin with two lots of the same product shows two rows), and System is that
+  // single lot's own quantity. Rows are already ordered by bin then product.
   if (mode === "location") {
-    const merged = new Map<string, (typeof rows)[number] & { lotNos: Set<string> }>();
-    for (const r of rows) {
-      const key = `${r.locationCode}||${r.productCode}`;
-      const ex = merged.get(key);
-      if (ex) {
-        ex.sysQty = Math.round((ex.sysQty + r.sysQty) * 1000) / 1000;
-        ex.lotNos.add(r.lotNo);
-      } else {
-        merged.set(key, { ...r, lotNos: new Set([r.lotNo]) });
-      }
-    }
-    return [...merged.values()].map(({ lotNos, ...r }) => ({
-      ...r,
-      lotNo: [...lotNos].sort().join(", "),
-    }));
+    return rows;
   }
 
   // "By Zone" / "By Lot" pull: sum by LOT (across every bin it sits in) so one
