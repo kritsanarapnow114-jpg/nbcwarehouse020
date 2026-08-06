@@ -40,12 +40,12 @@ export function printCountSheet(opts: {
     "Count (นับจริง)",
     "Remark",
   ];
-  // One line per row (so a full page really holds 60 rows). Column widths tuned
-  // against A4 portrait width so real data — 8-digit SAP code, ~36-char
-  // description, 10-char lot — fits on that one line without being cut off.
+  // Column widths tuned against A4 portrait width. Cells wrap (no clipping), so
+  // long values — SAP code, description, lot, or a long Location name — stay
+  // fully readable by flowing onto extra lines instead of being cut off with "…".
   const widths = showSys
-    ? ["3%", "9%", "37%", "11%", "6%", "6%", "14%", "14%"]
-    : ["3%", "11%", "37%", "11%", "7%", "15.5%", "15.5%"];
+    ? ["3%", "9%", "33%", "12%", "9%", "6%", "14%", "14%"]
+    : ["3%", "11%", "33%", "12%", "10%", "15.5%", "15.5%"];
   // Per-column data alignment: No + SAP + Location centred, Lot + System right, rest left.
   const aligns = showSys
     ? ["center", "center", "left", "right", "center", "right", "left", "left"]
@@ -70,7 +70,7 @@ export function printCountSheet(opts: {
           const brk = (i + 1) % rowsPerPage === 0 && i < opts.rows.length - 1 ? " pbr" : "";
           return `<tr${brk ? ` class="${brk.trim()}"` : ""}>${cells
             .map((c, ci) => {
-              // Description (col 2) stays on one line now (no wrap); write cols keep min width.
+              // All cells wrap so nothing is clipped; the write cols keep a min width.
               const cls = [ci >= cells.length - 2 ? "write" : ""].filter(Boolean).join(" ");
               const al = aligns[ci] && aligns[ci] !== "left" ? ` style="text-align:${aligns[ci]}"` : "";
               return `<td${cls ? ` class="${cls}"` : ""}${al}>${esc(c)}</td>`;
@@ -96,7 +96,7 @@ export function printCountSheet(opts: {
   thead { display:table-header-group; }
   tr { page-break-inside:avoid; }
   th { background:#12557e; color:#fff; border:1px solid #9fb0c3; padding:2px 3px; text-align:center; vertical-align:middle; font-size:7.5pt; line-height:1.1; white-space:normal; text-transform:uppercase; font-weight:bold; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  td { border:1px solid #b9c2cd; padding:1px 4px; font-size:8.5pt; line-height:1.05; height:0.4cm; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; vertical-align:middle; }
+  td { border:1px solid #b9c2cd; padding:1px 4px; font-size:8.5pt; line-height:1.12; height:0.4cm; white-space:normal; overflow:visible; word-break:break-word; overflow-wrap:anywhere; vertical-align:middle; }
   th.wrap { white-space:normal; }
   td.write { min-width:52px; }
   tbody tr { height:0.4cm; }
