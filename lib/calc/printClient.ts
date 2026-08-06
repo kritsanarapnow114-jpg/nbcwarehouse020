@@ -44,8 +44,8 @@ export function printCountSheet(opts: {
   // long values — SAP code, description, lot, or a long Location name — stay
   // fully readable by flowing onto extra lines instead of being cut off with "…".
   const widths = showSys
-    ? ["3%", "9%", "33%", "12%", "9%", "6%", "14%", "14%"]
-    : ["3%", "11%", "33%", "12%", "10%", "15.5%", "15.5%"];
+    ? ["3%", "9%", "33%", "16%", "9%", "6%", "14%", "10%"]
+    : ["3%", "11%", "33%", "16%", "10%", "15.5%", "11.5%"];
   // Per-column data alignment: No + SAP + Location centred, Lot + System right, rest left.
   const aligns = showSys
     ? ["center", "center", "left", "right", "center", "right", "left", "left"]
