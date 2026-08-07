@@ -40,7 +40,7 @@ function mergeLotOptions(eligible: EligibleLot[], fefoId: string | null) {
 }
 
 export async function getIssueFormData() {
-  const [products, holdings, docNo] = await Promise.all([
+  const [products, holdings, docNo, customers] = await Promise.all([
     db.product.findMany({
       where: { deletedAt: null },
       include: { lots: true },
@@ -48,6 +48,11 @@ export async function getIssueFormData() {
     }),
     db.nonStockHolding.findMany({ where: { qty: { gt: 0 } } }),
     peekNextDocNumber("ISS"),
+    db.customer.findMany({
+      where: { active: true },
+      include: { shipTos: { orderBy: [{ isDefault: "desc" }, { label: "asc" }] } },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   // Non-Stock holdings, grouped by product — they're issuable too (decrement the
@@ -105,7 +110,19 @@ export async function getIssueFormData() {
     })
     .filter((p) => p.lots.length > 0);
 
-  return { docNo, products: items };
+  const customerOpts = customers.map((c) => ({
+    id: c.id,
+    code: c.code ?? "",
+    name: c.name,
+    shipTos: c.shipTos.map((s) => ({
+      id: s.id,
+      label: s.label,
+      address: s.address,
+      isDefault: s.isDefault,
+    })),
+  }));
+
+  return { docNo, products: items, customers: customerOpts };
 }
 
 export type IssueFormData = Awaited<ReturnType<typeof getIssueFormData>>;
@@ -123,6 +140,8 @@ export async function getRecentIssues(limit = 400) {
     id: i.id,
     docNo: i.docNo,
     issueTo: i.issueTo,
+    shipToName: i.shipToName ?? "",
+    shipToAddress: i.shipToAddress ?? "",
     materialDoc: i.materialDoc ?? "",
     remark: i.remark ?? "",
     stockType: i.stockType,

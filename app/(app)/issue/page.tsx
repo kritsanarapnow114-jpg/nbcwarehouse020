@@ -17,7 +17,7 @@ export default async function IssuePage() {
     id: i.id,
     docNo: i.docNo,
     docDate: i.docDate,
-    summary: i.issueTo,
+    summary: i.shipToName ? `${i.issueTo} · ${i.shipToName}` : i.issueTo,
     reversedAt: i.reversedAt,
     materialDoc: i.materialDoc,
     remark: i.remark,

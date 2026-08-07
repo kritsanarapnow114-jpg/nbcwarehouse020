@@ -358,9 +358,50 @@ model Issue {
   reversedAt  DateTime? // set when the document is reversed/voided
   createdAt   DateTime  @default(now())
 
+  // Ship-to (sales outbound to a customer). The ids link to the current master
+  // records; shipToName/shipToAddress snapshot the values at issue time so the
+  // document and its printout stay correct even if the customer is edited later.
+  customerId    String?
+  customer      Customer?      @relation(fields: [customerId], references: [id])
+  shipToId      String?
+  shipTo        ShipToAddress? @relation(fields: [shipToId], references: [id])
+  shipToName    String? // snapshot: customer name at issue time
+  shipToAddress String? // snapshot: ship-to address at issue time
+
   lines IssueLine[]
 
   @@index([docDate])
+  @@index([customerId])
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  code      String?  @unique // optional customer code (e.g. SAP sold-to)
+  name      String
+  phone     String?
+  taxId     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shipTos ShipToAddress[]
+  issues  Issue[]
+
+  @@index([name])
+}
+
+model ShipToAddress {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  label      String // e.g. "คลังหลัก" / "สาขา 2" / "Head office"
+  address    String // full ship-to address
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  issues Issue[]
+
+  @@index([customerId])
 }
 
 model IssueLine {

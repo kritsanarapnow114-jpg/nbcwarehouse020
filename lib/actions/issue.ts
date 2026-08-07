@@ -15,6 +15,8 @@ export type IssueLineInput = {
 
 export type ConfirmIssueInput = {
   issueTo: string;
+  customerId?: string | null;
+  shipToId?: string | null;
   materialDoc?: string | null;
   remark?: string | null;
   stockType?: "STOCK" | "NON_STOCK";
@@ -35,11 +37,26 @@ export async function confirmIssueAction(
     await requireWrite();
     const docNo = await nextDocNumber("ISS", docDate);
 
+    // Resolve the chosen customer / ship-to so we can snapshot the name+address
+    // onto the document (kept correct even if the master record changes later).
+    const customer = input.customerId
+      ? await db.customer.findUnique({ where: { id: input.customerId } })
+      : null;
+    const shipTo = input.shipToId
+      ? await db.shipToAddress.findUnique({ where: { id: input.shipToId } })
+      : null;
+    // Only trust a ship-to that actually belongs to the chosen customer.
+    const shipToValid = shipTo && customer && shipTo.customerId === customer.id ? shipTo : null;
+
     await db.$transaction(async (tx) => {
       const issue = await tx.issue.create({
         data: {
           docNo,
           issueTo: input.issueTo,
+          customerId: customer?.id ?? null,
+          shipToId: shipToValid?.id ?? null,
+          shipToName: customer?.name ?? null,
+          shipToAddress: shipToValid?.address ?? null,
           materialDoc: input.materialDoc?.trim() || null,
           remark: input.remark?.trim() || null,
           stockType: input.stockType ?? "STOCK",
