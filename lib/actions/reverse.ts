@@ -24,6 +24,7 @@ function revalidateAll() {
     "/aging",
     "/locations",
     "/po",
+    "/ship",
     "/reports",
     "/search",
   ]);
@@ -121,6 +122,34 @@ async function undoStock(
       const lot = await tx.lot.findUnique({ where: { id: line.selectedLotId } });
       if (!lot) continue;
       await tx.lot.update({ where: { id: lot.id }, data: { qty: lot.qty + line.qty } });
+    }
+
+    // If this issue fulfilled a ship order, roll the shipped quantities back so
+    // the order reopens for those items, then recompute the order's status.
+    if (issue.shipOrderId) {
+      const soLines = await tx.shipOrderLine.findMany({ where: { soId: issue.shipOrderId } });
+      const shippedByProduct = new Map<string, number>();
+      for (const line of issue.lines) {
+        shippedByProduct.set(
+          line.productCode,
+          (shippedByProduct.get(line.productCode) ?? 0) + line.qty
+        );
+      }
+      for (const soLine of soLines) {
+        const back = shippedByProduct.get(soLine.productCode);
+        if (!back) continue;
+        await tx.shipOrderLine.update({
+          where: { id: soLine.id },
+          data: { shipped: Math.max(0, soLine.shipped - back) },
+        });
+      }
+      const fresh = await tx.shipOrderLine.findMany({ where: { soId: issue.shipOrderId } });
+      const allShipped = fresh.length > 0 && fresh.every((l) => l.shipped >= l.ordered);
+      const anyShipped = fresh.some((l) => l.shipped > 0);
+      await tx.shipOrder.update({
+        where: { id: issue.shipOrderId },
+        data: { status: allShipped ? "COMPLETE" : anyShipped ? "PENDING" : "OPEN" },
+      });
     }
 
     return { docNo: issue.docNo, wasReversed: false };

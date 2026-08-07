@@ -80,6 +80,14 @@ const PATHS: Record<string, ReactNode> = {
       <path d="M4 16v2.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V16" />
     </>
   ),
+  ship: (
+    <>
+      <path d="M2 5.5h11v9H2z" />
+      <path d="M13 8.5h4l3 3v3h-7z" />
+      <circle cx="6" cy="17.5" r="1.6" />
+      <circle cx="16.5" cy="17.5" r="1.6" />
+    </>
+  ),
   silo: (
     <>
       <path d="M6 9a6 3 0 0 1 12 0v9a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2z" />
