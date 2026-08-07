@@ -17,6 +17,8 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
   const router = useRouter();
   const ISSUE_TO_OPTIONS = issueToOptions.length > 0 ? issueToOptions : ["-"];
   const [issueTo, setIssueTo] = useState(ISSUE_TO_OPTIONS[0]);
+  const [customerId, setCustomerId] = useState("");
+  const [shipToId, setShipToId] = useState("");
   const [materialDoc, setMaterialDoc] = useState("");
   const [remark, setRemark] = useState("");
   const [docDate, setDocDate] = useState(fmtDateISO(new Date()));
@@ -24,7 +26,22 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
   const [popup, setPopup] = useState<{ kind: CuteBoxKind; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastConfirmed, setLastConfirmed] = useState<{ docNo: string; lines: Line[] } | null>(null);
+  const [lastConfirmed, setLastConfirmed] = useState<
+    { docNo: string; lines: Line[]; shipToName: string; shipToAddress: string } | null
+  >(null);
+
+  const customers = data.customers ?? [];
+  const selectedCustomer = customers.find((c) => c.id === customerId) ?? null;
+  const shipTos = selectedCustomer?.shipTos ?? [];
+  const selectedShipTo = shipTos.find((s) => s.id === shipToId) ?? null;
+
+  // Pick a customer → auto-select its default ship-to (or the first one).
+  function selectCustomer(id: string) {
+    setCustomerId(id);
+    const c = customers.find((x) => x.id === id);
+    const def = c?.shipTos.find((s) => s.isDefault) ?? c?.shipTos[0];
+    setShipToId(def?.id ?? "");
+  }
 
   const available = data.products.filter((p) => !lines.some((l) => l.code === p.code));
 
@@ -92,6 +109,8 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
     setSaving(true);
     const payload = {
       issueTo,
+      customerId: customerId || null,
+      shipToId: shipToId || null,
       materialDoc: materialDoc || null,
       remark: remark || null,
       docDate,
@@ -111,7 +130,12 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
       } else {
         setError(null);
         setPopup({ kind: "out", message: `Issue ${res.docNo} confirmed — stock deducted.` });
-        setLastConfirmed({ docNo: res.docNo, lines });
+        setLastConfirmed({
+          docNo: res.docNo,
+          lines,
+          shipToName: selectedCustomer?.name ?? "",
+          shipToAddress: selectedShipTo?.address ?? "",
+        });
         setLines([]);
         setMaterialDoc("");
         setRemark("");
@@ -131,7 +155,12 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
     if (!lastConfirmed) return;
     printTable({
       title: `Issue Slip — ${lastConfirmed.docNo}`,
-      meta: [`Issue To: ${issueTo}`, `Date: ${docDate}`],
+      meta: [
+        `Issue To: ${issueTo}`,
+        ...(lastConfirmed.shipToName ? [`Ship-to: ${lastConfirmed.shipToName}`] : []),
+        ...(lastConfirmed.shipToAddress ? [`Address: ${lastConfirmed.shipToAddress}`] : []),
+        `Date: ${docDate}`,
+      ],
       headers: ["SAP Material Master", "Material Description", "Lot", "Qty"],
       rows: lastConfirmed.lines.map((l) => [
         l.code,
@@ -166,6 +195,57 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
               ))}
             </select>
           </div>
+          <div className="h-[34px] w-px bg-[#e2e6ec]" />
+          <div>
+            <div className="mb-1 text-[11.5px] text-[#69748a]">Customer / ลูกค้า (Ship-to) · optional</div>
+            <div className="w-[210px]">
+              <SearchableSelect
+                value={
+                  selectedCustomer
+                    ? `${selectedCustomer.code ? selectedCustomer.code + " · " : ""}${selectedCustomer.name}`
+                    : "ไม่ระบุลูกค้า (no customer)"
+                }
+                options={[
+                  { value: "", label: "ไม่ระบุลูกค้า (no customer)" },
+                  ...customers.map((c) => ({
+                    value: c.id,
+                    label: `${c.code ? c.code + " · " : ""}${c.name}`,
+                  })),
+                ]}
+                onSelect={selectCustomer}
+                placeholder="พิมพ์ค้นหาลูกค้า…"
+                className="w-full rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px] outline-none focus:border-[#e5913a]"
+              />
+            </div>
+          </div>
+          {selectedCustomer && (
+            <div>
+              <div className="mb-1 text-[11.5px] text-[#69748a]">Ship-to (ที่อยู่จัดส่ง)</div>
+              {shipTos.length > 0 ? (
+                <select
+                  value={shipToId}
+                  onChange={(e) => setShipToId(e.target.value)}
+                  className="max-w-[220px] rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
+                >
+                  {shipTos.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                      {s.isDefault ? " ★" : ""}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="pt-1.5 text-[12px] text-[#c2606f]">
+                  ยังไม่มีที่อยู่ — เพิ่มในหน้า Customers
+                </div>
+              )}
+              {selectedShipTo && (
+                <div className="mt-1 max-w-[240px] text-[11px] leading-snug text-[#69748a]">
+                  {selectedShipTo.address}
+                </div>
+              )}
+            </div>
+          )}
           <div className="h-[34px] w-px bg-[#e2e6ec]" />
           <div>
             <div className="mb-1 text-[11.5px] text-[#69748a]">Material Document (SAP)</div>
