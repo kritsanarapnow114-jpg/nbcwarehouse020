@@ -17,7 +17,10 @@ export default async function IssuePage() {
     id: i.id,
     docNo: i.docNo,
     docDate: i.docDate,
-    summary: i.shipToName ? `${i.issueTo} · ${i.shipToName}` : i.issueTo,
+    summary:
+      i.issueType === "EXTERNAL"
+        ? `ภายนอก · ${i.shipToName || "ลูกค้า"}`
+        : `ภายใน · ${i.issueTo}`,
     reversedAt: i.reversedAt,
     materialDoc: i.materialDoc,
     remark: i.remark,

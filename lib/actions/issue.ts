@@ -14,6 +14,7 @@ export type IssueLineInput = {
 };
 
 export type ConfirmIssueInput = {
+  issueType?: "INTERNAL" | "EXTERNAL";
   issueTo: string;
   customerId?: string | null;
   shipToId?: string | null;
@@ -35,13 +36,19 @@ export async function confirmIssueAction(
 
   try {
     await requireWrite();
+    const issueType = input.issueType ?? "INTERNAL";
+    if (issueType === "EXTERNAL" && !input.customerId) {
+      return { error: "การจ่ายภายนอกต้องเลือกลูกค้า (external issue needs a customer)" };
+    }
     const docNo = await nextDocNumber("ISS", docDate);
 
-    // Resolve the chosen customer / ship-to so we can snapshot the name+address
-    // onto the document (kept correct even if the master record changes later).
-    const customer = input.customerId
-      ? await db.customer.findUnique({ where: { id: input.customerId } })
-      : null;
+    // A customer/ship-to only applies to an EXTERNAL (sold-out) issue.
+    // Resolve them so we can snapshot the name+address onto the document (kept
+    // correct even if the master record changes later).
+    const customer =
+      issueType === "EXTERNAL" && input.customerId
+        ? await db.customer.findUnique({ where: { id: input.customerId } })
+        : null;
     const shipTo = input.shipToId
       ? await db.shipToAddress.findUnique({ where: { id: input.shipToId } })
       : null;
@@ -52,6 +59,7 @@ export async function confirmIssueAction(
       const issue = await tx.issue.create({
         data: {
           docNo,
+          issueType,
           issueTo: input.issueTo,
           customerId: customer?.id ?? null,
           shipToId: shipToValid?.id ?? null,
