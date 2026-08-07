@@ -139,6 +139,7 @@ export async function getRecentIssues(limit = 400) {
   return issues.map((i) => ({
     id: i.id,
     docNo: i.docNo,
+    issueType: i.issueType,
     issueTo: i.issueTo,
     shipToName: i.shipToName ?? "",
     shipToAddress: i.shipToAddress ?? "",

@@ -16,6 +16,7 @@ type Line = IssueFormData["products"][number] & { selectedLotId: string; qty: st
 export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issueToOptions: string[] }) {
   const router = useRouter();
   const ISSUE_TO_OPTIONS = issueToOptions.length > 0 ? issueToOptions : ["-"];
+  const [issueType, setIssueType] = useState<"INTERNAL" | "EXTERNAL">("INTERNAL");
   const [issueTo, setIssueTo] = useState(ISSUE_TO_OPTIONS[0]);
   const [customerId, setCustomerId] = useState("");
   const [shipToId, setShipToId] = useState("");
@@ -27,7 +28,7 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastConfirmed, setLastConfirmed] = useState<
-    { docNo: string; lines: Line[]; shipToName: string; shipToAddress: string } | null
+    { docNo: string; lines: Line[]; heading: string; shipToName: string; shipToAddress: string } | null
   >(null);
 
   const customers = data.customers ?? [];
@@ -106,11 +107,16 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
   const totalValue = lines.reduce((s, l) => s + (Number(l.qty) || 0) * l.price, 0);
 
   async function handleConfirm() {
+    if (issueType === "EXTERNAL" && !customerId) {
+      setError("กรุณาเลือกลูกค้าสำหรับการจ่ายภายนอก (external issue needs a customer)");
+      return;
+    }
     setSaving(true);
     const payload = {
-      issueTo,
-      customerId: customerId || null,
-      shipToId: shipToId || null,
+      issueType,
+      issueTo: issueType === "EXTERNAL" ? "ขายออกภายนอก (External)" : issueTo,
+      customerId: issueType === "EXTERNAL" ? customerId || null : null,
+      shipToId: issueType === "EXTERNAL" ? shipToId || null : null,
       materialDoc: materialDoc || null,
       remark: remark || null,
       docDate,
@@ -133,8 +139,9 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
         setLastConfirmed({
           docNo: res.docNo,
           lines,
-          shipToName: selectedCustomer?.name ?? "",
-          shipToAddress: selectedShipTo?.address ?? "",
+          heading: issueType === "EXTERNAL" ? "ขายออกภายนอก (External)" : issueTo,
+          shipToName: issueType === "EXTERNAL" ? selectedCustomer?.name ?? "" : "",
+          shipToAddress: issueType === "EXTERNAL" ? selectedShipTo?.address ?? "" : "",
         });
         setLines([]);
         setMaterialDoc("");
@@ -156,7 +163,7 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
     printTable({
       title: `Issue Slip — ${lastConfirmed.docNo}`,
       meta: [
-        `Issue To: ${issueTo}`,
+        `Issue To: ${lastConfirmed.heading}`,
         ...(lastConfirmed.shipToName ? [`Ship-to: ${lastConfirmed.shipToName}`] : []),
         ...(lastConfirmed.shipToAddress ? [`Address: ${lastConfirmed.shipToAddress}`] : []),
         `Date: ${docDate}`,
@@ -174,51 +181,74 @@ export function IssueForm({ data, issueToOptions }: { data: IssueFormData; issue
 
   return (
     <>
+      <div className="mb-4 flex w-fit gap-2 rounded-[11px] bg-[#e5e9ef] p-1">
+        <button
+          onClick={() => setIssueType("INTERNAL")}
+          className={`rounded-[9px] px-4 py-2 text-[13px] font-medium ${issueType === "INTERNAL" ? "bg-white shadow-sm" : "text-[#3a4658]"}`}
+        >
+          ภายใน (Internal)
+        </button>
+        <button
+          onClick={() => setIssueType("EXTERNAL")}
+          className={`rounded-[9px] px-4 py-2 text-[13px] font-medium ${issueType === "EXTERNAL" ? "bg-white shadow-sm" : "text-[#3a4658]"}`}
+        >
+          ภายนอก · ขายออก (External)
+        </button>
+      </div>
+
       <div className="overflow-hidden rounded-[14px] border border-[#e7ebf1] bg-white shadow-[0_1px_2px_rgba(20,30,48,.04),0_6px_18px_rgba(20,30,48,.035)]">
         <div className="flex flex-wrap items-center gap-4 border-b border-[#eef1f5] p-[18px_22px]">
           <div>
             <div className="mb-1 text-[11.5px] text-[#69748a]">Issue No. (เลขที่จ่าย) · auto</div>
             <div className="font-num text-[16px] font-semibold text-[#e5913a]">{data.docNo}</div>
           </div>
-          <div className="h-[34px] w-px bg-[#e2e6ec]" />
-          <div>
-            <div className="mb-1 text-[11.5px] text-[#69748a]">Issue To (จ่ายไปที่)</div>
-            <select
-              value={issueTo}
-              onChange={(e) => setIssueTo(e.target.value)}
-              className="rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
-            >
-              {ISSUE_TO_OPTIONS.map((o) => (
-                <option key={o} value={o}>
-                  {o}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="h-[34px] w-px bg-[#e2e6ec]" />
-          <div>
-            <div className="mb-1 text-[11.5px] text-[#69748a]">Customer / ลูกค้า (Ship-to) · optional</div>
-            <div className="w-[210px]">
-              <SearchableSelect
-                value={
-                  selectedCustomer
-                    ? `${selectedCustomer.code ? selectedCustomer.code + " · " : ""}${selectedCustomer.name}`
-                    : "ไม่ระบุลูกค้า (no customer)"
-                }
-                options={[
-                  { value: "", label: "ไม่ระบุลูกค้า (no customer)" },
-                  ...customers.map((c) => ({
-                    value: c.id,
-                    label: `${c.code ? c.code + " · " : ""}${c.name}`,
-                  })),
-                ]}
-                onSelect={selectCustomer}
-                placeholder="พิมพ์ค้นหาลูกค้า…"
-                className="w-full rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px] outline-none focus:border-[#e5913a]"
-              />
-            </div>
-          </div>
-          {selectedCustomer && (
+          {issueType === "INTERNAL" && (
+            <>
+              <div className="h-[34px] w-px bg-[#e2e6ec]" />
+              <div>
+                <div className="mb-1 text-[11.5px] text-[#69748a]">Issue To (จ่ายไปที่)</div>
+                <select
+                  value={issueTo}
+                  onChange={(e) => setIssueTo(e.target.value)}
+                  className="rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
+                >
+                  {ISSUE_TO_OPTIONS.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+          {issueType === "EXTERNAL" && (
+            <>
+              <div className="h-[34px] w-px bg-[#e2e6ec]" />
+              <div>
+                <div className="mb-1 text-[11.5px] text-[#69748a]">Customer / ลูกค้า (Ship-to)</div>
+                <div className="w-[210px]">
+                  <SearchableSelect
+                    value={
+                      selectedCustomer
+                        ? `${selectedCustomer.code ? selectedCustomer.code + " · " : ""}${selectedCustomer.name}`
+                        : "เลือกลูกค้า…"
+                    }
+                    options={[
+                      { value: "", label: "เลือกลูกค้า…" },
+                      ...customers.map((c) => ({
+                        value: c.id,
+                        label: `${c.code ? c.code + " · " : ""}${c.name}`,
+                      })),
+                    ]}
+                    onSelect={selectCustomer}
+                    placeholder="พิมพ์ค้นหาลูกค้า…"
+                    className="w-full rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px] outline-none focus:border-[#e5913a]"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+          {issueType === "EXTERNAL" && selectedCustomer && (
             <div>
               <div className="mb-1 text-[11.5px] text-[#69748a]">Ship-to (ที่อยู่จัดส่ง)</div>
               {shipTos.length > 0 ? (
