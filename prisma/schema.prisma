@@ -90,6 +90,7 @@ model Product {
 
   lots           Lot[]
   poLines        PurchaseOrderLine[]
+  shipOrderLines ShipOrderLine[]
   receiptLines   ReceiptLine[]
   issueLines     IssueLine[]
   bom            Bom?                @relation("FinishedProduct")
@@ -374,10 +375,15 @@ model Issue {
   shipToName    String? // snapshot: customer name at issue time
   shipToAddress String? // snapshot: ship-to address at issue time
 
+  // The Ship Order this goods issue fulfils (null for ad-hoc / internal issues).
+  shipOrderId String?
+  shipOrder   ShipOrder? @relation(fields: [shipOrderId], references: [id])
+
   lines IssueLine[]
 
   @@index([docDate])
   @@index([customerId])
+  @@index([shipOrderId])
 }
 
 model Customer {
@@ -390,8 +396,9 @@ model Customer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  shipTos ShipToAddress[]
-  issues  Issue[]
+  shipTos    ShipToAddress[]
+  issues     Issue[]
+  shipOrders ShipOrder[]
 
   @@index([name])
 }
@@ -405,9 +412,57 @@ model ShipToAddress {
   isDefault  Boolean  @default(false)
   createdAt  DateTime @default(now())
 
-  issues Issue[]
+  issues     Issue[]
+  shipOrders ShipOrder[]
 
   @@index([customerId])
+}
+
+/** Outbound sales/ship order: what a customer ordered and where it goes. Stock
+ *  is NOT moved on creation — it moves only when the order is shipped (fulfilled),
+ *  which creates one EXTERNAL goods Issue per shipment (FEFO), linked back here. */
+enum ShipOrderStatus {
+  OPEN // รอจัดส่ง — created, nothing shipped yet
+  PENDING // ส่งบางส่วน — partially shipped
+  COMPLETE // ส่งครบแล้ว — fully shipped
+}
+
+model ShipOrder {
+  id     String          @id @default(cuid())
+  no     String          @unique
+  status ShipOrderStatus @default(OPEN)
+
+  // Customer + ship-to. The ids link to the current master records; the
+  // shipToName/shipToAddress columns snapshot the values at order time so the
+  // document stays correct even if the customer/address is edited later.
+  customerId    String
+  customer      Customer       @relation(fields: [customerId], references: [id])
+  shipToId      String?
+  shipTo        ShipToAddress? @relation(fields: [shipToId], references: [id])
+  shipToName    String? // snapshot: customer name at order time
+  shipToAddress String? // snapshot: ship-to address at order time
+
+  orderDate         DateTime // วันสั่ง — when the customer placed the order
+  requestedShipDate DateTime? // วันนัดส่ง — requested delivery/ship date
+  tracking          String? // เลข tracking / carrier reference
+  remark            String?
+  createdAt         DateTime  @default(now())
+
+  lines  ShipOrderLine[]
+  issues Issue[] // shipments (goods issues) that fulfil this order
+
+  @@index([status])
+  @@index([customerId])
+}
+
+model ShipOrderLine {
+  id          String    @id @default(cuid())
+  soId        String
+  so          ShipOrder @relation(fields: [soId], references: [id], onDelete: Cascade)
+  productCode String
+  product     Product   @relation(fields: [productCode], references: [code])
+  ordered     Float
+  shipped     Float     @default(0)
 }
 
 model IssueLine {

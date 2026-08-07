@@ -6,6 +6,7 @@ import Link from "next/link";
 const OPTIONS = [
   { href: "/receive", icon: "▼", label: "Receive (รับสินค้า)" },
   { href: "/issue", icon: "▲", label: "Issue (จ่ายสินค้า)" },
+  { href: "/ship", icon: "🚚", label: "Ship Order (ออเดอร์จัดส่ง)" },
   { href: "/po", icon: "◫", label: "Purchase Order (ใบสั่งซื้อ)" },
   { href: "/adjust", icon: "◆", label: "Adjust (ปรับปรุงสต็อก)" },
   { href: "/transfer", icon: "⇄", label: "Transfer (ย้ายที่เก็บ)" },
