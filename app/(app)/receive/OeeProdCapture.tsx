@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import { scoreProduction, pct, oeeColor } from "@/lib/calc/oee";
-import { LOSS_CATEGORIES } from "@/lib/settingsKeys";
+import { LOSS_CATEGORIES, DOWNTIME_REASON_DEFAULTS, type DowntimeReasonDef } from "@/lib/settingsKeys";
 
 export type ProdDowntime = { minutes: number; reason: string; category: string; owner: string };
-
-const REASONS = ["เครื่องเสีย", "รอวัตถุดิบ", "เปลี่ยนรุ่น", "ทำความสะอาด", "รอบรรจุภัณฑ์", "อื่น ๆ"];
 
 const inputCls =
   "rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px] outline-none focus:border-[#2f86cf]";
@@ -19,6 +17,7 @@ const sm = "rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px] outlin
 export function OeeProdCapture({
   prodLines,
   standards,
+  downtimeReasons,
   line,
   onLine,
   plannedMin,
@@ -39,6 +38,7 @@ export function OeeProdCapture({
 }: {
   prodLines: string[];
   standards: Record<string, number>;
+  downtimeReasons: DowntimeReasonDef[];
   line: string;
   onLine: (v: string) => void;
   plannedMin: string;
@@ -57,10 +57,26 @@ export function OeeProdCapture({
   goodValue?: number; // ฿ value of good output (Quality is value-based)
   lossValue?: number; // ฿ value of the quality loss (pellet + packaging)
 }) {
+  // Fall back to the built-in seed if no reasons are configured yet.
+  const reasons = downtimeReasons.length > 0 ? downtimeReasons : DOWNTIME_REASON_DEFAULTS;
+  // Categories a given reason may be attributed to (empty config = all categories).
+  const catsFor = (reason: string): readonly string[] => {
+    const def = reasons.find((r) => r.reason === reason);
+    return def && def.categories.length > 0 ? def.categories : LOSS_CATEGORIES;
+  };
+
   const [dtMin, setDtMin] = useState("");
-  const [dtReason, setDtReason] = useState(REASONS[0]);
-  const [dtCat, setDtCat] = useState<string>(LOSS_CATEGORIES[0]);
+  const [dtReason, setDtReason] = useState(reasons[0].reason);
+  const [dtCat, setDtCat] = useState<string>(catsFor(reasons[0].reason)[0]);
   const [dtOwner, setDtOwner] = useState("");
+
+  // Picking a reason narrows the category list to that reason's categories; keep
+  // the current category only if it's still valid, else snap to the first one.
+  function selectReason(reason: string) {
+    setDtReason(reason);
+    const allowed = catsFor(reason);
+    if (!allowed.includes(dtCat)) setDtCat(allowed[0]);
+  }
 
   const standard = line ? standards[line] ?? 0 : 0;
   const downtimeTotal = downtimes.reduce((s, d) => s + d.minutes, 0);
@@ -181,11 +197,11 @@ export function OeeProdCapture({
               </div>
             )}
             <div className="flex flex-wrap items-center gap-2">
-              <select value={dtReason} onChange={(e) => setDtReason(e.target.value)} className={sm}>
-                {REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+              <select value={dtReason} onChange={(e) => selectReason(e.target.value)} className={sm} title="เหตุที่หยุด (Downtime reason)">
+                {reasons.map((r) => <option key={r.reason} value={r.reason}>{r.reason}</option>)}
               </select>
-              <select value={dtCat} onChange={(e) => setDtCat(e.target.value)} className={sm} title="ฝ่ายรับผิดชอบ">
-                {LOSS_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              <select value={dtCat} onChange={(e) => setDtCat(e.target.value)} className={sm} title="ฝ่ายรับผิดชอบ (เฉพาะหมวดของเหตุที่เลือก)">
+                {catsFor(dtReason).map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
               <input value={dtOwner} onChange={(e) => setDtOwner(e.target.value)} placeholder="Owner (เช่น Vendor)" className={`w-[130px] ${sm}`} />
               <input value={dtMin} onChange={(e) => setDtMin(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addDowntime()} inputMode="numeric" placeholder="นาที" className={`font-num w-[80px] ${sm}`} />
