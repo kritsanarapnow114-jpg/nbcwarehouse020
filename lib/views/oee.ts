@@ -393,14 +393,18 @@ export async function getOeeDashboard(range: Range) {
     if (Array.isArray(dt)) {
       for (const d of dt) {
         if (!d || typeof d !== "object") continue;
-        const e = d as { minutes?: unknown; reason?: unknown; category?: unknown; owner?: unknown };
+        const e = d as { minutes?: unknown; reason?: unknown; category?: unknown; owner?: unknown; detail?: unknown };
         const minutes = Number(e.minutes) || 0;
         if (minutes <= 0) continue;
         const reason = String(e.reason ?? "").trim() || "อื่น ๆ";
         const category = String(e.category ?? "").trim() || "Process loss";
         const owner = String(e.owner ?? "").trim();
-        const key = `${reason}||${category}||${owner}`;
-        const g = lossAggMap.get(key) ?? { loss: reason, category, owner, freq: 0, lostMin: 0 };
+        const detail = String(e.detail ?? "").trim();
+        // Fold the specific sub-item (e.g. which machine) into the loss label so
+        // the Pareto separates "เครื่องเสีย · เครื่องบรรจุ #2" from other machines.
+        const loss = detail ? `${reason} · ${detail}` : reason;
+        const key = `${loss}||${category}||${owner}`;
+        const g = lossAggMap.get(key) ?? { loss, category, owner, freq: 0, lostMin: 0 };
         g.freq += 1;
         g.lostMin += minutes;
         lossAggMap.set(key, g);

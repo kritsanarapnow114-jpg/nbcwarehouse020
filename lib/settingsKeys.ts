@@ -248,24 +248,31 @@ export const LOSS_STATUSES = ["Open", "In progress", "Closed"] as const;
 // Picking a reason narrows the category dropdown to just its categories.
 export const OEE_DOWNTIME_REASONS_KEY = "oee.downtimeReasons";
 
-/** A downtime reason and the loss categories it may be attributed to. An empty
- *  `categories` means "any category is allowed" (e.g. a generic "อื่น ๆ"). */
-export type DowntimeReasonDef = { reason: string; categories: string[] };
+/** A downtime reason, the loss categories it may be attributed to, and an
+ *  optional list of specific sub-items to pick from (e.g. which machine broke).
+ *  An empty `categories` means "any category is allowed" (e.g. a generic
+ *  "อื่น ๆ"); an empty `details` means no sub-item picker is shown. */
+export type DowntimeReasonDef = { reason: string; categories: string[]; details: string[] };
 
 export const DOWNTIME_REASON_DEFAULTS: DowntimeReasonDef[] = [
-  { reason: "เครื่องเสีย", categories: ["Equipment breakdown"] },
-  { reason: "รอวัตถุดิบ", categories: ["Upstream / Silo loss"] },
-  { reason: "เปลี่ยนรุ่น", categories: ["Process loss"] },
-  { reason: "ทำความสะอาด", categories: ["Process loss"] },
-  { reason: "รอบรรจุภัณฑ์", categories: ["Warehouse / Logistics"] },
-  { reason: "อื่น ๆ", categories: [] },
+  { reason: "เครื่องเสีย", categories: ["Equipment breakdown"], details: [] },
+  { reason: "รอวัตถุดิบ", categories: ["Upstream / Silo loss"], details: [] },
+  { reason: "เปลี่ยนรุ่น", categories: ["Process loss"], details: [] },
+  { reason: "ทำความสะอาด", categories: ["Process loss"], details: [] },
+  { reason: "รอบรรจุภัณฑ์", categories: ["Warehouse / Logistics"], details: [] },
+  { reason: "อื่น ๆ", categories: [], details: [] },
 ];
 
 const cloneReasons = (rows: DowntimeReasonDef[]) =>
-  rows.map((r) => ({ reason: r.reason, categories: [...r.categories] }));
+  rows.map((r) => ({ reason: r.reason, categories: [...r.categories], details: [...r.details] }));
+
+const cleanStrings = (arr: unknown): string[] =>
+  Array.isArray(arr)
+    ? Array.from(new Set((arr as unknown[]).map((x) => String(x).trim()))).filter((x) => x !== "")
+    : [];
 
 /** Parse the stored downtime-reason JSON, keeping only categories that are real
- *  LOSS_CATEGORIES and dropping blank reasons; falls back to the seed. */
+ *  LOSS_CATEGORIES and dropping blank reasons/details; falls back to the seed. */
 export function parseDowntimeReasons(raw: string | undefined | null): DowntimeReasonDef[] {
   if (!raw) return cloneReasons(DOWNTIME_REASON_DEFAULTS);
   try {
@@ -275,11 +282,8 @@ export function parseDowntimeReasons(raw: string | undefined | null): DowntimeRe
       const rows: DowntimeReasonDef[] = j
         .map((r) => ({
           reason: String(r?.reason ?? "").trim(),
-          categories: Array.isArray(r?.categories)
-            ? Array.from(new Set((r.categories as unknown[]).map((c) => String(c)))).filter((c) =>
-                valid.has(c)
-              )
-            : [],
+          categories: cleanStrings(r?.categories).filter((c) => valid.has(c)),
+          details: cleanStrings(r?.details),
         }))
         .filter((r) => r.reason !== "");
       if (rows.length > 0) return rows;
