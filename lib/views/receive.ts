@@ -8,8 +8,10 @@ import {
   BOM_SOURCE_KEY,
   PROD_LINES_KEY,
   OEE_STANDARDS_KEY,
+  OEE_DOWNTIME_REASONS_KEY,
   parseList,
   parseOeeStandards,
+  parseDowntimeReasons,
 } from "@/lib/settingsKeys";
 
 export async function getReceiveFormData() {
@@ -38,14 +40,16 @@ export async function getReceiveFormData() {
   ];
   // If a BOM source location is configured (e.g. the packing line), only those
   // bins' stock is eligible to be consumed by production.
-  const [bomSourceRaw, prodLinesRaw, oeeStdRaw] = await Promise.all([
+  const [bomSourceRaw, prodLinesRaw, oeeStdRaw, downtimeReasonsRaw] = await Promise.all([
     getAppSetting(BOM_SOURCE_KEY),
     getAppSetting(PROD_LINES_KEY),
     getAppSetting(OEE_STANDARDS_KEY),
+    getAppSetting(OEE_DOWNTIME_REASONS_KEY),
   ]);
   const bomSource = parseList(bomSourceRaw);
   const prodLines = parseList(prodLinesRaw);
   const oeeStandards = parseOeeStandards(oeeStdRaw);
+  const downtimeReasons = parseDowntimeReasons(downtimeReasonsRaw);
   const materialLots = await db.lot.findMany({
     where: {
       productCode: { in: materialCodes },
@@ -111,6 +115,7 @@ export async function getReceiveFormData() {
     lotMeta,
     prodLines,
     oeeStandards,
+    downtimeReasons,
     boms: bomsRaw.map((b) => ({
       finishedProductCode: b.finishedProductCode,
       lines: b.lines.map((l) => ({

@@ -906,6 +906,7 @@ export function ReceiveForm({
         <OeeProdCapture
           prodLines={data.prodLines}
           standards={data.oeeStandards}
+          downtimeReasons={data.downtimeReasons}
           line={oeeLine}
           onLine={setOeeLine}
           plannedMin={oeePlannedMin}

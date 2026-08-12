@@ -13,6 +13,7 @@ import { SubtitlesCard } from "./SubtitlesCard";
 import { ListSettingsCard } from "./ListSettingsCard";
 import { OeeStandardsCard } from "./OeeStandardsCard";
 import { OeeReportCard } from "./OeeReportCard";
+import { OeeDowntimeReasonsCard } from "./OeeDowntimeReasonsCard";
 import {
   ISSUE_TO_KEY,
   OPERATORS_KEY,
@@ -20,8 +21,10 @@ import {
   PROD_LINES_KEY,
   OEE_STANDARDS_KEY,
   OEE_REPORT_KEY,
+  OEE_DOWNTIME_REASONS_KEY,
   parseOeeStandards,
   parseOeeReport,
+  parseDowntimeReasons,
   parseList,
 } from "@/lib/settingsKeys";
 
@@ -69,6 +72,9 @@ export default async function SettingsPage() {
           standards={parseOeeStandards(settings[OEE_STANDARDS_KEY])}
           prodLines={parseList(settings[PROD_LINES_KEY])}
         />
+      </div>
+      <div className="mt-4">
+        <OeeDowntimeReasonsCard reasons={parseDowntimeReasons(settings[OEE_DOWNTIME_REASONS_KEY])} />
       </div>
       <div className="mt-4">
         <OeeReportCard report={parseOeeReport(settings[OEE_REPORT_KEY])} />
