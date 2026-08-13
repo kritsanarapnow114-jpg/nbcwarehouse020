@@ -43,7 +43,7 @@ export type ConfirmReceiptInput = {
   oeeLine?: string | null;
   plannedMin?: number | null;
   breakMin?: number | null;
-  downtime?: { minutes: number; reason: string; category?: string; owner?: string }[];
+  downtime?: { minutes: number; reason: string; category?: string; owner?: string; detail?: string }[];
   oeeQuality?: {
     repack: number;
     scrap: number;

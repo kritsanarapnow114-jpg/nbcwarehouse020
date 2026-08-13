@@ -19,12 +19,18 @@ import { showToast } from "@/components/ui/Toast";
 export function OeeDowntimeReasonsCard({ reasons }: { reasons: DowntimeReasonDef[] }) {
   const router = useRouter();
   const [rows, setRows] = useState<DowntimeReasonDef[]>(
-    reasons.map((r) => ({ reason: r.reason, categories: [...r.categories] }))
+    reasons.map((r) => ({ reason: r.reason, categories: [...r.categories], details: [...r.details] }))
   );
   const [busy, setBusy] = useState(false);
 
   function setReason(i: number, reason: string) {
     setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, reason } : r)));
+  }
+  // Keep raw lines (incl. blanks) while editing so typing newlines works; the
+  // trim/blank-filter happens on save.
+  function setDetails(i: number, text: string) {
+    const details = text.split("\n");
+    setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, details } : r)));
   }
   function toggleCat(i: number, cat: string) {
     setRows((rs) =>
@@ -39,7 +45,7 @@ export function OeeDowntimeReasonsCard({ reasons }: { reasons: DowntimeReasonDef
     );
   }
   function addRow() {
-    setRows((rs) => [...rs, { reason: "", categories: [] }]);
+    setRows((rs) => [...rs, { reason: "", categories: [], details: [] }]);
   }
   function removeRow(i: number) {
     setRows((rs) => rs.filter((_, idx) => idx !== i));
@@ -47,7 +53,11 @@ export function OeeDowntimeReasonsCard({ reasons }: { reasons: DowntimeReasonDef
 
   async function handleSave() {
     const clean = rows
-      .map((r) => ({ reason: r.reason.trim(), categories: r.categories }))
+      .map((r) => ({
+        reason: r.reason.trim(),
+        categories: r.categories,
+        details: r.details.map((d) => d.trim()).filter((d) => d !== ""),
+      }))
       .filter((r) => r.reason !== "");
     setBusy(true);
     await saveAppSettingsAction({
@@ -62,8 +72,9 @@ export function OeeDowntimeReasonsCard({ reasons }: { reasons: DowntimeReasonDef
     <Card>
       <CardTitle>OEE — เหตุหยุดเครื่อง (Downtime reasons)</CardTitle>
       <p className="mb-3 text-[12.5px] text-[#69748a]">
-        ตั้งรายการ &quot;เหตุที่หยุด&quot; ที่เลือกได้ตอนบันทึก Pack Order และเลือกหมวดฝ่ายรับผิดชอบของแต่ละเหตุ —
-        เวลาเลือกเหตุ ช่องหมวดจะโชว์เฉพาะหมวดของเหตุนั้น (ไม่ติ๊กเลย = เลือกได้ทุกหมวด).
+        ตั้งรายการ &quot;เหตุที่หยุด&quot; ที่เลือกได้ตอนบันทึก Pack Order · เลือกหมวดฝ่ายรับผิดชอบของแต่ละเหตุ
+        (เวลาเลือกเหตุ ช่องหมวดจะโชว์เฉพาะหมวดของเหตุนั้น — ไม่ติ๊กเลย = ทุกหมวด) · และใส่ตัวเลือกย่อยได้ เช่น
+        &quot;เครื่องไหนเสีย&quot; ให้เลือกตอนบันทึก.
       </p>
 
       <div className="flex flex-col gap-2.5">
@@ -109,6 +120,18 @@ export function OeeDowntimeReasonsCard({ reasons }: { reasons: DowntimeReasonDef
                 * ไม่ได้เลือกหมวด — เหตุนี้จะเลือกได้ทุกหมวด (any category)
               </div>
             )}
+            <label className="mt-2 flex flex-col gap-1">
+              <span className="text-[11px] font-medium text-[#69748a]">
+                ตัวเลือกย่อย เช่น &quot;เครื่องไหนเสีย&quot; — 1 บรรทัดต่อ 1 รายการ (เว้นว่าง = ไม่ต้องเลือก)
+              </span>
+              <textarea
+                value={r.details.join("\n")}
+                onChange={(e) => setDetails(i, e.target.value)}
+                rows={2}
+                placeholder={"เช่น\nเครื่องบรรจุ #1\nเครื่องซีล #2"}
+                className="rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[12.5px] outline-none focus:border-[#2f86cf]"
+              />
+            </label>
           </div>
         ))}
       </div>
