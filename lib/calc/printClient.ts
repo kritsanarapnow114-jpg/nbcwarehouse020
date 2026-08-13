@@ -43,9 +43,11 @@ export function printCountSheet(opts: {
   // Column widths tuned against A4 portrait width. Cells wrap (no clipping), so
   // long values — SAP code, description, lot, or a long Location name — stay
   // fully readable by flowing onto extra lines instead of being cut off with "…".
+  // "No." widened to fit a 3-digit row number without wrapping; the extra width
+  // is taken from the SAP Material Master column.
   const widths = showSys
-    ? ["3%", "9%", "33%", "16%", "9%", "6%", "14%", "10%"]
-    : ["3%", "11%", "33%", "16%", "10%", "15.5%", "11.5%"];
+    ? ["5%", "7%", "33%", "16%", "9%", "6%", "14%", "10%"]
+    : ["5%", "9%", "33%", "16%", "10%", "15.5%", "11.5%"];
   // Per-column data alignment: No + SAP + Location centred, Lot + System right, rest left.
   const aligns = showSys
     ? ["center", "center", "left", "right", "center", "right", "left", "left"]
