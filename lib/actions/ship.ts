@@ -339,7 +339,7 @@ export async function fulfillShipOrderAction(
         for (const s of ordered) {
           if (need <= 0) break;
           const take = Math.min(s.qty, need);
-          await tx.lot.update({ where: { id: s.id }, data: { qty: s.qty - take } });
+          await tx.lot.update({ where: { id: s.id }, data: { qty: { decrement: take } } });
           await tx.issueLine.create({
             data: {
               issueId: issue.id,

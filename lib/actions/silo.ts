@@ -64,7 +64,7 @@ export async function stageForSiloAction(input: {
       for (const s of ordered) {
         if (remaining <= 0) break;
         const take = Math.min(s.qty, remaining);
-        await tx.lot.update({ where: { id: s.id }, data: { qty: s.qty - take } });
+        await tx.lot.update({ where: { id: s.id }, data: { qty: { decrement: take } } });
         await tx.issueLine.create({
           data: { issueId: issue.id, productCode: sel.productCode, selectedLotId: s.id, qty: take, stockType: "STOCK" },
         });
@@ -198,7 +198,7 @@ export async function deleteStagingAction(input: { id: string }): Promise<{ erro
             if (!line.selectedLotId) continue;
             const lot = await tx.lot.findUnique({ where: { id: line.selectedLotId } });
             if (!lot) continue;
-            await tx.lot.update({ where: { id: lot.id }, data: { qty: lot.qty + line.qty } });
+            await tx.lot.update({ where: { id: lot.id }, data: { qty: { increment: line.qty } } });
           }
           await tx.issue.update({ where: { id: issue.id }, data: { reversedAt: new Date() } });
         }

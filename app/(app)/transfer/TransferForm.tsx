@@ -177,6 +177,11 @@ export function TransferForm({
           </div>
         </div>
 
+        <datalist id="trfLocs">
+          {locations.map((c) => (
+            <option key={c} value={c} />
+          ))}
+        </datalist>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] border-collapse text-[13px]">
             <thead>
@@ -198,17 +203,13 @@ export function TransferForm({
                   <td className="font-num p-[11px_16px] text-[12px]">{l.lotNo}</td>
                   <td className="font-num p-[11px_16px] text-[12px]">{l.locationCode}</td>
                   <td className="p-[11px_16px]">
-                    <select
+                    <input
                       value={l.toLocationCode}
                       onChange={(e) => updateLine(i, { toLocationCode: e.target.value })}
-                      className="font-num rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
-                    >
-                      {locations.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
+                      list="trfLocs"
+                      placeholder="พิมพ์/เลือก"
+                      className="font-num w-[110px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
+                    />
                   </td>
                   <td className="p-[11px_16px] text-right">
                     <input
