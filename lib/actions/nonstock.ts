@@ -126,11 +126,11 @@ export async function pullNonStockDocsAction(): Promise<{
         const moveQty = Math.min(line.recvQty, avail, headroom);
 
         if (lot && moveQty > 0) {
-          await tx.lot.update({ where: { id: lot.id }, data: { qty: lot.qty - moveQty } });
+          await tx.lot.update({ where: { id: lot.id }, data: { qty: { decrement: moveQty } } });
 
           const holding = existing;
           if (holding) {
-            await tx.nonStockHolding.update({ where: { id: holding.id }, data: { qty: holding.qty + moveQty } });
+            await tx.nonStockHolding.update({ where: { id: holding.id }, data: { qty: { increment: moveQty } } });
           } else {
             await tx.nonStockHolding.create({
               data: {
@@ -214,10 +214,10 @@ export async function moveToNonStockAction(
       }
 
       const no = await nextDocNumber("CV", docDate);
-      await tx.lot.update({ where: { id: lot.id }, data: { qty: lot.qty - qty } });
+      await tx.lot.update({ where: { id: lot.id }, data: { qty: { decrement: qty } } });
 
       if (holding) {
-        await tx.nonStockHolding.update({ where: { id: holding.id }, data: { qty: holding.qty + qty } });
+        await tx.nonStockHolding.update({ where: { id: holding.id }, data: { qty: { increment: qty } } });
       } else {
         await tx.nonStockHolding.create({
           data: {
@@ -281,7 +281,7 @@ export async function convertToStockAction(
       // Move qty from the holding into a matching Stock lot (create or increment).
       await tx.nonStockHolding.update({
         where: { id: holding.id },
-        data: { qty: holding.qty - qty },
+        data: { qty: { decrement: qty } },
       });
 
       const lot = await tx.lot.findFirst({
@@ -292,7 +292,7 @@ export async function convertToStockAction(
         },
       });
       if (lot) {
-        await tx.lot.update({ where: { id: lot.id }, data: { qty: lot.qty + qty } });
+        await tx.lot.update({ where: { id: lot.id }, data: { qty: { increment: qty } } });
       } else {
         await tx.lot.create({
           data: {

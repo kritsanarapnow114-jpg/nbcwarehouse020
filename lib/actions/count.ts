@@ -142,7 +142,7 @@ export async function confirmCountAction(input: ConfirmCountInput) {
       if (lot) {
         lot = await tx.lot.update({
           where: { id: lot.id },
-          data: { qty: lot.qty + off.countedQty },
+          data: { qty: { increment: off.countedQty } },
         });
       } else {
         lot = await tx.lot.create({

@@ -274,6 +274,11 @@ export function CountForm({
 
   return (
     <>
+      <datalist id="cntLocs">
+        {locations.map((c) => (
+          <option key={c} value={c} />
+        ))}
+      </datalist>
       <div className="overflow-hidden rounded-[14px] border border-[#e7ebf1] bg-white shadow-[0_1px_2px_rgba(20,30,48,.04),0_6px_18px_rgba(20,30,48,.035)]">
         <div className="flex flex-wrap items-center gap-4 border-b border-[#eef1f5] p-[18px_22px]">
           <div>
@@ -430,17 +435,13 @@ export function CountForm({
                       />
                     </td>
                     <td className="p-[11px_16px]">
-                      <select
+                      <input
                         value={l.locationCode}
                         onChange={(e) => updateOffLine(i, { locationCode: e.target.value })}
-                        className="font-num rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
-                      >
-                        {locations.map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
+                        list="cntLocs"
+                        placeholder="พิมพ์/เลือก"
+                        className="font-num w-[110px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px]"
+                      />
                     </td>
                     <td className="font-num p-[11px_16px] text-right text-[#9aa4b4]">0</td>
                     <td className="p-[11px_16px] text-right">

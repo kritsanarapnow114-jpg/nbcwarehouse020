@@ -87,7 +87,7 @@ export async function confirmIssueAction(
           }
           await tx.nonStockHolding.update({
             where: { id: holding.id },
-            data: { qty: holding.qty - line.qty },
+            data: { qty: { decrement: line.qty } },
           });
           await tx.issueLine.create({
             data: {
@@ -150,7 +150,7 @@ export async function confirmIssueAction(
         for (const s of ordered) {
           if (remaining <= 0) break;
           const take = Math.min(s.qty, remaining);
-          await tx.lot.update({ where: { id: s.id }, data: { qty: s.qty - take } });
+          await tx.lot.update({ where: { id: s.id }, data: { qty: { decrement: take } } });
           await tx.issueLine.create({
             data: {
               issueId: issue.id,

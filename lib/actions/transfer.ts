@@ -44,7 +44,7 @@ export async function confirmTransferAction(input: ConfirmTransferInput) {
       if (line.qty === lot.qty) {
         await tx.lot.update({ where: { id: lot.id }, data: { locationCode: line.toLocationCode } });
       } else {
-        await tx.lot.update({ where: { id: lot.id }, data: { qty: lot.qty - line.qty } });
+        await tx.lot.update({ where: { id: lot.id }, data: { qty: { decrement: line.qty } } });
         const existing = await tx.lot.findFirst({
           where: {
             productCode: lot.productCode,
@@ -53,7 +53,7 @@ export async function confirmTransferAction(input: ConfirmTransferInput) {
           },
         });
         if (existing) {
-          await tx.lot.update({ where: { id: existing.id }, data: { qty: existing.qty + line.qty } });
+          await tx.lot.update({ where: { id: existing.id }, data: { qty: { increment: line.qty } } });
         } else {
           await tx.lot.create({
             data: {

@@ -60,14 +60,14 @@ async function undoStock(
           `Cannot reverse — ${line.recvQty.toLocaleString()} of ${line.productCode} already left this lot (ถอยไม่ได้ เพราะสินค้าถูกใช้/ย้ายไปแล้ว)`
         );
       }
-      await tx.lot.update({ where: { id: lot.id }, data: { qty: lot.qty - line.recvQty } });
+      await tx.lot.update({ where: { id: lot.id }, data: { qty: { decrement: line.recvQty } } });
     }
 
     // Production receipts also consumed raw materials — add them back exactly.
     for (const mc of receipt.materialConsumption) {
       const lot = await tx.lot.findUnique({ where: { id: mc.lotId } });
       if (!lot) continue;
-      await tx.lot.update({ where: { id: lot.id }, data: { qty: lot.qty + mc.qty } });
+      await tx.lot.update({ where: { id: lot.id }, data: { qty: { increment: mc.qty } } });
     }
 
     // Roll back PO received quantities / status if this was a PO receipt.
@@ -113,7 +113,7 @@ async function undoStock(
         if (holding) {
           await tx.nonStockHolding.update({
             where: { id: holding.id },
-            data: { qty: holding.qty + line.qty },
+            data: { qty: { increment: line.qty } },
           });
         }
         continue;
@@ -121,7 +121,7 @@ async function undoStock(
       if (!line.selectedLotId) continue;
       const lot = await tx.lot.findUnique({ where: { id: line.selectedLotId } });
       if (!lot) continue;
-      await tx.lot.update({ where: { id: lot.id }, data: { qty: lot.qty + line.qty } });
+      await tx.lot.update({ where: { id: lot.id }, data: { qty: { increment: line.qty } } });
     }
 
     // If this issue fulfilled a ship order, roll the shipped quantities back so
@@ -219,7 +219,7 @@ async function undoStock(
         `Cannot reverse — ${productCode} is no longer at ${line.toLocationCode} to move back (ถอยไม่ได้ เพราะสินค้าไม่ได้อยู่ที่ปลายทางแล้ว)`
       );
     }
-    await tx.lot.update({ where: { id: destLot.id }, data: { qty: destLot.qty - line.qty } });
+    await tx.lot.update({ where: { id: destLot.id }, data: { qty: { decrement: line.qty } } });
 
     const originLot = await tx.lot.findFirst({
       where: { productCode, lotNo, locationCode: line.fromLocationCode },
@@ -227,7 +227,7 @@ async function undoStock(
     if (originLot) {
       await tx.lot.update({
         where: { id: originLot.id },
-        data: { qty: originLot.qty + line.qty },
+        data: { qty: { increment: line.qty } },
       });
     } else {
       await tx.lot.create({
