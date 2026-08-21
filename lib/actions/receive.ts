@@ -123,7 +123,7 @@ export async function confirmReceiptAction(
           await tx.nonStockHolding.update({
             where: { id: holding.id },
             data: {
-              qty: holding.qty + line.recvQty,
+              qty: { increment: line.recvQty }, // atomic — see lot note below
               mfgDate: line.mfgDate ? new Date(line.mfgDate) : holding.mfgDate,
               expDate: line.expDate ? new Date(line.expDate) : holding.expDate,
             },
@@ -153,7 +153,9 @@ export async function confirmReceiptAction(
           lot = await tx.lot.update({
             where: { id: lot.id },
             data: {
-              qty: lot.qty + line.recvQty,
+              // Atomic increment (qty = qty + n at the DB) so two receipts landing
+              // in the same lot concurrently can't overwrite each other's total.
+              qty: { increment: line.recvQty },
               mfgDate: line.mfgDate ? new Date(line.mfgDate) : lot.mfgDate,
               expDate: line.expDate ? new Date(line.expDate) : lot.expDate,
             },
@@ -201,7 +203,7 @@ export async function confirmReceiptAction(
         if (poLine) {
           await tx.purchaseOrderLine.update({
             where: { id: poLine.id },
-            data: { received: poLine.received + line.recvQty },
+            data: { received: { increment: line.recvQty } }, // atomic — see lot note above
           });
         }
       }
@@ -330,7 +332,7 @@ export async function verifyReceiptAction(
           lot = await tx.lot.update({
             where: { id: lot.id },
             data: {
-              qty: lot.qty + line.recvQty,
+              qty: { increment: line.recvQty }, // atomic — concurrent verifies can't overwrite
               mfgDate: line.mfgDate ?? lot.mfgDate,
               expDate: line.expDate ?? lot.expDate,
             },
