@@ -4,6 +4,8 @@ import { PeriodSelector } from "@/components/ui/PeriodSelector";
 import { resolvePeriod } from "@/lib/calc/period";
 import { getOeeDashboard } from "@/lib/views/oee";
 import { oeeColor, OEE_GOOD, fmtDuration } from "@/lib/calc/oee";
+import { fmtDateBE } from "@/lib/calc/date";
+import { OeeDeckButton } from "./OeeDeckButton";
 import { getAppSetting } from "@/lib/views/settings";
 import {
   OEE_REPORT_KEY,
@@ -45,9 +47,16 @@ export default async function OeePage({
   const qLossTotal = qualityLoss.reduce((s, r) => s + r.qty, 0);
   const lossMax = Math.max(1, ...lossSorted.map((r) => r.lostMin));
 
+  const periodLabel =
+    mode === "all" ? "ทั้งหมด (All time)" : `${fmtDateBE(range.start)} – ${fmtDateBE(range.end)}`;
+
   return (
     <div className="max-w-[1180px] p-[24px_26px]">
-      <PeriodSelector basePath="/oee" mode={mode} date={dateStr} start={startStr} end={endStr} />
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <PeriodSelector basePath="/oee" mode={mode} date={dateStr} start={startStr} end={endStr} />
+        <div className="flex-1" />
+        <OeeDeckButton runs={d.productionRuns} summary={d.production} periodLabel={periodLabel} />
+      </div>
 
       {/* ── Packing Unit Startup Performance · Trial-Run OEE ─────────────── */}
       <TrialRunHeader phase={report.phase} />
