@@ -50,3 +50,22 @@ export function parseISO(s: string): Date {
   const [y, m, day] = s.split("-").map(Number);
   return new Date(y, m - 1, day);
 }
+
+/** Parse a date input (yyyy-mm-dd / ISO) defensively. Returns null for an empty,
+ *  unparseable, or out-of-range value — e.g. a fat-fingered 5-digit year like
+ *  "20230-08-22", which would otherwise reach Prisma as an un-serializable
+ *  DateTime and crash the whole mutation. Keeps a generous 1970–2200 window. */
+export function safeInputDate(s: string | null | undefined): Date | null {
+  if (!s) return null;
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return null;
+  const y = d.getUTCFullYear();
+  if (y < 1970 || y > 2200) return null;
+  return d;
+}
+
+/** True when a non-empty date input can't be parsed to a sane, in-range date. */
+export function isBadDateInput(s: string | null | undefined): boolean {
+  return !!s && safeInputDate(s) === null;
+}
+

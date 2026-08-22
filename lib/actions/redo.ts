@@ -38,12 +38,22 @@ export async function getRedoTemplateAction(
   if (kind === "receipt") {
     const r = await db.receipt.findUnique({ where: { id }, include: { lines: true } });
     if (!r) return { error: "Receipt not found" };
+    const isProd = r.mode === "PRODUCTION";
+    const first = r.lines[0];
     return {
       path: PATH.receipt,
       payload: {
         mode: r.mode,
         poId: r.poId,
         invoiceNo: r.invoiceNo ?? "",
+        // Production shares one lot / mfg / expiry and an OEE line across the run —
+        // carry them back so a re-entry starts identical, not blank.
+        prodLot: isProd ? (first?.lotNo ?? "") : "",
+        prodMfg: isProd && first?.mfgDate ? fmtDateISO(first.mfgDate) : "",
+        prodExp: isProd && first?.expDate ? fmtDateISO(first.expDate) : "",
+        oeeLine: r.oeeLine ?? "",
+        plannedMin: r.plannedMin != null ? String(r.plannedMin) : "",
+        breakMin: r.breakMin != null ? String(r.breakMin) : "",
         lines: r.lines.map((l) => ({
           productCode: l.productCode,
           ordered: l.orderedQty ?? null,
@@ -52,6 +62,12 @@ export async function getRedoTemplateAction(
           loc: l.locationCode,
           mfg: l.mfgDate ? fmtDateISO(l.mfgDate) : "",
           exp: l.expDate ? fmtDateISO(l.expDate) : "",
+          // Per-pallet production detail (blank/none for plain PO receipts).
+          weight: l.weightKg != null ? String(l.weightKg) : "",
+          su: l.suNo != null ? String(l.suNo) : "",
+          time: l.packTime ?? "",
+          palletFull: l.palletFull ?? true,
+          stockType: l.stockType,
         })),
       },
     };

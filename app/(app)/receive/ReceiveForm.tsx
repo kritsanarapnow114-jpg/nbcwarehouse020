@@ -80,6 +80,12 @@ export function ReceiveForm({
       mode: "PO" | "PRODUCTION";
       poId: string | null;
       invoiceNo: string;
+      prodLot?: string;
+      prodMfg?: string;
+      prodExp?: string;
+      oeeLine?: string;
+      plannedMin?: string;
+      breakMin?: string;
       lines: Omit<Line, "name" | "unit">[];
     }>("receipt");
     if (!p) return;
@@ -87,10 +93,28 @@ export function ReceiveForm({
     setMode(lockMode ?? p.mode);
     setPoId(p.poId ?? "");
     setInvoiceNo(p.invoiceNo ?? "");
+    // Restore the production run's shared fields so the re-entry starts identical.
+    if (p.prodLot) setProdLot(p.prodLot);
+    if (p.prodMfg) setProdMfg(p.prodMfg);
+    if (p.prodExp) setProdExp(p.prodExp);
+    if (p.oeeLine) setOeeLine(p.oeeLine);
+    if (p.plannedMin) setOeePlannedMin(p.plannedMin);
+    if (p.breakMin) setOeeBreakMin(p.breakMin);
     setLines(
       p.lines.map((l) => {
         const prod = data.products.find((x) => x.code === l.productCode);
-        return { ...l, name: prod?.name ?? l.productCode, unit: prod?.unit ?? "", weight: "", su: "", time: "", palletFull: true, stockType: "STOCK" as const };
+        return {
+          ...l,
+          name: prod?.name ?? l.productCode,
+          unit: prod?.unit ?? "",
+          // Keep the per-pallet detail from the original doc (SU / weight / time /
+          // pallet-full / stock type) instead of wiping it.
+          weight: l.weight ?? "",
+          su: l.su ?? "",
+          time: l.time ?? "",
+          palletFull: l.palletFull ?? true,
+          stockType: l.stockType ?? "STOCK",
+        };
       })
     );
     /* eslint-enable react-hooks/set-state-in-effect */
