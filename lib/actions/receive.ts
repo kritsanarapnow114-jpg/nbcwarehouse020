@@ -4,6 +4,7 @@ import { safeRevalidate } from "./revalidate";
 import { db } from "@/lib/db";
 import { requireWrite } from "@/lib/authz";
 import { nextDocNumber } from "@/lib/calc/docNumber";
+import { isBadDateInput } from "@/lib/calc/date";
 import { fifoLots } from "@/lib/calc/fefo";
 import { getAppSetting } from "@/lib/views/settings";
 import { BOM_SOURCE_KEY, parseList } from "@/lib/settingsKeys";
@@ -62,6 +63,21 @@ export async function confirmReceiptAction(
 
   try {
     await requireWrite();
+
+    // Reject fat-fingered / out-of-range dates up front with a clear message,
+    // instead of letting an un-serializable DateTime blow up mid-transaction.
+    if (isBadDateInput(input.docDate)) {
+      return { error: "วันที่เอกสารไม่ถูกต้อง — ตรวจสอบปีอีกครั้ง (invalid document date)" };
+    }
+    const badDateLine = input.lines.find(
+      (l) => isBadDateInput(l.mfgDate) || isBadDateInput(l.expDate)
+    );
+    if (badDateLine) {
+      return {
+        error: `วันผลิต/วันหมดอายุไม่ถูกต้อง (ปีเกินช่วง) — ตรวจสอบสินค้า ${badDateLine.productCode} (invalid mfg/expiry date)`,
+      };
+    }
+
     const docNo = await nextDocNumber("RC", docDate);
 
     await db.$transaction(async (tx) => {
