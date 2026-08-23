@@ -124,8 +124,6 @@ export function OeeDeckButton({
       pptx.theme = { headFontFace: FONT, bodyFontFace: FONT };
 
       const W = 13.333;
-      const CT = pptx.ChartType;
-      const cf = { dataLabelFontFace: FONT, catAxisLabelFontFace: FONT, valAxisLabelFontFace: FONT };
       const genDate = new Date().toLocaleDateString("en-GB");
       let page = 0;
 
@@ -171,16 +169,16 @@ export function OeeDeckButton({
         if (sub) s.addText(sub, { x: x + 0.12, y: y + h - 0.36, w: w - 0.24, h: 0.32, fontSize: 10, color: MUTE, align: "center" });
       };
 
+      // Gauge drawn with shapes only (no chart) — a big % over a rounded
+      // progress bar. Charts are what make PowerPoint prompt to "repair" the
+      // file, so the whole deck avoids them.
       const gauge = (s: PptxGenJSLib.Slide, x: number, y: number, w: number, h: number, label: string, p: number, color = BLUE) => {
         s.addShape("roundRect", { x, y, w, h, rectRadius: 0.05, fill: { color: PANEL }, line: { color: CARDLINE, width: 1 }, shadow: SHADOW });
         const v = Math.max(0, Math.min(100, p));
-        const size = Math.min(w - 0.4, h - 1.0);
-        const cx = x + (w - size) / 2;
-        const cy = y + 0.42;
-        s.addChart(CT.doughnut, [{ name: "g", labels: ["value", "rest"], values: [v, 100 - v] }], {
-          x: cx, y: cy, w: size, h: size, holeSize: 74, chartColors: [color, TRACK], showLegend: false, showTitle: false, ...cf, showValue: false, showPercent: false, dataBorder: { pt: 0, color: PANEL },
-        });
-        s.addText(`${Math.round(v)}%`, { x: cx, y: cy, w: size, h: size, align: "center", valign: "middle", fontSize: 24, bold: true, color: SLATE });
+        s.addText(`${Math.round(v)}%`, { x: x + 0.1, y: y + 0.5, w: w - 0.2, h: h - 1.4, align: "center", valign: "middle", fontSize: 40, bold: true, color });
+        const barX = x + 0.35, barW = w - 0.7, barY = y + h - 0.78, barH = 0.22;
+        s.addShape("roundRect", { x: barX, y: barY, w: barW, h: barH, rectRadius: 0.11, fill: { color: TRACK } });
+        if (v > 0) s.addShape("roundRect", { x: barX, y: barY, w: Math.max(0.12, (barW * v) / 100), h: barH, rectRadius: 0.11, fill: { color } });
         s.addText(label, { x: x + 0.1, y: y + h - 0.5, w: w - 0.2, h: 0.4, fontSize: 12, bold: true, color: SLATE, align: "center", valign: "middle" });
       };
 
@@ -287,33 +285,22 @@ export function OeeDeckButton({
       const pareto = [...lossPareto].sort((a, b) => b.lostMin - a.lostMin);
       const s4 = newSlide("Downtime Pareto", "สาเหตุที่ทำให้เสียเวลามากที่สุด");
       if (pareto.length > 0) {
-        const top = pareto.slice(0, 8);
-        s4.addShape("roundRect", { x: 0.5, y: 1.55, w: 12.33, h: 2.5, rectRadius: 0.05, fill: { color: PANEL }, line: { color: CARDLINE, width: 1 }, shadow: SHADOW });
+        const top = pareto.slice(0, 6);
+        const maxMin = Math.max(1, ...top.map((r) => r.lostMin));
+        const panelH = 0.5 + top.length * 0.42 + 0.15;
+        s4.addShape("roundRect", { x: 0.5, y: 1.55, w: 12.33, h: panelH, rectRadius: 0.05, fill: { color: PANEL }, line: { color: CARDLINE, width: 1 }, shadow: SHADOW });
         s4.addText("เสียเวลา (นาที) ต่อสาเหตุ — Lost minutes by cause", { x: 0.7, y: 1.65, w: 11.9, h: 0.3, fontSize: 12, bold: true, color: SLATE });
-        s4.addChart(CT.bar, [{ name: "Lost min", labels: top.map((r) => r.loss), values: top.map((r) => r.lostMin) }], {
-          x: 0.7, y: 2.0, w: 11.9, h: 1.95, barDir: "bar", chartColors: [ORANGE],
-          showValue: true, dataLabelColor: SLATE, dataLabelFontSize: 11, dataLabelFontBold: true,
-          catAxisLabelColor: SLATE, catAxisLabelFontSize: 11, valAxisHidden: true, showLegend: false, showTitle: false, ...cf,
-          valGridLine: { style: "dash", color: TRACK, size: 1 }, barGapWidthPct: 40,
+        // Horizontal bars drawn with shapes (no chart → no PowerPoint repair).
+        const labelW = 4.0, trackX = 0.7 + labelW + 0.1, trackW = 12.33 - (trackX - 0.5) - 1.6;
+        top.forEach((r, i) => {
+          const rowY = 2.06 + i * 0.42;
+          s4.addText(r.loss || "-", { x: 0.7, y: rowY, w: labelW, h: 0.34, fontSize: 11, color: SLATE, valign: "middle", align: "left", fontFace: FONT });
+          s4.addShape("roundRect", { x: trackX, y: rowY + 0.05, w: trackW, h: 0.24, rectRadius: 0.05, fill: { color: TRACK } });
+          s4.addShape("roundRect", { x: trackX, y: rowY + 0.05, w: Math.max(0.1, (trackW * r.lostMin) / maxMin), h: 0.24, rectRadius: 0.05, fill: { color: ORANGE } });
+          s4.addText(`${num(r.lostMin)} นาที`, { x: trackX + trackW + 0.08, y: rowY, w: 1.5, h: 0.34, fontSize: 11, bold: true, color: SLATE, valign: "middle", align: "left", fontFace: FONT });
         });
       } else {
         s4.addText("— ไม่มี Downtime ที่บันทึกไว้ในช่วงนี้ —", { x: 0.5, y: 3.0, w: 12.33, h: 0.5, fontSize: 14, italic: true, color: MUTE, align: "center", fontFace: FONT });
-      }
-      if (pareto.length > 0) {
-        const rows: Cell[][] = pareto.map((r) => [
-          { v: r.loss || "-", bold: true },
-          { v: num(r.freq), align: "right" }, { v: num(r.lostMin), align: "right", color: ORANGE, bold: true },
-        ]);
-        const totalW = 12.33, weights = [6.4, 1.8, 2.2];
-        const wsum = weights.reduce((a, b) => a + b, 0);
-        const colW = weights.map((wt) => (wt / wsum) * totalW);
-        const headRow: PptxGenJSLib.TableRow = ["สาเหตุ (Cause)", "ครั้ง", "เสียเวลา (นาที)"].map((hh, i) => ({
-          text: hh, options: { bold: true, color: "FFFFFF", fill: { color: ORANGE }, fontSize: 12, align: (i >= 1 ? "right" : "left") as Align, valign: "middle", fontFace: FONT, margin: [2, 4, 2, 4] as [number, number, number, number] },
-        }));
-        const body: PptxGenJSLib.TableRow[] = rows.slice(0, 5).map((r, ri) => r.map((c, cix) => ({
-          text: c.v, options: { fontSize: 12, bold: c.bold ?? false, color: c.color ?? (cix === 0 ? SLATE : INK), align: c.align ?? "left", fill: { color: ri % 2 ? PANEL : BANNER }, valign: "middle", fontFace: FONT, margin: [2, 4, 2, 4] as [number, number, number, number] },
-        })));
-        s4.addTable([headRow, ...body], { x: 0.5, y: 4.25, w: totalW, colW, border: { type: "solid", color: CARDLINE, pt: 0.5 }, rowH: 0.45, valign: "middle" });
       }
 
       // ============ Slide 5: Packaging — used vs loss ============
