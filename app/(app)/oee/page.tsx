@@ -159,22 +159,20 @@ export default async function OeePage({
         )}
       </Card>
 
-      {/* Loss Pareto — split by function/owner (from Pack Order downtime) */}
+      {/* Loss Pareto — top downtime causes by lost time (from Pack Order downtime) */}
       <Card className="mb-4">
-        <CardTitle>Loss Pareto — แยกตามฝ่ายรับผิดชอบ (Project / Vendor / Operator)</CardTitle>
+        <CardTitle>Loss Pareto — สาเหตุที่เสียเวลามากสุด (Top downtime causes)</CardTitle>
         {lossSorted.length === 0 ? (
-          <CaptureHint what="downtime + Category + Owner" />
+          <CaptureHint what="downtime (เหตุ + นาที)" />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] border-collapse text-[12px]">
+            <table className="w-full min-w-[440px] border-collapse text-[12px]">
               <thead>
                 <tr className="bg-[#f7f9fb] text-left text-[11px] text-[#69748a]">
                   <th className="p-[7px_10px] font-medium">#</th>
-                  <th className="p-[7px_10px] font-medium">Top loss</th>
-                  <th className="p-[7px_10px] font-medium">Category</th>
+                  <th className="p-[7px_10px] font-medium">Top loss (สาเหตุ)</th>
                   <th className="p-[7px_10px] text-right font-medium">Freq</th>
                   <th className="p-[7px_10px] font-medium">Lost time</th>
-                  <th className="p-[7px_10px] font-medium">Owner</th>
                 </tr>
               </thead>
               <tbody>
@@ -182,7 +180,6 @@ export default async function OeePage({
                   <tr key={i} className="border-t border-[#eef1f5]">
                     <td className="font-num p-[7px_10px] text-[#9aa4b4]">{i + 1}</td>
                     <td className="p-[7px_10px] font-medium text-[#3a4658]">{r.loss}</td>
-                    <td className="p-[7px_10px]"><CatChip category={r.category} /></td>
                     <td className="font-num p-[7px_10px] text-right text-[#69748a]">{r.freq}</td>
                     <td className="p-[7px_10px]">
                       <div className="flex items-center gap-2">
@@ -192,7 +189,6 @@ export default async function OeePage({
                         <span className="font-num text-[11.5px] text-[#69748a]">{r.lostMin} min</span>
                       </div>
                     </td>
-                    <td className="p-[7px_10px] text-[11.5px] text-[#69748a]">{r.owner || "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -620,24 +616,6 @@ function Empty({ text = "ยังไม่มีข้อมูล" }: { text?:
   return <div className="py-6 text-center text-[12.5px] text-[#9aa4b4]">{text}</div>;
 }
 
-const CAT_COLORS: Record<string, string> = {
-  "Equipment breakdown": "#c53f3f",
-  "Process loss": "#c8891a",
-  "Quality loss": "#b5477f",
-  "Upstream / Silo loss": "#2f86cf",
-  "Warehouse / Logistics": "#1f9d63",
-  "SAP / IT loss": "#6b6bd6",
-  "Planned commissioning test": "#8d9a92",
-};
-
-function CatChip({ category }: { category: string }) {
-  const c = CAT_COLORS[category] ?? "#8d9a92";
-  return (
-    <span className="rounded-[5px] px-2 py-0.5 text-[10.5px] font-semibold" style={{ background: `${c}1a`, color: c }}>
-      {category}
-    </span>
-  );
-}
 
 function CaptureHint({ what }: { what: string }) {
   return (
