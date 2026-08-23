@@ -62,6 +62,8 @@ export default async function OeePage({
           lossPareto={d.captured.lossPareto}
           repack={d.captured.repack}
           scrap={d.captured.scrap}
+          pkgUsed={d.packagingUsed.byMaterial}
+          pkgLoss={d.packagingLoss.byMaterial}
           periodLabel={periodLabel}
         />
       </div>

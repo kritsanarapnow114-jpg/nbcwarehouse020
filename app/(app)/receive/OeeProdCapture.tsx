@@ -64,23 +64,20 @@ export function OeeProdCapture({
     const def = reasons.find((r) => r.reason === reason);
     return def && def.categories.length > 0 ? def.categories : LOSS_CATEGORIES;
   };
-  // Specific sub-items for a reason (e.g. which machine broke); empty = no picker.
+  // Suggestions for the free-text "อธิบายเหตุ" box: the reason's configured
+  // sub-items (e.g. machine names) — you can still type anything.
   const detailsFor = (reason: string): string[] => reasons.find((r) => r.reason === reason)?.details ?? [];
+  // The responsible loss category is derived from the reason's config (no picker).
+  const categoryFor = (reason: string): string => catsFor(reason)[0];
 
   const [dtMin, setDtMin] = useState("");
   const [dtReason, setDtReason] = useState(reasons[0].reason);
-  const [dtCat, setDtCat] = useState<string>(catsFor(reasons[0].reason)[0]);
-  const [dtDetail, setDtDetail] = useState("");
-  const [dtOwner, setDtOwner] = useState("");
+  const [dtNote, setDtNote] = useState("");
 
-  // Picking a reason narrows the category list to that reason's categories; keep
-  // the current category only if it's still valid, else snap to the first one.
-  // The sub-item (detail) always resets since it's specific to the reason.
+  // Picking a reason just resets the free-text note (it's specific to the reason).
   function selectReason(reason: string) {
     setDtReason(reason);
-    const allowed = catsFor(reason);
-    if (!allowed.includes(dtCat)) setDtCat(allowed[0]);
-    setDtDetail("");
+    setDtNote("");
   }
 
   const dtDetailOptions = detailsFor(dtReason);
@@ -114,13 +111,13 @@ export function OeeProdCapture({
   function addDowntime() {
     const m = Math.round(Number(dtMin) || 0);
     if (m <= 0) return;
+    // Category is derived from the reason's config; owner is no longer captured.
     onDowntimes([
       ...downtimes,
-      { minutes: m, reason: dtReason, category: dtCat, owner: dtOwner.trim(), detail: dtDetail.trim() || undefined },
+      { minutes: m, reason: dtReason, category: categoryFor(dtReason), owner: "", detail: dtNote.trim() || undefined },
     ]);
     setDtMin("");
-    setDtOwner("");
-    setDtDetail("");
+    setDtNote("");
   }
 
   return (
@@ -209,19 +206,23 @@ export function OeeProdCapture({
               </div>
             )}
             <div className="flex flex-wrap items-center gap-2">
-              <select value={dtReason} onChange={(e) => selectReason(e.target.value)} className={sm} title="เหตุที่หยุด (Downtime reason)">
+              <select value={dtReason} onChange={(e) => selectReason(e.target.value)} className={sm} title="เหตุที่หยุด (Downtime reason) — ตั้งรายการได้ที่ Settings">
                 {reasons.map((r) => <option key={r.reason} value={r.reason}>{r.reason}</option>)}
               </select>
-              <select value={dtCat} onChange={(e) => setDtCat(e.target.value)} className={sm} title="ฝ่ายรับผิดชอบ (เฉพาะหมวดของเหตุที่เลือก)">
-                {catsFor(dtReason).map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <input
+                value={dtNote}
+                onChange={(e) => setDtNote(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addDowntime()}
+                list="dtNoteOpts"
+                placeholder="อธิบายเหตุ (เช่น เครื่องไหน/อาการ)"
+                className={`min-w-[220px] flex-1 ${sm}`}
+                title="อธิบายเหตุที่หยุด — พิมพ์อิสระ"
+              />
               {dtDetailOptions.length > 0 && (
-                <select value={dtDetail} onChange={(e) => setDtDetail(e.target.value)} className={sm} title="ระบุรายละเอียด เช่น เครื่องไหนเสีย">
-                  <option value="">— ระบุ (เช่น เครื่องไหน) —</option>
-                  {dtDetailOptions.map((d) => <option key={d} value={d}>{d}</option>)}
-                </select>
+                <datalist id="dtNoteOpts">
+                  {dtDetailOptions.map((d) => <option key={d} value={d} />)}
+                </datalist>
               )}
-              <input value={dtOwner} onChange={(e) => setDtOwner(e.target.value)} placeholder="Owner (เช่น Vendor)" className={`w-[130px] ${sm}`} />
               <input value={dtMin} onChange={(e) => setDtMin(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addDowntime()} inputMode="numeric" placeholder="นาที" className={`font-num w-[80px] ${sm}`} />
               <button onClick={addDowntime} className="rounded-[8px] border border-dashed border-[#c8891a] px-3 py-1.5 text-[12.5px] font-semibold text-[#c8891a] hover:bg-[#fbf1de]">＋ เพิ่ม</button>
             </div>
