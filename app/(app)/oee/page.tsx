@@ -55,7 +55,15 @@ export default async function OeePage({
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <PeriodSelector basePath="/oee" mode={mode} date={dateStr} start={startStr} end={endStr} />
         <div className="flex-1" />
-        <OeeDeckButton runs={d.productionRuns} summary={d.production} periodLabel={periodLabel} />
+        <OeeDeckButton
+          runs={d.productionRuns}
+          summary={d.production}
+          perLine={d.production.perLine}
+          lossPareto={d.captured.lossPareto}
+          repack={d.captured.repack}
+          scrap={d.captured.scrap}
+          periodLabel={periodLabel}
+        />
       </div>
 
       {/* ── Packing Unit Startup Performance · Trial-Run OEE ─────────────── */}

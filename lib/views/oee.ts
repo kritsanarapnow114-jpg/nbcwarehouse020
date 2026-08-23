@@ -49,10 +49,12 @@ export async function getOeeDashboard(range: Range) {
         id: true,
         docNo: true,
         docDate: true,
+        materialDoc: true,
         producedTotal: true,
         prodLoss: true,
         oeeLine: true,
         plannedMin: true,
+        breakMin: true,
         downtime: true,
         oeeQuality: true,
         lines: { select: { productCode: true }, take: 1 }, // finished good → its price
@@ -274,12 +276,31 @@ export async function getOeeDashboard(range: Range) {
   // Runs that captured a line + planned time can be fully scored.
   const scored = prodReceipts.filter((r) => r.oeeLine && (r.plannedMin ?? 0) > 0);
 
+  // Individual downtime events on a run (reason · which machine · responsible),
+  // straight from what was captured on the Pack Order OEE card.
+  const parseDowntimeEvents = (raw: unknown) => {
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((d) => {
+        const e = (d && typeof d === "object" ? d : {}) as Record<string, unknown>;
+        return {
+          minutes: Math.round(Number(e.minutes) || 0),
+          reason: String(e.reason ?? "").trim(),
+          detail: String(e.detail ?? "").trim(),
+          category: String(e.category ?? "").trim(),
+          owner: String(e.owner ?? "").trim(),
+        };
+      })
+      .filter((e) => e.minutes > 0);
+  };
+
   // Per-run (one row per Pack Order that captured OEE).
   const productionRuns = scored
     .map((r) => {
       const dt = dtMinutes(r.downtime);
+      const planned = r.plannedMin ?? 0;
       const parts = scoreProduction({
-        plannedMin: r.plannedMin ?? 0,
+        plannedMin: planned,
         downtimeMin: dt,
         good: r.producedTotal ?? 0,
         reject: r.prodLoss ?? 0,
@@ -291,6 +312,7 @@ export async function getOeeDashboard(range: Range) {
       const oeeF = parts.availability * parts.performance * qf;
       return {
         doc: r.docNo,
+        matDoc: r.materialDoc ?? "",
         day: fmtDateISO(new Date(Date.UTC(r.docDate.getUTCFullYear(), r.docDate.getUTCMonth(), r.docDate.getUTCDate()))),
         line: r.oeeLine as string,
         a: pct(parts.availability),
@@ -300,7 +322,13 @@ export async function getOeeDashboard(range: Range) {
         produced: Math.round(r.producedTotal ?? 0),
         loss: Math.round(r.prodLoss ?? 0),
         pkgLoss: Math.round(pkg),
+        output: Math.round((r.producedTotal ?? 0) + (r.prodLoss ?? 0)),
+        plannedMin: Math.round(planned),
+        breakMin: Math.round(r.breakMin ?? 0),
+        runMin: Math.max(0, Math.round(planned - dt)),
+        standard: standards[r.oeeLine as string] ?? 0,
         downtimeMin: dt,
+        downtimeEvents: parseDowntimeEvents(r.downtime),
       };
     })
     .sort((a, b) => b.day.localeCompare(a.day))
