@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { scoreProduction, pct, oeeColor } from "@/lib/calc/oee";
-import { LOSS_CATEGORIES, DOWNTIME_REASON_DEFAULTS, type DowntimeReasonDef } from "@/lib/settingsKeys";
+import { DOWNTIME_REASON_DEFAULTS, type DowntimeReasonDef } from "@/lib/settingsKeys";
 
-export type ProdDowntime = { minutes: number; reason: string; category: string; owner: string; detail?: string };
+export type ProdDowntime = { minutes: number; reason: string; detail?: string };
 
 const inputCls =
   "rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px] outline-none focus:border-[#2f86cf]";
@@ -59,16 +59,9 @@ export function OeeProdCapture({
 }) {
   // Fall back to the built-in seed if no reasons are configured yet.
   const reasons = downtimeReasons.length > 0 ? downtimeReasons : DOWNTIME_REASON_DEFAULTS;
-  // Categories a given reason may be attributed to (empty config = all categories).
-  const catsFor = (reason: string): readonly string[] => {
-    const def = reasons.find((r) => r.reason === reason);
-    return def && def.categories.length > 0 ? def.categories : LOSS_CATEGORIES;
-  };
   // Suggestions for the free-text "อธิบายเหตุ" box: the reason's configured
   // sub-items (e.g. machine names) — you can still type anything.
   const detailsFor = (reason: string): string[] => reasons.find((r) => r.reason === reason)?.details ?? [];
-  // The responsible loss category is derived from the reason's config (no picker).
-  const categoryFor = (reason: string): string => catsFor(reason)[0];
 
   const [dtMin, setDtMin] = useState("");
   const [dtReason, setDtReason] = useState(reasons[0].reason);
@@ -111,10 +104,9 @@ export function OeeProdCapture({
   function addDowntime() {
     const m = Math.round(Number(dtMin) || 0);
     if (m <= 0) return;
-    // Category is derived from the reason's config; owner is no longer captured.
     onDowntimes([
       ...downtimes,
-      { minutes: m, reason: dtReason, category: categoryFor(dtReason), owner: "", detail: dtNote.trim() || undefined },
+      { minutes: m, reason: dtReason, detail: dtNote.trim() || undefined },
     ]);
     setDtMin("");
     setDtNote("");
@@ -188,7 +180,7 @@ export function OeeProdCapture({
           {/* Downtime with responsible function */}
           <div className="border-t border-[#eef1f5] p-[14px_22px]">
             <div className="mb-2 flex items-center gap-2">
-              <span className="text-[12.5px] font-semibold text-[#3a4658]">หยุดเครื่อง (Downtime) + ฝ่ายรับผิดชอบ</span>
+              <span className="text-[12.5px] font-semibold text-[#3a4658]">หยุดเครื่อง (Downtime)</span>
               <span className="text-[11.5px] text-[#9aa4b4]">รวม <b className="font-num text-[#c8891a]">{downtimeTotal}</b> นาที</span>
             </div>
             {downtimes.length > 0 && (
@@ -197,8 +189,6 @@ export function OeeProdCapture({
                   <div key={i} className="flex flex-wrap items-center gap-2 rounded-[8px] bg-[#faf6ee] px-3 py-1.5 text-[12px]">
                     <span className="rounded-[5px] bg-[#fbf1de] px-2 py-0.5 text-[11px] font-semibold text-[#c8891a]">{d.reason}</span>
                     {d.detail && <span className="rounded-[5px] bg-[#fdeede] px-2 py-0.5 text-[10.5px] font-medium text-[#bd6f12]">{d.detail}</span>}
-                    <span className="rounded-[5px] bg-[#eef1f5] px-2 py-0.5 text-[10.5px] text-[#69748a]">{d.category}</span>
-                    {d.owner && <span className="text-[11px] text-[#69748a]">· {d.owner}</span>}
                     <span className="font-num flex-1 text-right text-[#3a4658]">{d.minutes} นาที</span>
                     <button onClick={() => onDowntimes(downtimes.filter((_, idx) => idx !== i))} className="text-[15px] text-[#c2606f]">×</button>
                   </div>

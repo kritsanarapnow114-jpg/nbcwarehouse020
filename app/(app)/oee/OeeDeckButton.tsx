@@ -7,8 +7,6 @@ export type OeeDowntimeEvent = {
   minutes: number;
   reason: string;
   detail: string;
-  category: string;
-  owner: string;
 };
 
 // Per-round (per Pack Order run) OEE row, as computed by getOeeDashboard.
@@ -47,7 +45,7 @@ export type OeeDeckSummary = {
 };
 
 export type OeeLineRow = { name: string; oee: number; a: number; p: number; q: number; output: number; standard: number };
-export type OeeLossRow = { loss: string; category: string; owner: string; freq: number; lostMin: number };
+export type OeeLossRow = { loss: string; freq: number; lostMin: number };
 export type PkgRow = { name: string; qty: number };
 
 // ---- NatureWorks / Ingeo template palette (matches the monthly deck) ----
@@ -303,14 +301,14 @@ export function OeeDeckButton({
       }
       if (pareto.length > 0) {
         const rows: Cell[][] = pareto.map((r) => [
-          { v: r.loss || "-", bold: true }, { v: r.category || "-" }, { v: r.owner || "-" },
+          { v: r.loss || "-", bold: true },
           { v: num(r.freq), align: "right" }, { v: num(r.lostMin), align: "right", color: ORANGE, bold: true },
         ]);
-        const totalW = 12.33, weights = [3.4, 2.4, 2.4, 1.2, 1.6];
+        const totalW = 12.33, weights = [6.4, 1.8, 2.2];
         const wsum = weights.reduce((a, b) => a + b, 0);
         const colW = weights.map((wt) => (wt / wsum) * totalW);
-        const headRow: PptxGenJSLib.TableRow = ["สาเหตุ (Cause)", "หมวด (Category)", "ผู้รับผิดชอบ", "ครั้ง", "เสียเวลา (นาที)"].map((hh, i) => ({
-          text: hh, options: { bold: true, color: "FFFFFF", fill: { color: ORANGE }, fontSize: 12, align: (i >= 3 ? "right" : "left") as Align, valign: "middle", fontFace: FONT, margin: [2, 4, 2, 4] as [number, number, number, number] },
+        const headRow: PptxGenJSLib.TableRow = ["สาเหตุ (Cause)", "ครั้ง", "เสียเวลา (นาที)"].map((hh, i) => ({
+          text: hh, options: { bold: true, color: "FFFFFF", fill: { color: ORANGE }, fontSize: 12, align: (i >= 1 ? "right" : "left") as Align, valign: "middle", fontFace: FONT, margin: [2, 4, 2, 4] as [number, number, number, number] },
         }));
         const body: PptxGenJSLib.TableRow[] = rows.slice(0, 5).map((r, ri) => r.map((c, cix) => ({
           text: c.v, options: { fontSize: 12, bold: c.bold ?? false, color: c.color ?? (cix === 0 ? SLATE : INK), align: c.align ?? "left", fill: { color: ri % 2 ? PANEL : BANNER }, valign: "middle", fontFace: FONT, margin: [2, 4, 2, 4] as [number, number, number, number] },
@@ -412,18 +410,16 @@ export function OeeDeckButton({
             { v: r.doc, color: SLATE },
             { v: e.reason || "-", bold: true },
             { v: e.detail || "-", color: e.detail ? BLUE : MUTE },
-            { v: e.category || "-" },
-            { v: e.owner || "-" },
             { v: num(e.minutes), align: "right", color: ORANGE, bold: true },
           ]);
         }
       }
       if (dtRows.length > 0) {
         tableSlide(
-          "Downtime detail", "รายละเอียดการหยุดเครื่อง (ทุกเหตุการณ์) · เหตุ · เครื่องไหน · หมวด · ผู้รับผิดชอบ",
-          ["วันที่", "Doc", "เหตุ (Reason)", "รายละเอียด (เครื่อง)", "หมวด", "ผู้รับผิดชอบ", "นาที"],
-          ["left", "left", "left", "left", "left", "left", "right"],
-          [1.3, 1.9, 2.2, 2.4, 2.1, 1.9, 1.0],
+          "Downtime detail", "รายละเอียดการหยุดเครื่อง (ทุกเหตุการณ์) · เหตุ · อธิบายเหตุ · นาที",
+          ["วันที่", "Doc", "เหตุ (Reason)", "อธิบายเหตุ", "นาที"],
+          ["left", "left", "left", "left", "right"],
+          [1.6, 2.4, 3.0, 4.0, 1.3],
           dtRows,
           `รวม ${dtRows.length} เหตุการณ์ · ${num(totalDowntime)} นาที`,
           ORANGE

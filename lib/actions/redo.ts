@@ -41,7 +41,9 @@ export async function getRedoTemplateAction(
     const isProd = r.mode === "PRODUCTION";
     const first = r.lines[0];
     return {
-      path: PATH.receipt,
+      // Production receipts are entered on /pack (lockMode PRODUCTION); routing a
+      // production redo to /receive (lockMode PO) would drop the prefill.
+      path: isProd ? "/pack" : PATH.receipt,
       payload: {
         mode: r.mode,
         poId: r.poId,

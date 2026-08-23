@@ -5,17 +5,12 @@ import { useRouter } from "next/navigation";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { buttonClass } from "@/components/ui/Button";
 import { saveAppSettingsAction } from "@/lib/actions/settings";
-import {
-  LOSS_CATEGORIES,
-  OEE_DOWNTIME_REASONS_KEY,
-  type DowntimeReasonDef,
-} from "@/lib/settingsKeys";
+import { OEE_DOWNTIME_REASONS_KEY, type DowntimeReasonDef } from "@/lib/settingsKeys";
 import { showToast } from "@/components/ui/Toast";
 
-/** Configure the downtime reasons shown on the Pack Order OEE capture, and the
- *  responsible loss category (ฝ่ายรับผิดชอบ) each reason maps to. On the capture
- *  form, picking a reason narrows the category dropdown to just its categories.
- *  A reason with no category ticked allows any category. */
+/** Configure the downtime reasons shown on the Pack Order OEE capture. Each
+ *  reason can carry a list of sub-items (e.g. machine names) that autocomplete
+ *  the free-text "อธิบายเหตุ" box when recording downtime. */
 export function OeeDowntimeReasonsCard({ reasons }: { reasons: DowntimeReasonDef[] }) {
   const router = useRouter();
   const [rows, setRows] = useState<DowntimeReasonDef[]>(
@@ -32,18 +27,6 @@ export function OeeDowntimeReasonsCard({ reasons }: { reasons: DowntimeReasonDef
     const details = text.split("\n");
     setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, details } : r)));
   }
-  function toggleCat(i: number, cat: string) {
-    setRows((rs) =>
-      rs.map((r, idx) => {
-        if (idx !== i) return r;
-        const has = r.categories.includes(cat);
-        return {
-          ...r,
-          categories: has ? r.categories.filter((c) => c !== cat) : [...r.categories, cat],
-        };
-      })
-    );
-  }
   function addRow() {
     setRows((rs) => [...rs, { reason: "", categories: [], details: [] }]);
   }
@@ -55,7 +38,7 @@ export function OeeDowntimeReasonsCard({ reasons }: { reasons: DowntimeReasonDef
     const clean = rows
       .map((r) => ({
         reason: r.reason.trim(),
-        categories: r.categories,
+        categories: [],
         details: r.details.map((d) => d.trim()).filter((d) => d !== ""),
       }))
       .filter((r) => r.reason !== "");
@@ -72,9 +55,8 @@ export function OeeDowntimeReasonsCard({ reasons }: { reasons: DowntimeReasonDef
     <Card>
       <CardTitle>OEE — เหตุหยุดเครื่อง (Downtime reasons)</CardTitle>
       <p className="mb-3 text-[12.5px] text-[#69748a]">
-        ตั้งรายการ &quot;เหตุที่หยุด&quot; ที่เลือกได้ตอนบันทึก Pack Order · เลือกหมวดฝ่ายรับผิดชอบของแต่ละเหตุ
-        (เวลาเลือกเหตุ ช่องหมวดจะโชว์เฉพาะหมวดของเหตุนั้น — ไม่ติ๊กเลย = ทุกหมวด) · และใส่ตัวเลือกย่อยได้ เช่น
-        &quot;เครื่องไหนเสีย&quot; ให้เลือกตอนบันทึก.
+        ตั้งรายการ &quot;เหตุที่หยุด&quot; ที่เลือกได้ตอนบันทึก Pack Order · ใส่ตัวเลือกย่อยได้ เช่น
+        &quot;เครื่องไหน&quot; เพื่อช่วยเติมช่อง &quot;อธิบายเหตุ&quot; ตอนบันทึก (พิมพ์เองก็ได้).
       </p>
 
       <div className="flex flex-col gap-2.5">
@@ -85,9 +67,8 @@ export function OeeDowntimeReasonsCard({ reasons }: { reasons: DowntimeReasonDef
                 value={r.reason}
                 onChange={(e) => setReason(i, e.target.value)}
                 placeholder="เหตุที่หยุด เช่น เครื่องเสีย"
-                className="w-[190px] rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[12.5px] outline-none focus:border-[#2f86cf]"
+                className="w-[220px] rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[12.5px] outline-none focus:border-[#2f86cf]"
               />
-              <span className="text-[11.5px] text-[#9aa4b4]">→ หมวดฝ่ายรับผิดชอบ</span>
               <div className="flex-1" />
               <button
                 onClick={() => removeRow(i)}
@@ -97,32 +78,9 @@ export function OeeDowntimeReasonsCard({ reasons }: { reasons: DowntimeReasonDef
                 ×
               </button>
             </div>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {LOSS_CATEGORIES.map((c) => {
-                const on = r.categories.includes(c);
-                return (
-                  <button
-                    key={c}
-                    onClick={() => toggleCat(i, c)}
-                    className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
-                      on
-                        ? "border-[#2f86cf] bg-[#e8f2fb] text-[#1f66a6]"
-                        : "border-[#e2e6ec] bg-white text-[#69748a]"
-                    }`}
-                  >
-                    {c}
-                  </button>
-                );
-              })}
-            </div>
-            {r.categories.length === 0 && (
-              <div className="mt-1.5 text-[11px] text-[#9aa4b4]">
-                * ไม่ได้เลือกหมวด — เหตุนี้จะเลือกได้ทุกหมวด (any category)
-              </div>
-            )}
             <label className="mt-2 flex flex-col gap-1">
               <span className="text-[11px] font-medium text-[#69748a]">
-                ตัวเลือกย่อย เช่น &quot;เครื่องไหนเสีย&quot; — 1 บรรทัดต่อ 1 รายการ (เว้นว่าง = ไม่ต้องเลือก)
+                ตัวเลือกย่อย เช่น &quot;เครื่องไหน&quot; — 1 บรรทัดต่อ 1 รายการ (เว้นว่าง = ไม่มีตัวช่วยเติม)
               </span>
               <textarea
                 value={r.details.join("\n")}
