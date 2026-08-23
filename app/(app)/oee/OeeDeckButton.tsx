@@ -48,6 +48,7 @@ export type OeeDeckSummary = {
 
 export type OeeLineRow = { name: string; oee: number; a: number; p: number; q: number; output: number; standard: number };
 export type OeeLossRow = { loss: string; category: string; owner: string; freq: number; lostMin: number };
+export type PkgRow = { name: string; qty: number };
 
 // ---- NatureWorks / Ingeo template palette (matches the monthly deck) ----
 const BLUE = "018BBF";
@@ -95,6 +96,8 @@ export function OeeDeckButton({
   lossPareto,
   repack,
   scrap,
+  pkgUsed,
+  pkgLoss,
   periodLabel,
 }: {
   runs: OeeRunRow[];
@@ -103,6 +106,8 @@ export function OeeDeckButton({
   lossPareto: OeeLossRow[];
   repack: number;
   scrap: number;
+  pkgUsed: PkgRow[];
+  pkgLoss: PkgRow[];
   periodLabel: string;
 }) {
   const [busy, setBusy] = useState(false);
@@ -311,6 +316,38 @@ export function OeeDeckButton({
           text: c.v, options: { fontSize: 12, bold: c.bold ?? false, color: c.color ?? (cix === 0 ? SLATE : INK), align: c.align ?? "left", fill: { color: ri % 2 ? PANEL : BANNER }, valign: "middle", fontFace: FONT, margin: [2, 4, 2, 4] as [number, number, number, number] },
         })));
         s4.addTable([headRow, ...body], { x: 0.5, y: 4.25, w: totalW, colW, border: { type: "solid", color: CARDLINE, pt: 0.5 }, rowH: 0.45, valign: "middle" });
+      }
+
+      // ============ Slide 5: Packaging — used vs loss ============
+      {
+        const names = Array.from(new Set([...pkgUsed.map((m) => m.name), ...pkgLoss.map((m) => m.name)]));
+        const usedBy = new Map(pkgUsed.map((m) => [m.name, m.qty]));
+        const lossBy = new Map(pkgLoss.map((m) => [m.name, m.qty]));
+        const pkgRows: Cell[][] = names
+          .map((name) => {
+            const used = usedBy.get(name) ?? 0;
+            const lost = lossBy.get(name) ?? 0;
+            const lossPct = used > 0 ? (lost / used) * 100 : lost > 0 ? 100 : 0;
+            return { name, used, lost, lossPct };
+          })
+          .sort((a, b) => b.used - a.used)
+          .map((r) => [
+            { v: r.name || "-", bold: true } as Cell,
+            { v: num(r.used), align: "right" as Align },
+            { v: num(r.lost), align: "right" as Align, color: r.lost > 0 ? CORAL : INK },
+            { v: `${r.lossPct.toFixed(1)}%`, align: "right" as Align, color: r.lossPct >= 3 ? CORAL : MUTE },
+          ]);
+        const usedTotal = pkgUsed.reduce((s, m) => s + m.qty, 0);
+        const lossTotal = pkgLoss.reduce((s, m) => s + m.qty, 0);
+        tableSlide(
+          "Packaging (บรรจุภัณฑ์)", "ใช้ไป vs เสีย · ต่อวัสดุ (used vs loss, per material)",
+          ["วัสดุ (Material)", "ใช้ไป (Used)", "เสีย (Loss)", "% เสีย"],
+          ["left", "right", "right", "right"],
+          [4.6, 2.4, 2.4, 1.6],
+          pkgRows,
+          `ใช้ไปรวม ${num(usedTotal)} · เสียรวม ${num(lossTotal)}${usedTotal > 0 ? ` (${((lossTotal / usedTotal) * 100).toFixed(1)}%)` : ""}`,
+          TEAL
+        );
       }
 
       // ============ Per-day round tables (grouped, each round separate) ============

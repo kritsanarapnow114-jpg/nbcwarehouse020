@@ -91,6 +91,29 @@ export async function getOeeDashboard(range: Range) {
       .sort((a, b) => b.qty - a.qty),
   };
 
+  // Packaging / BOM MATERIAL USED — what production actually consumed via the BOM
+  // (recorded per production receipt as ReceiptMaterialConsumption), per material.
+  const matConsumption = await db.receiptMaterialConsumption.findMany({
+    where: {
+      receipt: { mode: "PRODUCTION", reversedAt: null, docDate: { gte: range.start, lte: range.end } },
+    },
+    include: { lot: { select: { product: { select: { nameEn: true, nameTh: true } } } } },
+  });
+  const usedMap = new Map<string, number>();
+  let usedTotal = 0;
+  for (const c of matConsumption) {
+    if (c.qty <= 0) continue;
+    const name = productLabel(c.lot.product.nameEn, c.lot.product.nameTh);
+    usedMap.set(name, (usedMap.get(name) ?? 0) + c.qty);
+    usedTotal += c.qty;
+  }
+  const packagingUsed = {
+    total: Math.round(usedTotal),
+    byMaterial: [...usedMap.entries()]
+      .map(([name, qty]) => ({ name, qty: Math.round(qty) }))
+      .sort((a, b) => b.qty - a.qty),
+  };
+
   // Packaging pieces + packaging ฿ value lost, per production receipt.
   const pkgLossByReceipt = new Map<string, number>(); // pieces (for display)
   const pkgLossValueByReceipt = new Map<string, number>(); // ฿
@@ -447,6 +470,7 @@ export async function getOeeDashboard(range: Range) {
   return {
     hasUnloading: loads.length > 0,
     packagingLoss,
+    packagingUsed,
     productionRuns,
     unloadingRuns,
     captured: {
