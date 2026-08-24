@@ -50,17 +50,36 @@ async function undoStock(
     if (!receipt) throw new Error("Receipt not found");
     if (receipt.reversedAt) return { docNo: receipt.docNo, wasReversed: true };
 
-    // Remove the received quantities from the lots they landed in.
+    // Remove the received quantities from stock. The exact lot record the goods
+    // first landed in may no longer hold them — e.g. a whole-lot Put-Away moves
+    // that record to another bin, and reversing the move re-creates the stock in
+    // a *sibling* record. So pull the qty back from any current record of the
+    // same product + lot (preferring the received location), not just line.lotId.
     for (const line of receipt.lines) {
       if (!line.lotId || line.recvQty <= 0) continue;
-      const lot = await tx.lot.findUnique({ where: { id: line.lotId } });
-      if (!lot) continue;
-      if (lot.qty < line.recvQty) {
+      const candidates = await tx.lot.findMany({
+        where: { productCode: line.productCode, lotNo: line.lotNo },
+      });
+      const avail = candidates.reduce((s, l) => s + l.qty, 0);
+      if (avail < line.recvQty) {
         throw new Error(
           `Cannot reverse — ${line.recvQty.toLocaleString()} of ${line.productCode} already left this lot (ถอยไม่ได้ เพราะสินค้าถูกใช้/ย้ายไปแล้ว)`
         );
       }
-      await tx.lot.update({ where: { id: lot.id }, data: { qty: { decrement: line.recvQty } } });
+      // Take from the received location first, then the fullest remaining records.
+      const ordered = [...candidates].sort((a, b) => {
+        const aLoc = a.locationCode === line.locationCode ? 1 : 0;
+        const bLoc = b.locationCode === line.locationCode ? 1 : 0;
+        return aLoc !== bLoc ? bLoc - aLoc : b.qty - a.qty;
+      });
+      let remaining = line.recvQty;
+      for (const l of ordered) {
+        if (remaining <= 0) break;
+        const take = Math.min(l.qty, remaining);
+        if (take <= 0) continue;
+        await tx.lot.update({ where: { id: l.id }, data: { qty: { decrement: take } } });
+        remaining -= take;
+      }
     }
 
     // Production receipts also consumed raw materials — add them back exactly.
