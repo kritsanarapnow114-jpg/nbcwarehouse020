@@ -25,6 +25,28 @@ const FONT = "Aptos Narrow";
 
 const money = (v: number) => "฿" + Math.round(v).toLocaleString();
 const num = (v: number) => Math.round(v).toLocaleString();
+// Short axis/label form so shape-drawn bars stay readable (1.2M, 340K).
+const compact = (v: number) => {
+  const a = Math.abs(v);
+  if (a >= 1e6) return (v / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace(/\.0$/, "") + "M";
+  if (a >= 1e3) return Math.round(v / 1e3) + "K";
+  return String(Math.round(v));
+};
+const clamp = (v: number) => Math.max(0, Math.min(100, v));
+const oeeColorHex = (v: number) => (v >= 65 ? TEAL : v >= 45 ? ORANGE : CORAL);
+
+// OEE / Packaging data folded into the combined report (optional — the deck
+// still builds when the period has no production).
+export type DeckOee = {
+  summary: { a: number; p: number; q: number; oee: number; produced: number; loss: number; scoredRuns: number; docs: number };
+  perLine: { name: string; oee: number; a: number; p: number; q: number; output: number; standard: number }[];
+  lossPareto: { loss: string; freq: number; lostMin: number }[];
+  pkgUsed: { name: string; qty: number }[];
+  pkgLoss: { name: string; qty: number }[];
+  repack: number;
+  scrap: number;
+  downtimeMin: number;
+};
 
 // Fetch a same-origin image as a data URL. Never throws — a miss just returns
 // null and that image is skipped, so the export always succeeds.
@@ -47,9 +69,11 @@ async function loadImg(url: string): Promise<string | null> {
 export function ExportDeckButton({
   summary,
   periodLabel,
+  oee,
 }: {
   summary: ExecutiveSummary;
   periodLabel: string;
+  oee?: DeckOee | null;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -63,12 +87,10 @@ export function ExportDeckButton({
       pptx.defineLayout({ name: "WIDE", width: 13.333, height: 7.5 });
       pptx.layout = "WIDE";
       pptx.author = "NBC Warehouse";
-      pptx.title = "NBC Warehouse — Monthly Report";
+      pptx.title = "NBC Warehouse — Combined Report";
       pptx.theme = { headFontFace: FONT, bodyFontFace: FONT };
 
       const W = 13.333;
-      const CT = pptx.ChartType;
-      const cf = { dataLabelFontFace: FONT, catAxisLabelFontFace: FONT, valAxisLabelFontFace: FONT };
       const genDate = new Date().toLocaleDateString("en-GB");
       let page = 0;
 
@@ -124,19 +146,61 @@ export function ExportDeckButton({
         if (title) s.addText(title, { x: x + 0.15, y: y + 0.12, w: w - 0.3, h: 0.34, fontSize: 13, bold: true, color: SLATE, align: "center" });
       };
 
+      // --- Shape-only graphs. Charts (addChart) embed an Excel workbook whose
+      // XML makes PowerPoint prompt to "repair" the file on every open, so the
+      // whole deck draws its graphs with rectangles instead. ---
+
+      // Gauge: big % over a rounded progress bar, inside a titled card.
       const gauge = (s: PptxGenJSLib.Slide, x: number, y: number, w: number, h: number, label: string, pct: number, color = BLUE) => {
         panel(s, x, y, w, h);
-        const p = Math.max(0, Math.min(100, pct));
-        const size = Math.min(w - 0.4, h - 1.0);
-        const cx = x + (w - size) / 2;
-        const cy = y + 0.42;
-        s.addChart(
-          CT.doughnut,
-          [{ name: "g", labels: ["value", "rest"], values: [p, 100 - p] }],
-          { x: cx, y: cy, w: size, h: size, holeSize: 74, chartColors: [color, TRACK], showLegend: false, showTitle: false, ...cf, showValue: false, showPercent: false, dataBorder: { pt: 0, color: PANEL } }
-        );
-        s.addText(`${Math.round(p)}%`, { x: cx, y: cy, w: size, h: size, align: "center", valign: "middle", fontSize: 26, bold: true, color: SLATE });
-        s.addText(label, { x: x + 0.1, y: y + h - 0.54, w: w - 0.2, h: 0.44, fontSize: 12, bold: true, color: SLATE, align: "center", valign: "middle" });
+        const v = clamp(pct);
+        s.addText(`${Math.round(v)}%`, { x: x + 0.1, y: y + 0.42, w: w - 0.2, h: h - 1.5, align: "center", valign: "middle", fontSize: 34, bold: true, color });
+        const barX = x + 0.3, barW = w - 0.6, barY = y + h - 0.86, barH = 0.2;
+        s.addShape("roundRect", { x: barX, y: barY, w: barW, h: barH, rectRadius: 0.1, fill: { color: TRACK } });
+        if (v > 0) s.addShape("roundRect", { x: barX, y: barY, w: Math.max(0.1, (barW * v) / 100), h: barH, rectRadius: 0.1, fill: { color } });
+        s.addText(label, { x: x + 0.1, y: y + h - 0.56, w: w - 0.2, h: 0.44, fontSize: 11.5, bold: true, color: SLATE, align: "center", valign: "middle" });
+      };
+
+      // Vertical column chart drawn with shapes. `fmt` labels each column.
+      const barColumn = (
+        s: PptxGenJSLib.Slide, x: number, y: number, w: number, h: number,
+        labels: string[], values: number[], colors: string[], fmt: (v: number) => string
+      ) => {
+        const n = values.length;
+        if (!n) return;
+        const max = Math.max(1, ...values);
+        const gap = Math.min(0.18, (w * 0.9) / (n * 3));
+        const colW = (w - gap * (n + 1)) / n;
+        const labelH = 0.44;
+        const baseY = y + h - labelH;
+        const chartH = h - labelH - 0.28; // headroom for value text
+        values.forEach((v, i) => {
+          const bx = x + gap + i * (colW + gap);
+          const bh = Math.max(0.03, (v / max) * chartH);
+          s.addShape("roundRect", { x: bx, y: baseY - bh, w: colW, h: bh, rectRadius: 0.03, fill: { color: colors[i % colors.length] } });
+          s.addText(fmt(v), { x: bx - 0.15, y: baseY - bh - 0.26, w: colW + 0.3, h: 0.24, fontSize: 9, bold: true, color: SLATE, align: "center" });
+          s.addText(labels[i], { x: bx - 0.15, y: baseY + 0.03, w: colW + 0.3, h: labelH - 0.03, fontSize: 8.5, color: MUTE, align: "center", valign: "top" });
+        });
+      };
+
+      // Horizontal bar rows drawn with shapes (label · track · value).
+      const barRows = (
+        s: PptxGenJSLib.Slide, x: number, y: number, w: number, h: number,
+        rows: { label: string; pct: number; color: string; valueText: string }[], labelW = 2.2, valW = 1.1
+      ) => {
+        const n = rows.length;
+        if (!n) return;
+        const rowH = Math.min(0.5, h / n);
+        const trackX = x + labelW + 0.1;
+        const trackW = w - labelW - 0.1 - valW;
+        rows.forEach((r, i) => {
+          const ry = y + i * rowH;
+          const cy = ry + rowH / 2;
+          s.addText(r.label, { x, y: ry, w: labelW, h: rowH, fontSize: 10.5, color: SLATE, valign: "middle", fontFace: FONT });
+          s.addShape("roundRect", { x: trackX, y: cy - 0.11, w: trackW, h: 0.22, rectRadius: 0.11, fill: { color: TRACK } });
+          s.addShape("roundRect", { x: trackX, y: cy - 0.11, w: Math.max(0.08, (trackW * clamp(r.pct)) / 100), h: 0.22, rectRadius: 0.11, fill: { color: r.color } });
+          s.addText(r.valueText, { x: trackX + trackW + 0.06, y: ry, w: valW, h: rowH, fontSize: 10.5, bold: true, color: SLATE, valign: "middle", fontFace: FONT });
+        });
       };
 
       const st = summary.stats;
@@ -152,9 +216,9 @@ export function ExportDeckButton({
         t.addShape("roundRect", { x: 0.6, y: 0.55, w: 2.6, h: 1.05, rectRadius: 0.1, fill: { color: "FFFFFF" }, shadow: SHADOW });
         t.addImage({ data: logo, x: 0.82, y: 0.73, w: LOGO_W * 1.55, h: LOGO_H * 1.55 });
       }
-      t.addText("MONTHLY WAREHOUSE REPORT", { x: 0.65, y: 2.35, w: 11, h: 0.4, fontSize: 14, bold: true, color: "CFEFFF", charSpacing: 3 });
+      t.addText("COMBINED WAREHOUSE REPORT", { x: 0.65, y: 2.35, w: 11, h: 0.4, fontSize: 14, bold: true, color: "CFEFFF", charSpacing: 3 });
       t.addText("NBC Warehouse", { x: 0.6, y: 2.8, w: 11.7, h: 1.0, fontSize: 48, bold: true, color: "FFFFFF" });
-      t.addText("Executive Summary · สรุปผู้บริหารคลังสินค้า", { x: 0.63, y: 3.95, w: 11, h: 0.5, fontSize: 20, color: "EAF6FB" });
+      t.addText("รายงานรวมทุกงาน · Inventory · Operations · OEE · Packaging", { x: 0.63, y: 3.95, w: 11.8, h: 0.5, fontSize: 19, color: "EAF6FB" });
       t.addShape("roundRect", { x: 0.65, y: 4.75, w: 5.6, h: 0.52, rectRadius: 0.26, fill: { color: "FFFFFF" } });
       t.addText(`ช่วงข้อมูล (Period):  ${periodLabel}`, { x: 0.65, y: 4.75, w: 5.6, h: 0.52, fontSize: 12, bold: true, color: BLUE, align: "center", valign: "middle" });
       tile(t, 0.65, 5.5, 3.72, 1.45, "Inventory Value (มูลค่าคงเหลือ)", money(st.inventoryValue), BLUE, `${num(st.skuCount)} SKU · ${num(st.lotCount)} lots`, 18, BLUE);
@@ -187,32 +251,35 @@ export function ExportDeckButton({
       const cardW = (CW - 0.18) / 2;
       panel(g, CX, TY[0], cardW, 2.4, "Value by Category (หมวด)");
       if (summary.categories.length)
-        g.addChart(CT.bar, [{ name: "Value", labels: summary.categories.map((c) => c.name.replace(/\s*\(.*\)/, "")), values: summary.categories.map((c) => c.value) }], {
-          x: CX + 0.1, y: TY[0] + 0.5, w: cardW - 0.2, h: 1.8, barDir: "col", chartColors: CATS,
-          showValue: false, showLegend: false, showTitle: false, ...cf,
-          catAxisLabelColor: SLATE, catAxisLabelFontSize: 11, valAxisHidden: true, valGridLine: { style: "dash", color: TRACK, size: 1 }, barGapWidthPct: 40,
-        });
+        barColumn(
+          g, CX + 0.15, TY[0] + 0.52, cardW - 0.3, 1.75,
+          summary.categories.slice(0, 6).map((c) => c.name.replace(/\s*\(.*\)/, "")),
+          summary.categories.slice(0, 6).map((c) => c.value),
+          CATS, (v) => "฿" + compact(v)
+        );
       const bx = CX + cardW + 0.18;
       panel(g, bx, TY[0], cardW, 2.4, "Time-to-Expiry (อายุคงเหลือ)");
       if (summary.expiry.buckets.length) {
         const bColors = summary.expiry.buckets.map((_, i) => (i < 3 ? RED : i === 3 ? AMBER : TEAL));
-        g.addChart(CT.bar, [{ name: "Value", labels: summary.expiry.buckets.map((b) => b.label), values: summary.expiry.buckets.map((b) => b.value) }], {
-          x: bx + 0.1, y: TY[0] + 0.5, w: cardW - 0.2, h: 1.8, barDir: "col", chartColors: bColors,
-          showValue: false, showLegend: false, showTitle: false, ...cf,
-          catAxisLabelColor: SLATE, catAxisLabelFontSize: 11, valAxisHidden: true, valGridLine: { style: "dash", color: TRACK, size: 1 }, barGapWidthPct: 40,
-        });
+        barColumn(
+          g, bx + 0.15, TY[0] + 0.52, cardW - 0.3, 1.75,
+          summary.expiry.buckets.map((b) => b.label),
+          summary.expiry.buckets.map((b) => b.value),
+          bColors, (v) => "฿" + compact(v)
+        );
       }
       const R2Y = 3.82, R2H = 3.16;
       const gaugeW = 1.9;
       const stW = CW - gaugeW * 2 - 0.18 * 2;
       panel(g, CX, R2Y, stW, R2H, "Storage by Zone (พื้นที่)");
       if (summary.storage.zones.length)
-        g.addChart(CT.bar, [{ name: "Utilization %", labels: summary.storage.zones.map((z) => `Zone ${z.name}`), values: summary.storage.zones.map((z) => z.pct) }], {
-          x: CX + 0.12, y: R2Y + 0.5, w: stW - 0.24, h: R2H - 0.65, barDir: "bar", chartColors: [BLUE],
-          showValue: true, dataLabelColor: SLATE, dataLabelFontSize: 13, dataLabelFontBold: true,
-          valAxisMinVal: 0, valAxisMaxVal: 100, valAxisHidden: true, catAxisLabelColor: SLATE, catAxisLabelFontSize: 12,
-          showLegend: false, showTitle: false, ...cf, valGridLine: { style: "dash", color: TRACK, size: 1 }, barGapWidthPct: 45,
-        });
+        barRows(
+          g, CX + 0.18, R2Y + 0.62, stW - 0.36, R2H - 0.8,
+          summary.storage.zones.map((z) => ({
+            label: `Zone ${z.name}`, pct: z.pct, color: z.pct >= 85 ? CORAL : z.pct >= 60 ? ORANGE : BLUE, valueText: `${Math.round(z.pct)}%`,
+          })),
+          1.7, 0.8
+        );
       gauge(g, CX + stW + 0.18, R2Y, gaugeW, R2H, "Production Yield (ผลิต)", d.production.yieldPct, TEAL);
       gauge(g, CX + stW + 0.18 + gaugeW + 0.18, R2Y, gaugeW, R2H, "Count Accuracy (นับสต็อก)", d.count.accuracyPct, BLUE);
 
@@ -404,7 +471,100 @@ export function ExportDeckButton({
         BLUE
       );
 
-      await pptx.writeFile({ fileName: `NBC-Warehouse-Monthly-Report-${genDate.replace(/\//g, "-")}.pptx` });
+      // ================= SECTION 03: OEE & Packaging =================
+      if (oee && (oee.summary.docs > 0 || oee.perLine.length > 0 || oee.pkgUsed.length > 0 || oee.pkgLoss.length > 0)) {
+        const o = oee;
+
+        // ---- Divider ----
+        const dv3 = pptx.addSlide();
+        dv3.background = { color: TEAL };
+        dv3.addShape("ellipse", { x: 9.6, y: -1.8, w: 5.6, h: 5.6, fill: { color: CYAN, transparency: 64 } });
+        dv3.addShape("ellipse", { x: 11.2, y: 3.2, w: 4.4, h: 4.4, fill: { color: BLUE, transparency: 72 } });
+        dv3.addShape("rect", { x: 0.8, y: 3.05, w: 0.9, h: 0.09, fill: { color: "FFFFFF" } });
+        dv3.addText("SECTION 03", { x: 0.8, y: 2.5, w: 10, h: 0.4, fontSize: 14, bold: true, color: "CFEFFF", charSpacing: 3 });
+        dv3.addText("OEE & Packaging", { x: 0.78, y: 3.25, w: 11.5, h: 0.9, fontSize: 46, bold: true, color: "FFFFFF" });
+        dv3.addText("ประสิทธิผลการผลิต · A × P × Q · Downtime · บรรจุภัณฑ์ใช้ไป vs เสีย", { x: 0.8, y: 4.35, w: 11.8, h: 0.5, fontSize: 16, color: "EAF6FB" });
+        if (logo) {
+          dv3.addShape("roundRect", { x: W - 0.5 - 2.3, y: 0.4, w: 2.3, h: 0.92, rectRadius: 0.1, fill: { color: "FFFFFF" }, shadow: SHADOW });
+          dv3.addImage({ data: logo, x: W - 0.5 - 2.3 + 0.2, y: 0.56, w: LOGO_W, h: LOGO_H });
+        }
+
+        // ---- OEE overview: 4 gauges + tiles ----
+        const os = newSlide("OEE Overview", "ภาพรวมประสิทธิผล · A × P × Q", 3, TEAL);
+        const gy = 1.7, gh = 2.7, gw = (12.33 - 0.36) / 4;
+        gauge(os, 0.5, gy, gw, gh, "Availability", o.summary.a, BLUE);
+        gauge(os, 0.5 + (gw + 0.12), gy, gw, gh, "Performance", o.summary.p, ORANGE);
+        gauge(os, 0.5 + (gw + 0.12) * 2, gy, gw, gh, "Quality", o.summary.q, TEAL);
+        gauge(os, 0.5 + (gw + 0.12) * 3, gy, gw, gh, "OEE", o.summary.oee, oeeColorHex(o.summary.oee));
+        const oy = gy + gh + 0.3, otH = 1.5, otW = (12.33 - 0.6) / 6;
+        const otX = (i: number) => 0.5 + i * (otW + 0.12);
+        tile(os, otX(0), oy, otW, otH, "รอบที่วัด OEE", `${num(o.summary.scoredRuns)}/${num(o.summary.docs)}`, INK, "runs / docs", 20, BLUE);
+        tile(os, otX(1), oy, otW, otH, "ผลิตได้", num(o.summary.produced), TEAL, "units", 20, TEAL);
+        tile(os, otX(2), oy, otW, otH, "ของเสีย", num(o.summary.loss), CORAL, "units", 20, CORAL);
+        tile(os, otX(3), oy, otW, otH, "Downtime รวม", num(o.downtimeMin), SLATE, "นาที (min)", 20, SLATE);
+        tile(os, otX(4), oy, otW, otH, "Repack", num(o.repack), ORANGE, "units", 20, ORANGE);
+        tile(os, otX(5), oy, otW, otH, "Scrap", num(o.scrap), CORAL, "units", 20, CORAL);
+
+        // ---- OEE by line ----
+        if (o.perLine.length) {
+          tableSlide(
+            "OEE by Line", "OEE แยกตามสายผลิต", 3,
+            ["สายผลิต (Line)", "A%", "P%", "Q%", "OEE%", "Output", "Std (u/hr)"],
+            o.perLine.map((l) => [
+              l.name || "-", `${l.a}`, `${l.p}`, `${l.q}`, `${l.oee}`, num(l.output), l.standard ? num(l.standard) : "—",
+            ]),
+            [3.2, 1, 1, 1, 1.2, 1.6, 1.6],
+            `${o.perLine.length} สายผลิต · OEE รวม ${o.summary.oee}%`,
+            TEAL
+          );
+        }
+
+        // ---- Downtime Pareto (shape bars) ----
+        const pareto = [...o.lossPareto].sort((a, b) => b.lostMin - a.lostMin).slice(0, 8);
+        const dp = newSlide("Downtime Pareto", "สาเหตุที่ทำให้เสียเวลามากที่สุด", 3, ORANGE);
+        if (pareto.length) {
+          const maxMin = Math.max(1, ...pareto.map((r) => r.lostMin));
+          const panelH = 0.6 + pareto.length * 0.5 + 0.2;
+          panel(dp, 0.5, 1.75, 12.33, panelH, "เสียเวลา (นาที) ต่อสาเหตุ — Lost minutes by cause");
+          barRows(
+            dp, 0.7, 2.35, 11.93, pareto.length * 0.5,
+            pareto.map((r) => ({
+              label: r.loss || "-", pct: (r.lostMin / maxMin) * 100, color: ORANGE, valueText: `${num(r.lostMin)} น.`,
+            })),
+            4.2, 1.3
+          );
+        } else {
+          dp.addText("— ไม่มี Downtime ที่บันทึกไว้ในช่วงนี้ —", { x: 0.5, y: 3.2, w: 12.33, h: 0.5, fontSize: 14, italic: true, color: MUTE, align: "center", fontFace: FONT });
+        }
+
+        // ---- Packaging — used vs loss ----
+        const names = Array.from(new Set([...o.pkgUsed.map((m) => m.name), ...o.pkgLoss.map((m) => m.name)]));
+        const usedBy = new Map(o.pkgUsed.map((m) => [m.name, m.qty]));
+        const lossBy = new Map(o.pkgLoss.map((m) => [m.name, m.qty]));
+        const pkgRows = names
+          .map((name) => {
+            const used = usedBy.get(name) ?? 0;
+            const lost = lossBy.get(name) ?? 0;
+            const lossPct = used > 0 ? (lost / used) * 100 : lost > 0 ? 100 : 0;
+            return { name, used, lost, lossPct };
+          })
+          .sort((a, b) => b.used - a.used)
+          .map((r) => [
+            r.name || "-", num(r.used), num(r.lost), `${r.lossPct.toFixed(1)}%`,
+          ]);
+        const usedTotal = o.pkgUsed.reduce((s, m) => s + m.qty, 0);
+        const lossTotal = o.pkgLoss.reduce((s, m) => s + m.qty, 0);
+        tableSlide(
+          "Packaging (บรรจุภัณฑ์)", "ใช้ไป vs เสีย · ต่อวัสดุ (used vs loss)", 3,
+          ["วัสดุ (Material)", "ใช้ไป (Used)", "เสีย (Loss)", "% เสีย"],
+          pkgRows,
+          [4.6, 2.4, 2.4, 1.6],
+          `ใช้ไปรวม ${num(usedTotal)} · เสียรวม ${num(lossTotal)}${usedTotal > 0 ? ` (${((lossTotal / usedTotal) * 100).toFixed(1)}%)` : ""}`,
+          TEAL
+        );
+      }
+
+      await pptx.writeFile({ fileName: `NBC-Warehouse-Combined-Report-${genDate.replace(/\//g, "-")}.pptx` });
     } finally {
       setBusy(false);
     }
@@ -416,7 +576,7 @@ export function ExportDeckButton({
       disabled={busy}
       className="flex items-center gap-1.5 rounded-[8px] border border-[#16a6bf] bg-[#e8f2fb] px-3.5 py-2 text-[12.5px] font-semibold text-[#0c7f93] disabled:opacity-60"
     >
-      {busy ? "กำลังสร้าง…" : "⬇ Export PowerPoint (สรุปเป็นสไลด์)"}
+      {busy ? "กำลังสร้าง…" : "⬇ Export Report รวม (PowerPoint · ทุกอย่าง+กราฟ)"}
     </button>
   );
 }
