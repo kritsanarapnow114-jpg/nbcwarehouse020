@@ -42,7 +42,23 @@ export async function confirmTransferAction(input: ConfirmTransferInput) {
       });
 
       if (line.qty === lot.qty) {
-        await tx.lot.update({ where: { id: lot.id }, data: { locationCode: line.toLocationCode } });
+        // Moving the whole lot. If the destination bin already holds a record of
+        // the same product+lot, merge into it (drain this record) instead of just
+        // relocating — otherwise the bin ends up with two records for one lot.
+        const existing = await tx.lot.findFirst({
+          where: {
+            productCode: lot.productCode,
+            locationCode: line.toLocationCode,
+            lotNo: lot.lotNo,
+            id: { not: lot.id },
+          },
+        });
+        if (existing) {
+          await tx.lot.update({ where: { id: existing.id }, data: { qty: { increment: line.qty } } });
+          await tx.lot.update({ where: { id: lot.id }, data: { qty: 0 } });
+        } else {
+          await tx.lot.update({ where: { id: lot.id }, data: { locationCode: line.toLocationCode } });
+        }
       } else {
         await tx.lot.update({ where: { id: lot.id }, data: { qty: { decrement: line.qty } } });
         const existing = await tx.lot.findFirst({
