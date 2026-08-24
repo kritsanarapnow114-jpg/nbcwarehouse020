@@ -5,9 +5,10 @@ import { PeriodSelector } from "@/components/ui/PeriodSelector";
 import { resolvePeriod } from "@/lib/calc/period";
 import { getReportData, getReportProductOptions } from "@/lib/views/reports";
 import { getExecutiveSummary } from "@/lib/views/summary";
+import { getOeeDashboard } from "@/lib/views/oee";
 import { ReportsStockCard } from "./ReportsStockCard";
 import { ReportRunner } from "./ReportRunner";
-import { ExportDeckButton } from "./ExportDeckButton";
+import { ExportDeckButton, type DeckOee } from "./ExportDeckButton";
 
 export default async function ReportsPage({
   searchParams,
@@ -17,10 +18,11 @@ export default async function ReportsPage({
   const params = await searchParams;
   const { mode, range, dateStr, startStr, endStr } = resolvePeriod(params);
 
-  const [data, products, summary] = await Promise.all([
+  const [data, products, summary, oeeDash] = await Promise.all([
     getReportData(range),
     getReportProductOptions(),
     getExecutiveSummary(range),
+    getOeeDashboard(range),
   ]);
 
   const periodLabel =
@@ -28,12 +30,33 @@ export default async function ReportsPage({
       ? "ทั้งหมด (All time)"
       : `${fmtDateBE(range.start)} – ${fmtDateBE(range.end)}`;
 
+  // OEE + Packaging folded into the combined deck.
+  const oee: DeckOee = {
+    summary: {
+      a: oeeDash.production.a,
+      p: oeeDash.production.p,
+      q: oeeDash.production.q,
+      oee: oeeDash.production.oee,
+      produced: oeeDash.production.produced,
+      loss: oeeDash.production.loss,
+      scoredRuns: oeeDash.production.scoredRuns,
+      docs: oeeDash.production.docs,
+    },
+    perLine: oeeDash.production.perLine,
+    lossPareto: oeeDash.captured.lossPareto,
+    pkgUsed: oeeDash.packagingUsed.byMaterial,
+    pkgLoss: oeeDash.packagingLoss.byMaterial,
+    repack: oeeDash.captured.repack,
+    scrap: oeeDash.captured.scrap,
+    downtimeMin: oeeDash.productionRuns.reduce((s, r) => s + r.downtimeMin, 0),
+  };
+
   return (
     <div className="max-w-[1280px] p-[24px_26px]">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <PeriodSelector basePath="/reports" mode={mode} date={dateStr} start={startStr} end={endStr} />
         <div className="flex-1" />
-        <ExportDeckButton summary={summary} periodLabel={periodLabel} />
+        <ExportDeckButton summary={summary} periodLabel={periodLabel} oee={oee} />
       </div>
 
       <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
