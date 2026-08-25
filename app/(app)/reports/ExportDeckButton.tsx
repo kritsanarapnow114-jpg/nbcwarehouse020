@@ -40,6 +40,7 @@ const oeeColorHex = (v: number) => (v >= 65 ? TEAL : v >= 45 ? ORANGE : CORAL);
 export type DeckOee = {
   summary: { a: number; p: number; q: number; oee: number; produced: number; loss: number; scoredRuns: number; docs: number };
   perLine: { name: string; oee: number; a: number; p: number; q: number; output: number; standard: number }[];
+  perShift: { name: string; oee: number; a: number; p: number; q: number; produced: number; loss: number; output: number; downtimeMin: number; runs: number }[];
   lossPareto: { loss: string; freq: number; lostMin: number }[];
   pkgUsed: { name: string; qty: number }[];
   pkgLoss: { name: string; qty: number }[];
@@ -516,6 +517,21 @@ export function ExportDeckButton({
             [3.2, 1, 1, 1, 1.2, 1.6, 1.6],
             `${o.perLine.length} สายผลิต · OEE รวม ${o.summary.oee}%`,
             TEAL
+          );
+        }
+
+        // ---- OEE by shift (กะ) ----
+        if (o.perShift.length) {
+          tableSlide(
+            "OEE by Shift", "OEE แยกตามกะ (per shift)", 3,
+            ["กะ (Shift)", "รอบ", "A%", "P%", "Q%", "OEE%", "ผลิต", "ของเสีย", "Downtime"],
+            o.perShift.map((sft) => [
+              sft.name || "-", num(sft.runs), `${sft.a}`, `${sft.p}`, `${sft.q}`, `${sft.oee}`,
+              num(sft.produced), num(sft.loss), `${num(sft.downtimeMin)} น.`,
+            ]),
+            [3.0, 0.9, 1, 1, 1, 1.2, 1.4, 1.4, 1.4],
+            `${o.perShift.length} กะ · OEE รวม ${o.summary.oee}%`,
+            BLUE
           );
         }
 

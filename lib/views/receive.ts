@@ -7,6 +7,8 @@ import { getAppSetting } from "@/lib/views/settings";
 import {
   BOM_SOURCE_KEY,
   PROD_LINES_KEY,
+  PROD_SHIFTS_KEY,
+  PROD_SHIFTS_DEFAULTS,
   OEE_STANDARDS_KEY,
   OEE_DOWNTIME_REASONS_KEY,
   parseList,
@@ -40,14 +42,17 @@ export async function getReceiveFormData() {
   ];
   // If a BOM source location is configured (e.g. the packing line), only those
   // bins' stock is eligible to be consumed by production.
-  const [bomSourceRaw, prodLinesRaw, oeeStdRaw, downtimeReasonsRaw] = await Promise.all([
+  const [bomSourceRaw, prodLinesRaw, prodShiftsRaw, oeeStdRaw, downtimeReasonsRaw] = await Promise.all([
     getAppSetting(BOM_SOURCE_KEY),
     getAppSetting(PROD_LINES_KEY),
+    getAppSetting(PROD_SHIFTS_KEY),
     getAppSetting(OEE_STANDARDS_KEY),
     getAppSetting(OEE_DOWNTIME_REASONS_KEY),
   ]);
   const bomSource = parseList(bomSourceRaw);
   const prodLines = parseList(prodLinesRaw);
+  // Shifts fall back to the built-in default set when none configured yet.
+  const prodShifts = prodShiftsRaw != null && parseList(prodShiftsRaw).length > 0 ? parseList(prodShiftsRaw) : PROD_SHIFTS_DEFAULTS;
   const oeeStandards = parseOeeStandards(oeeStdRaw);
   const downtimeReasons = parseDowntimeReasons(downtimeReasonsRaw);
   const materialLots = await db.lot.findMany({
@@ -114,6 +119,7 @@ export async function getReceiveFormData() {
     lotOptions: lots.map((l) => l.lotNo).filter((l) => l !== "-"),
     lotMeta,
     prodLines,
+    prodShifts,
     oeeStandards,
     downtimeReasons,
     boms: bomsRaw.map((b) => ({

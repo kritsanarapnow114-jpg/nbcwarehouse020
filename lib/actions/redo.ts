@@ -54,6 +54,7 @@ export async function getRedoTemplateAction(
         prodMfg: isProd && first?.mfgDate ? fmtDateISO(first.mfgDate) : "",
         prodExp: isProd && first?.expDate ? fmtDateISO(first.expDate) : "",
         oeeLine: r.oeeLine ?? "",
+        shift: r.shift ?? "",
         plannedMin: r.plannedMin != null ? String(r.plannedMin) : "",
         breakMin: r.breakMin != null ? String(r.breakMin) : "",
         lines: r.lines.map((l) => ({

@@ -16,10 +16,13 @@ const sm = "rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[12px] outlin
  *  Controlled: the parent owns the values so they flow into the receipt payload. */
 export function OeeProdCapture({
   prodLines,
+  prodShifts,
   standards,
   downtimeReasons,
   line,
   onLine,
+  shift,
+  onShift,
   plannedMin,
   onPlannedMin,
   breakMin,
@@ -37,10 +40,13 @@ export function OeeProdCapture({
   lossValue,
 }: {
   prodLines: string[];
+  prodShifts: string[];
   standards: Record<string, number>;
   downtimeReasons: DowntimeReasonDef[];
   line: string;
   onLine: (v: string) => void;
+  shift: string;
+  onShift: (v: string) => void;
   plannedMin: string;
   onPlannedMin: (v: string) => void;
   breakMin: string;
@@ -122,6 +128,16 @@ export function OeeProdCapture({
             เวลา + downtime (ใคร/ฝ่ายไหน) + repack/scrap · Quality loss ดึงจากการ์ด BOM ให้เอง
           </div>
         </div>
+        {/* Shift (กะ) — always selectable so every run is tagged. */}
+        <label className="flex items-center gap-2" title="กะการผลิต — ตั้งรายการได้ที่ Settings">
+          <span className="text-[11.5px] font-medium text-[#69748a]">กะ</span>
+          <select value={shift} onChange={(e) => onShift(e.target.value)} className={`${inputCls} min-w-[150px]`}>
+            <option value="">— เลือกกะ —</option>
+            {prodShifts.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </label>
         {prodLines.length === 1 ? (
           // Only one line — fixed, no need to choose.
           <span className="rounded-[8px] bg-[#e9f6ee] px-3 py-1.5 text-[13px] font-semibold text-[#1f9d63]">
