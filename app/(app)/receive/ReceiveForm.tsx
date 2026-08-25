@@ -620,7 +620,8 @@ export function ReceiveForm({
                           value={l.su}
                           onChange={(e) => updateLine(i, { su: e.target.value })}
                           placeholder="SU"
-                          className="font-num w-[80px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[13px] font-semibold text-[#8a6d1f]"
+                          maxLength={10}
+                          className="font-num w-[120px] rounded-[7px] border border-[#d7dce4] px-2 py-1.5 text-[13px] font-semibold text-[#8a6d1f]"
                         />
                       </td>
                       <td className="p-[11px_16px] text-right">
