@@ -59,6 +59,7 @@ export default async function OeePage({
           runs={d.productionRuns}
           summary={d.production}
           perLine={d.production.perLine}
+          perShift={d.production.perShift}
           lossPareto={d.captured.lossPareto}
           repack={d.captured.repack}
           scrap={d.captured.scrap}
@@ -381,6 +382,41 @@ export default async function OeePage({
                   <span className="text-[10.5px] text-[#9aa4b4]">
                     {m.output.toLocaleString()} kg · มาตรฐาน{" "}
                     {m.standard ? `${m.standard.toLocaleString()} kg/ชม.` : "ยังไม่ตั้ง"}
+                  </span>
+                  <span
+                    className="font-num w-11 text-right text-[13px] font-bold"
+                    style={{ color: oeeColor(m.oee) }}
+                  >
+                    {m.oee}%
+                  </span>
+                </div>
+                <div className="h-[10px] overflow-hidden rounded-[6px] bg-[#eef1f5]">
+                  <div
+                    className="h-full rounded-[6px]"
+                    style={{ width: `${m.oee}%`, background: oeeColor(m.oee) }}
+                  />
+                </div>
+                <div className="mt-1 flex gap-3 text-[10.5px] text-[#9aa4b4]">
+                  <span>A {m.a}%</span>
+                  <span>P {m.p}%</span>
+                  <span>Q {m.q}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {d.production.hasOee && d.production.perShift.length > 0 && (
+        <Card className="mb-4">
+          <CardTitle>OEE รายกะ (Per shift)</CardTitle>
+          <div className="flex flex-col gap-3.5">
+            {d.production.perShift.map((m) => (
+              <div key={m.name}>
+                <div className="mb-1 flex items-baseline gap-2">
+                  <span className="flex-1 text-[12.5px] font-medium">{m.name}</span>
+                  <span className="text-[10.5px] text-[#9aa4b4]">
+                    {m.runs} รอบ · ผลิต {m.produced.toLocaleString()} · ของเสีย {m.loss.toLocaleString()} · DT {m.downtimeMin.toLocaleString()} น.
                   </span>
                   <span
                     className="font-num w-11 text-right text-[13px] font-bold"

@@ -15,6 +15,7 @@ export type OeeRunRow = {
   matDoc: string;
   day: string; // yyyy-mm-dd
   line: string;
+  shift: string;
   a: number;
   p: number;
   q: number;
@@ -45,6 +46,7 @@ export type OeeDeckSummary = {
 };
 
 export type OeeLineRow = { name: string; oee: number; a: number; p: number; q: number; output: number; standard: number };
+export type OeeShiftRow = { name: string; oee: number; a: number; p: number; q: number; produced: number; loss: number; output: number; downtimeMin: number; runs: number };
 export type OeeLossRow = { loss: string; freq: number; lostMin: number };
 export type PkgRow = { name: string; qty: number };
 
@@ -91,6 +93,7 @@ export function OeeDeckButton({
   runs,
   summary,
   perLine,
+  perShift,
   lossPareto,
   repack,
   scrap,
@@ -101,6 +104,7 @@ export function OeeDeckButton({
   runs: OeeRunRow[];
   summary: OeeDeckSummary;
   perLine: OeeLineRow[];
+  perShift: OeeShiftRow[];
   lossPareto: OeeLossRow[];
   repack: number;
   scrap: number;
@@ -281,6 +285,27 @@ export function OeeDeckButton({
         TEAL
       );
 
+      // ============ OEE by shift (กะ) ============
+      if (perShift.length > 0) {
+        tableSlide(
+          "OEE by Shift", "OEE แยกตามกะ (per shift)",
+          ["กะ (Shift)", "รอบ", "A%", "P%", "Q%", "OEE%", "ผลิต", "ของเสีย", "Downtime"],
+          ["left", "center", "center", "center", "center", "center", "right", "right", "right"],
+          [3.0, 0.9, 1, 1, 1, 1.2, 1.4, 1.4, 1.4],
+          perShift.map((sft) => [
+            { v: sft.name || "-", bold: true },
+            { v: num(sft.runs), align: "center" as Align, color: MUTE },
+            { v: `${sft.a}`, color: BLUE }, { v: `${sft.p}`, color: ORANGE }, { v: `${sft.q}`, color: TEAL },
+            { v: `${sft.oee}`, color: oeeColorHex(sft.oee), bold: true },
+            { v: num(sft.produced), align: "right" as Align },
+            { v: num(sft.loss), align: "right" as Align, color: sft.loss > 0 ? CORAL : INK },
+            { v: `${num(sft.downtimeMin)} น.`, align: "right" as Align, color: sft.downtimeMin > 0 ? ORANGE : INK },
+          ]),
+          `${perShift.length} กะ · OEE รวม ${summary.oee}%`,
+          BLUE
+        );
+      }
+
       // ============ Slide 4: Downtime Pareto ============
       const pareto = [...lossPareto].sort((a, b) => b.lostMin - a.lostMin);
       const s4 = newSlide("Downtime Pareto", "สาเหตุที่ทำให้เสียเวลามากที่สุด");
@@ -340,9 +365,9 @@ export function OeeDeckButton({
       for (const r of runs) { const arr = byDay.get(r.day) ?? []; arr.push(r); byDay.set(r.day, arr); }
       const days = [...byDay.keys()].sort((a, b) => b.localeCompare(a));
 
-      const rHeaders = ["รอบ", "Doc No", "Line", "Plan", "DT", "A%", "P%", "Q%", "OEE%", "ผลิต", "ของเสีย"];
-      const rAligns: Align[] = ["center", "left", "left", "right", "right", "center", "center", "center", "center", "right", "right"];
-      const rWeights = [0.8, 1.9, 1.8, 1, 0.9, 0.9, 0.9, 0.9, 1.05, 1.15, 1.1];
+      const rHeaders = ["รอบ", "Doc No", "Line", "กะ", "Plan", "DT", "A%", "P%", "Q%", "OEE%", "ผลิต", "ของเสีย"];
+      const rAligns: Align[] = ["center", "left", "left", "left", "right", "right", "center", "center", "center", "center", "right", "right"];
+      const rWeights = [0.7, 1.7, 1.5, 1.5, 0.9, 0.85, 0.85, 0.85, 0.85, 1.0, 1.05, 1.0];
       const totalW = 12.33; const wsum = rWeights.reduce((a, b) => a + b, 0); const colW = rWeights.map((wt) => (wt / wsum) * totalW);
 
       for (const day of days) {
@@ -369,6 +394,7 @@ export function OeeDeckButton({
               { v: String(roundNo), align: "center", bold: true },
               { v: r.doc, align: "left", color: SLATE },
               { v: r.line || "-", align: "left" },
+              { v: r.shift || "—", align: "left", color: r.shift ? INK : MUTE },
               { v: num(r.plannedMin), align: "right" },
               { v: num(r.downtimeMin), align: "right", color: r.downtimeMin > 0 ? ORANGE : INK },
               { v: `${r.a}`, align: "center", color: BLUE },

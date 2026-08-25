@@ -42,6 +42,7 @@ export type ConfirmReceiptInput = {
   // OEE capture (PRODUCTION only): line/machine, planned+break minutes, downtime
   // (with responsible function), quality-loss breakdown and repack/scrap.
   oeeLine?: string | null;
+  shift?: string | null;
   plannedMin?: number | null;
   breakMin?: number | null;
   downtime?: { minutes: number; reason: string; category?: string; owner?: string; detail?: string }[];
@@ -99,6 +100,7 @@ export async function confirmReceiptAction(
         prodLoss: input.mode === "PRODUCTION" ? input.prodLoss ?? 0 : null,
         // OEE capture only applies to production runs.
         oeeLine: isProduction ? input.oeeLine?.trim() || null : null,
+        shift: isProduction ? input.shift?.trim() || null : null,
         plannedMin: isProduction && input.oeeLine ? input.plannedMin ?? null : null,
         breakMin: isProduction && input.oeeLine ? input.breakMin ?? null : null,
         downtime:

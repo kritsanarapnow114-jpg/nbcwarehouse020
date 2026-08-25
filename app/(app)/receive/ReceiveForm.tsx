@@ -65,6 +65,7 @@ export function ReceiveForm({
 
   // OEE capture (production only) — line "" means "don't score this run".
   const [oeeLine, setOeeLine] = useState("");
+  const [oeeShift, setOeeShift] = useState("");
   const [oeePlannedMin, setOeePlannedMin] = useState("");
   const [oeeBreakMin, setOeeBreakMin] = useState("");
   const [oeeDowntimes, setOeeDowntimes] = useState<ProdDowntime[]>([]);
@@ -84,6 +85,7 @@ export function ReceiveForm({
       prodMfg?: string;
       prodExp?: string;
       oeeLine?: string;
+      shift?: string;
       plannedMin?: string;
       breakMin?: string;
       lines: Omit<Line, "name" | "unit">[];
@@ -98,6 +100,7 @@ export function ReceiveForm({
     if (p.prodMfg) setProdMfg(p.prodMfg);
     if (p.prodExp) setProdExp(p.prodExp);
     if (p.oeeLine) setOeeLine(p.oeeLine);
+    if (p.shift) setOeeShift(p.shift);
     if (p.plannedMin) setOeePlannedMin(p.plannedMin);
     if (p.breakMin) setOeeBreakMin(p.breakMin);
     setLines(
@@ -338,6 +341,7 @@ export function ReceiveForm({
           ? bom.lines.filter((m) => bomExclude[m.id]).map((m) => m.id)
           : undefined,
       oeeLine: mode === "PRODUCTION" ? oeeLine || null : null,
+      shift: mode === "PRODUCTION" ? oeeShift || null : null,
       plannedMin: mode === "PRODUCTION" && oeeLine ? Number(oeePlannedMin) || 0 : null,
       breakMin: mode === "PRODUCTION" && oeeLine ? Number(oeeBreakMin) || 0 : null,
       downtime: mode === "PRODUCTION" && oeeLine ? oeeDowntimes : undefined,
@@ -929,10 +933,13 @@ export function ReceiveForm({
       {mode === "PRODUCTION" && (
         <OeeProdCapture
           prodLines={data.prodLines}
+          prodShifts={data.prodShifts}
           standards={data.oeeStandards}
           downtimeReasons={data.downtimeReasons}
           line={oeeLine}
           onLine={setOeeLine}
+          shift={oeeShift}
+          onShift={setOeeShift}
           plannedMin={oeePlannedMin}
           onPlannedMin={setOeePlannedMin}
           breakMin={oeeBreakMin}

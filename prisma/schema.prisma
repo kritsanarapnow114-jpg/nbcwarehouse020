@@ -270,6 +270,7 @@ model Receipt {
   // and breaks (minutes), and downtime events (JSON [{minutes, reason}]). Feeds
   // Availability & Performance on the OEE dashboard. See lib/calc/oee.ts.
   oeeLine    String? // production line / machine name (from Settings list)
+  shift      String? // production shift (กะ) this run was worked, e.g. "กะ A (เช้า)"
   plannedMin Int? // planned operating time this run (min), net of breaks
   breakMin   Int? // scheduled break within the shift (min), informational
   downtime   Json? // [{ minutes, reason, category?, owner? }] — feeds Loss Pareto

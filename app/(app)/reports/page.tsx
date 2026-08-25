@@ -43,6 +43,7 @@ export default async function ReportsPage({
       docs: oeeDash.production.docs,
     },
     perLine: oeeDash.production.perLine,
+    perShift: oeeDash.production.perShift,
     lossPareto: oeeDash.captured.lossPareto,
     pkgUsed: oeeDash.packagingUsed.byMaterial,
     pkgLoss: oeeDash.packagingLoss.byMaterial,

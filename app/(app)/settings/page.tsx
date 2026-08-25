@@ -19,6 +19,7 @@ import {
   OPERATORS_KEY,
   BOM_SOURCE_KEY,
   PROD_LINES_KEY,
+  PROD_SHIFTS_KEY,
   OEE_STANDARDS_KEY,
   OEE_REPORT_KEY,
   OEE_DOWNTIME_REASONS_KEY,
@@ -65,6 +66,7 @@ export default async function SettingsPage() {
           operators={settings[OPERATORS_KEY] ?? ""}
           bomSource={settings[BOM_SOURCE_KEY] ?? ""}
           prodLines={settings[PROD_LINES_KEY] ?? ""}
+          prodShifts={settings[PROD_SHIFTS_KEY] ?? ""}
         />
       </div>
       <div className="mt-4">

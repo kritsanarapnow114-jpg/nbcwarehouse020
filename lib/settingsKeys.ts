@@ -17,6 +17,10 @@ export const ISSUE_TO_KEY = "list.issueTo"; // Issue → "จ่ายไปท�
 export const OPERATORS_KEY = "list.operators"; // Transfer → "ผู้ปฏิบัติงาน" options
 export const BOM_SOURCE_KEY = "list.bomSource"; // BOM consumes materials only from these location codes (empty = anywhere)
 export const PROD_LINES_KEY = "list.prodLines"; // Production lines/machines offered on the Pack Order OEE capture
+export const PROD_SHIFTS_KEY = "list.prodShifts"; // Production shifts (กะ) offered on the Pack Order OEE capture
+
+/** Default production shifts — editable on the Settings page. */
+export const PROD_SHIFTS_DEFAULTS = ["กะ A (เช้า)", "กะ B (บ่าย)", "กะ C (ดึก)"];
 
 export const ISSUE_TO_DEFAULTS = [
   "PRODUCTION-AREA110",

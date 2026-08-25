@@ -53,6 +53,7 @@ export async function getOeeDashboard(range: Range) {
         producedTotal: true,
         prodLoss: true,
         oeeLine: true,
+        shift: true,
         plannedMin: true,
         breakMin: true,
         downtime: true,
@@ -336,6 +337,7 @@ export async function getOeeDashboard(range: Range) {
         matDoc: r.materialDoc ?? "",
         day: fmtDateISO(new Date(Date.UTC(r.docDate.getUTCFullYear(), r.docDate.getUTCMonth(), r.docDate.getUTCDate()))),
         line: r.oeeLine as string,
+        shift: r.shift ?? "",
         a: pct(parts.availability),
         p: pct(parts.performance),
         q: pct(qf),
@@ -423,6 +425,59 @@ export async function getOeeDashboard(range: Range) {
     })
     .sort((x, y) => x.oee - y.oee);
 
+  // Per-shift (กะ) OEE breakdown — same math as per-line, grouped by the shift
+  // tagged on each Pack Order. Runs with no shift fall under "ไม่ระบุกะ".
+  type ShiftAgg = typeof prodPool & { downtimeMin: number };
+  const NO_SHIFT = "ไม่ระบุกะ";
+  const shiftMap = new Map<string, ShiftAgg>();
+  for (const r of scored) {
+    const key = (r.shift ?? "").trim() || NO_SHIFT;
+    const p = shiftMap.get(key) ?? { plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0, gv: 0, lv: 0, downtimeMin: 0 };
+    const planned = r.plannedMin ?? 0;
+    const dt = dtMinutes(r.downtime);
+    const run = Math.max(0, planned - dt);
+    p.plannedMin += planned;
+    p.runMin += run;
+    p.idealHrOutput += (standards[r.oeeLine as string] ?? 0) * (run / 60);
+    p.good += r.producedTotal ?? 0;
+    p.reject += r.prodLoss ?? 0;
+    p.gv += receiptGoodValue(r);
+    p.lv += receiptLossValue(r);
+    p.downtimeMin += dt;
+    shiftMap.set(key, p);
+  }
+  // How many runs each shift had (for the report's "runs" column).
+  const shiftRuns = new Map<string, number>();
+  for (const r of scored) {
+    const key = (r.shift ?? "").trim() || NO_SHIFT;
+    shiftRuns.set(key, (shiftRuns.get(key) ?? 0) + 1);
+  }
+  const prodPerShift = [...shiftMap.entries()]
+    .map(([name, p]) => {
+      const parts = scoreProduction({
+        plannedMin: p.plannedMin,
+        downtimeMin: p.plannedMin - p.runMin,
+        good: p.good,
+        reject: p.reject,
+        standardPerHour: p.runMin > 0 ? p.idealHrOutput / (p.runMin / 60) : 0,
+      });
+      const qf = valueQuality(p.gv, p.lv);
+      const oeeF = parts.availability * parts.performance * qf;
+      return {
+        name,
+        oee: pct(oeeF),
+        a: pct(parts.availability),
+        p: pct(parts.performance),
+        q: pct(qf),
+        produced: Math.round(p.good),
+        loss: Math.round(p.reject),
+        output: Math.round(p.good + p.reject),
+        downtimeMin: Math.round(p.downtimeMin),
+        runs: shiftRuns.get(name) ?? 0,
+      };
+    })
+    .sort((x, y) => y.oee - x.oee);
+
   // ---- Captured-at-source analytics (from the Pack Order OEE card) ---------
   const lossAggMap = new Map<
     string,
@@ -503,6 +558,7 @@ export async function getOeeDashboard(range: Range) {
       q: pct(prodQ),
       oee: pct(prodOeeF),
       perLine: prodPerLine,
+      perShift: prodPerShift,
     },
     standards,
   };
