@@ -448,7 +448,7 @@ export default async function OeePage({
           <CardTitle>
             OEE ต่อกะ ต่อวัน (Per shift · per day)
             <span className="ml-2 rounded-[5px] bg-[#eef6ff] px-2 py-0.5 text-[10px] font-semibold text-[#2f86cf]">
-              แผน {d.production.shiftPlanMin} · พัก {d.production.shiftBreakMin} นาที/กะ
+              แผน {d.production.shiftPlanMin} · พัก {d.production.shiftBreakMin} → เดินจริง {Math.max(0, d.production.shiftPlanMin - d.production.shiftBreakMin)} นาที/กะ
             </span>
           </CardTitle>
           <div className="overflow-x-auto">

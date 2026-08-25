@@ -162,7 +162,7 @@ export function ListSettingsCard({
             </label>
           </div>
           <span className="text-[11px] text-[#9aa4b4]">
-            OEE จะใช้เวลานี้เป็นฐาน (นับครั้งเดียวต่อกะ) — คีย์กี่ Pack Order ในกะเดียวกันก็ไม่ทบเวลาแผนซ้ำ
+            OEE หักเวลาพักออกก่อน (เดินจริง = แผน − พัก) แล้วนับครั้งเดียวต่อกะ — คีย์กี่ Pack Order ในกะเดียวกันก็ไม่ทบเวลาแผนซ้ำ
           </span>
         </div>
       </div>
