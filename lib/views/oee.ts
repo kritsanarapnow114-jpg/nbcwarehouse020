@@ -79,7 +79,9 @@ export async function getOeeDashboard(range: Range) {
   // Fixed shift working window (same for every shift) — planned time is counted
   // once per shift, not per Pack Order. See parseShiftTime for the defaults.
   const shiftTime = parseShiftTime(shiftTimeRaw);
-  const PLAN = shiftTime.planMin;
+  // Planned Production Time is NET of the scheduled break (breaks aren't run
+  // time), so Availability is measured against plan − break (e.g. 480 − 60 = 420).
+  const PLAN = Math.max(0, shiftTime.planMin - shiftTime.breakMin);
 
   // Packaging Material Loss (from BOM loss) — total + by material, no re-entry.
   const pkgMap = new Map<string, number>();

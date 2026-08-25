@@ -79,9 +79,11 @@ export function OeeProdCapture({
 
   const standard = line ? standards[line] ?? 0 : 0;
   const downtimeTotal = downtimes.reduce((s, d) => s + d.minutes, 0);
+  // Planned Production Time is net of the break (breaks aren't run time).
+  const netPlanMin = Math.max(0, planMin - breakMin);
   const base = line
     ? scoreProduction({
-        plannedMin: planMin,
+        plannedMin: netPlanMin,
         downtimeMin: downtimeTotal,
         good: produced,
         reject: loss, // pellet loss only → drives Availability/Performance (throughput)
@@ -160,8 +162,8 @@ export function OeeProdCapture({
           <div className="flex flex-wrap items-end gap-4 p-[16px_22px]">
             <div className="flex flex-col gap-1">
               <span className="text-[11.5px] text-[#69748a]">เวลาทำงานต่อกะ (คงที่)</span>
-              <div className="flex h-[34px] items-center gap-2 rounded-[8px] border border-[#d7e9c9] bg-[#f2f9ec] px-3 text-[12.5px] text-[#3a4658]" title="เวลาแผน/พัก คงที่ทุกกะ — ตั้งได้ที่ Settings; นับครั้งเดียวต่อกะ ไม่ว่าจะคีย์กี่ Pack Order">
-                แผน <b className="font-num text-[#1f9d63]">{planMin}</b> นาที · พัก <b className="font-num text-[#c8891a]">{breakMin}</b> นาที
+              <div className="flex h-[34px] items-center gap-2 rounded-[8px] border border-[#d7e9c9] bg-[#f2f9ec] px-3 text-[12.5px] text-[#3a4658]" title="เวลาแผน/พัก คงที่ทุกกะ — ตั้งได้ที่ Settings; หักพักออกแล้วนับครั้งเดียวต่อกะ ไม่ว่าจะคีย์กี่ Pack Order">
+                แผน <b className="font-num text-[#1f9d63]">{planMin}</b> · พัก <b className="font-num text-[#c8891a]">{breakMin}</b> → เดินจริง <b className="font-num text-[#0c7f93]">{netPlanMin}</b> นาที
               </div>
             </div>
             <label className="flex flex-col gap-1">
