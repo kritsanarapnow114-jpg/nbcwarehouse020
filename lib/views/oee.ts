@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { Range } from "@/lib/views/dashboard";
 import { getAppSetting } from "@/lib/views/settings";
-import { OEE_STANDARDS_KEY, parseOeeStandards } from "@/lib/settingsKeys";
+import { OEE_STANDARDS_KEY, parseOeeStandards, OEE_SHIFT_TIME_KEY, parseShiftTime } from "@/lib/settingsKeys";
 import { scoreUnloading, scoreProduction, oeeFrom, pct } from "@/lib/calc/oee";
 import { fmtDateISO } from "@/lib/calc/date";
 import { productLabel } from "@/lib/calc/productName";
@@ -26,8 +26,9 @@ export async function getOeeDashboard(range: Range) {
   const endExclusive = new Date(range.end);
   endExclusive.setDate(endExclusive.getDate() + 1);
 
-  const [standardsRaw, siloLoads, prodReceipts, bomLosses, products, boms] = await Promise.all([
+  const [standardsRaw, shiftTimeRaw, siloLoads, prodReceipts, bomLosses, products, boms] = await Promise.all([
     getAppSetting(OEE_STANDARDS_KEY),
+    getAppSetting(OEE_SHIFT_TIME_KEY),
     // Finished loads with both timestamps (legacy finish-only loads can't be timed).
     db.siloLoad.findMany({
       where: {
@@ -75,6 +76,10 @@ export async function getOeeDashboard(range: Range) {
   ]);
 
   const standards = parseOeeStandards(standardsRaw);
+  // Fixed shift working window (same for every shift) — planned time is counted
+  // once per shift, not per Pack Order. See parseShiftTime for the defaults.
+  const shiftTime = parseShiftTime(shiftTimeRaw);
+  const PLAN = shiftTime.planMin;
 
   // Packaging Material Loss (from BOM loss) — total + by material, no re-entry.
   const pkgMap = new Map<string, number>();
@@ -297,8 +302,9 @@ export async function getOeeDashboard(range: Range) {
     }, 0);
   };
 
-  // Runs that captured a line + planned time can be fully scored.
-  const scored = prodReceipts.filter((r) => r.oeeLine && (r.plannedMin ?? 0) > 0);
+  // Any run that named a production line is scored — the planned window is the
+  // fixed shift time (below), so no per-order planned entry is needed.
+  const scored = prodReceipts.filter((r) => r.oeeLine);
 
   // Individual downtime events on a run (reason · which machine · responsible),
   // straight from what was captured on the Pack Order OEE card.
@@ -320,7 +326,7 @@ export async function getOeeDashboard(range: Range) {
   const productionRuns = scored
     .map((r) => {
       const dt = dtMinutes(r.downtime);
-      const planned = r.plannedMin ?? 0;
+      const planned = PLAN; // fixed shift window
       const parts = scoreProduction({
         plannedMin: planned,
         downtimeMin: dt,
@@ -347,7 +353,7 @@ export async function getOeeDashboard(range: Range) {
         pkgLoss: Math.round(pkg),
         output: Math.round((r.producedTotal ?? 0) + (r.prodLoss ?? 0)),
         plannedMin: Math.round(planned),
-        breakMin: Math.round(r.breakMin ?? 0),
+        breakMin: shiftTime.breakMin,
         runMin: Math.max(0, Math.round(planned - dt)),
         standard: standards[r.oeeLine as string] ?? 0,
         downtimeMin: dt,
@@ -356,19 +362,61 @@ export async function getOeeDashboard(range: Range) {
     })
     .sort((a, b) => b.day.localeCompare(a.day))
     .slice(0, 50);
-  const prodPool = scored.reduce(
-    (acc, r) => {
-      const planned = r.plannedMin ?? 0;
-      const run = Math.max(0, planned - dtMinutes(r.downtime));
-      const good = r.producedTotal ?? 0;
-      const rej = r.prodLoss ?? 0;
-      acc.plannedMin += planned;
-      acc.runMin += run;
-      acc.idealHrOutput += (standards[r.oeeLine as string] ?? 0) * (run / 60);
-      acc.good += good;
-      acc.reject += rej;
-      acc.gv += receiptGoodValue(r);
-      acc.lv += receiptLossValue(r);
+  // A run's planned/break time belongs to its SHIFT, not to each Pack Order.
+  // When several Pack Orders are keyed for the same shift + line on the same day
+  // (e.g. กะเช้า keys 3 orders, all planned 480 / break 60), they share ONE
+  // planned window — so we group runs into shift-sessions and count the planned
+  // window once per session, while downtime and output accumulate across every
+  // order in it. Un-shifted runs stay their own session (keyed by doc) so the
+  // old per-run behaviour is preserved for data captured before shifts existed.
+  const sessionMap = new Map<
+    string,
+    { day: string; line: string; shift: string; planned: number; downtime: number; good: number; reject: number; gv: number; lv: number }
+  >();
+  for (const r of scored) {
+    const line = r.oeeLine as string;
+    const shift = (r.shift ?? "").trim();
+    const day = fmtDateISO(new Date(Date.UTC(r.docDate.getUTCFullYear(), r.docDate.getUTCMonth(), r.docDate.getUTCDate())));
+    const key = shift ? `${day}||${shift}||${line}` : `doc:${r.docNo}`;
+    const dt = dtMinutes(r.downtime);
+    const s = sessionMap.get(key);
+    if (s) {
+      // Same shift window — planned stays fixed (counted once), only downtime and
+      // output accumulate across the shift's Pack Orders.
+      s.downtime += dt;
+      s.good += r.producedTotal ?? 0;
+      s.reject += r.prodLoss ?? 0;
+      s.gv += receiptGoodValue(r);
+      s.lv += receiptLossValue(r);
+    } else {
+      sessionMap.set(key, {
+        day,
+        line,
+        shift,
+        planned: PLAN, // fixed shift window, once per shift+line+day
+        downtime: dt,
+        good: r.producedTotal ?? 0,
+        reject: r.prodLoss ?? 0,
+        gv: receiptGoodValue(r),
+        lv: receiptLossValue(r),
+      });
+    }
+  }
+  // Derive each session's run time & ideal output once planned is deduped.
+  const sessions = [...sessionMap.values()].map((s) => {
+    const runMin = Math.max(0, s.planned - s.downtime);
+    return { ...s, runMin, idealHrOutput: (standards[s.line] ?? 0) * (runMin / 60) };
+  });
+
+  const prodPool = sessions.reduce(
+    (acc, s) => {
+      acc.plannedMin += s.planned;
+      acc.runMin += s.runMin;
+      acc.idealHrOutput += s.idealHrOutput;
+      acc.good += s.good;
+      acc.reject += s.reject;
+      acc.gv += s.gv;
+      acc.lv += s.lv;
       return acc;
     },
     { plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0, gv: 0, lv: 0 }
@@ -386,20 +434,18 @@ export async function getOeeDashboard(range: Range) {
   const prodQ = valueQuality(prodPool.gv, prodPool.lv);
   const prodOeeF = prodParts.availability * prodParts.performance * prodQ;
 
-  // Per-line OEE breakdown.
+  // Per-line OEE breakdown (sum over shift-sessions on that line).
   const lineMap = new Map<string, typeof prodPool>();
-  for (const r of scored) {
-    const key = r.oeeLine as string;
+  for (const s of sessions) {
+    const key = s.line;
     const p = lineMap.get(key) ?? { plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0, gv: 0, lv: 0 };
-    const planned = r.plannedMin ?? 0;
-    const run = Math.max(0, planned - dtMinutes(r.downtime));
-    p.plannedMin += planned;
-    p.runMin += run;
-    p.idealHrOutput += (standards[key] ?? 0) * (run / 60);
-    p.good += r.producedTotal ?? 0;
-    p.reject += r.prodLoss ?? 0;
-    p.gv += receiptGoodValue(r);
-    p.lv += receiptLossValue(r);
+    p.plannedMin += s.planned;
+    p.runMin += s.runMin;
+    p.idealHrOutput += s.idealHrOutput;
+    p.good += s.good;
+    p.reject += s.reject;
+    p.gv += s.gv;
+    p.lv += s.lv;
     lineMap.set(key, p);
   }
   const prodPerLine = [...lineMap.entries()]
@@ -425,28 +471,26 @@ export async function getOeeDashboard(range: Range) {
     })
     .sort((x, y) => x.oee - y.oee);
 
-  // Per-shift (กะ) OEE breakdown — same math as per-line, grouped by the shift
-  // tagged on each Pack Order. Runs with no shift fall under "ไม่ระบุกะ".
+  // Per-shift (กะ) OEE breakdown — sum over shift-sessions, so the shift's planned
+  // window is counted once even when it spans several Pack Orders. Runs with no
+  // shift fall under "ไม่ระบุกะ". `runs` counts the Pack Orders keyed for the shift.
   type ShiftAgg = typeof prodPool & { downtimeMin: number };
   const NO_SHIFT = "ไม่ระบุกะ";
   const shiftMap = new Map<string, ShiftAgg>();
-  for (const r of scored) {
-    const key = (r.shift ?? "").trim() || NO_SHIFT;
+  for (const s of sessions) {
+    const key = s.shift || NO_SHIFT;
     const p = shiftMap.get(key) ?? { plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0, gv: 0, lv: 0, downtimeMin: 0 };
-    const planned = r.plannedMin ?? 0;
-    const dt = dtMinutes(r.downtime);
-    const run = Math.max(0, planned - dt);
-    p.plannedMin += planned;
-    p.runMin += run;
-    p.idealHrOutput += (standards[r.oeeLine as string] ?? 0) * (run / 60);
-    p.good += r.producedTotal ?? 0;
-    p.reject += r.prodLoss ?? 0;
-    p.gv += receiptGoodValue(r);
-    p.lv += receiptLossValue(r);
-    p.downtimeMin += dt;
+    p.plannedMin += s.planned;
+    p.runMin += s.runMin;
+    p.idealHrOutput += s.idealHrOutput;
+    p.good += s.good;
+    p.reject += s.reject;
+    p.gv += s.gv;
+    p.lv += s.lv;
+    p.downtimeMin += s.downtime;
     shiftMap.set(key, p);
   }
-  // How many runs each shift had (for the report's "runs" column).
+  // How many Pack Orders each shift had (for the report's "runs" column).
   const shiftRuns = new Map<string, number>();
   for (const r of scored) {
     const key = (r.shift ?? "").trim() || NO_SHIFT;
@@ -477,6 +521,59 @@ export async function getOeeDashboard(range: Range) {
       };
     })
     .sort((x, y) => y.oee - x.oee);
+
+  // Per-day × shift OEE — one row per (day, shift), the shift's fixed window
+  // counted once per line. Newest day first, then shift name.
+  type DayShiftAgg = ShiftAgg & { day: string; shift: string };
+  const dayShiftMap = new Map<string, DayShiftAgg>();
+  for (const s of sessions) {
+    const shiftName = s.shift || NO_SHIFT;
+    const key = `${s.day}||${shiftName}`;
+    const p = dayShiftMap.get(key) ?? { day: s.day, shift: shiftName, plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0, gv: 0, lv: 0, downtimeMin: 0 };
+    p.plannedMin += s.planned;
+    p.runMin += s.runMin;
+    p.idealHrOutput += s.idealHrOutput;
+    p.good += s.good;
+    p.reject += s.reject;
+    p.gv += s.gv;
+    p.lv += s.lv;
+    p.downtimeMin += s.downtime;
+    dayShiftMap.set(key, p);
+  }
+  // Pack Orders per (day, shift).
+  const dayShiftRuns = new Map<string, number>();
+  for (const r of scored) {
+    const shiftName = (r.shift ?? "").trim() || NO_SHIFT;
+    const day = fmtDateISO(new Date(Date.UTC(r.docDate.getUTCFullYear(), r.docDate.getUTCMonth(), r.docDate.getUTCDate())));
+    const key = `${day}||${shiftName}`;
+    dayShiftRuns.set(key, (dayShiftRuns.get(key) ?? 0) + 1);
+  }
+  const prodPerDayShift = [...dayShiftMap.entries()]
+    .map(([key, p]) => {
+      const parts = scoreProduction({
+        plannedMin: p.plannedMin,
+        downtimeMin: p.plannedMin - p.runMin,
+        good: p.good,
+        reject: p.reject,
+        standardPerHour: p.runMin > 0 ? p.idealHrOutput / (p.runMin / 60) : 0,
+      });
+      const qf = valueQuality(p.gv, p.lv);
+      const oeeF = parts.availability * parts.performance * qf;
+      return {
+        day: p.day,
+        shift: p.shift,
+        oee: pct(oeeF),
+        a: pct(parts.availability),
+        p: pct(parts.performance),
+        q: pct(qf),
+        produced: Math.round(p.good),
+        loss: Math.round(p.reject),
+        output: Math.round(p.good + p.reject),
+        downtimeMin: Math.round(p.downtimeMin),
+        runs: dayShiftRuns.get(key) ?? 0,
+      };
+    })
+    .sort((x, y) => (x.day === y.day ? x.shift.localeCompare(y.shift) : y.day.localeCompare(x.day)));
 
   // ---- Captured-at-source analytics (from the Pack Order OEE card) ---------
   const lossAggMap = new Map<
@@ -559,6 +656,9 @@ export async function getOeeDashboard(range: Range) {
       oee: pct(prodOeeF),
       perLine: prodPerLine,
       perShift: prodPerShift,
+      perDayShift: prodPerDayShift,
+      shiftPlanMin: shiftTime.planMin,
+      shiftBreakMin: shiftTime.breakMin,
     },
     standards,
   };

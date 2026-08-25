@@ -41,6 +41,7 @@ export type DeckOee = {
   summary: { a: number; p: number; q: number; oee: number; produced: number; loss: number; scoredRuns: number; docs: number };
   perLine: { name: string; oee: number; a: number; p: number; q: number; output: number; standard: number }[];
   perShift: { name: string; oee: number; a: number; p: number; q: number; produced: number; loss: number; output: number; downtimeMin: number; runs: number }[];
+  perDayShift: { day: string; shift: string; oee: number; a: number; p: number; q: number; produced: number; loss: number; output: number; downtimeMin: number; runs: number }[];
   lossPareto: { loss: string; freq: number; lostMin: number }[];
   pkgUsed: { name: string; qty: number }[];
   pkgLoss: { name: string; qty: number }[];
@@ -532,6 +533,21 @@ export function ExportDeckButton({
             [3.0, 0.9, 1, 1, 1, 1.2, 1.4, 1.4, 1.4],
             `${o.perShift.length} กะ · OEE รวม ${o.summary.oee}%`,
             BLUE
+          );
+        }
+
+        // ---- OEE by day × shift ----
+        if (o.perDayShift.length) {
+          tableSlide(
+            "OEE by Day × Shift", "OEE ต่อกะ ต่อวัน (per shift, per day)", 3,
+            ["วันที่", "กะ (Shift)", "รอบ", "A%", "P%", "Q%", "OEE%", "ผลิต", "ของเสีย", "DT"],
+            o.perDayShift.map((r) => [
+              dfmt(r.day), r.shift || "-", num(r.runs), `${r.a}`, `${r.p}`, `${r.q}`, `${r.oee}`,
+              num(r.produced), num(r.loss), `${num(r.downtimeMin)}`,
+            ]),
+            [1.7, 2.5, 0.8, 0.9, 0.9, 0.9, 1.1, 1.3, 1.3, 1.1],
+            `${o.perDayShift.length} กะ-วัน · OEE รวม ${o.summary.oee}%`,
+            TEAL
           );
         }
 

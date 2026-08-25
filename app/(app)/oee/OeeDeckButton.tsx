@@ -47,6 +47,7 @@ export type OeeDeckSummary = {
 
 export type OeeLineRow = { name: string; oee: number; a: number; p: number; q: number; output: number; standard: number };
 export type OeeShiftRow = { name: string; oee: number; a: number; p: number; q: number; produced: number; loss: number; output: number; downtimeMin: number; runs: number };
+export type OeeDayShiftRow = { day: string; shift: string; oee: number; a: number; p: number; q: number; produced: number; loss: number; output: number; downtimeMin: number; runs: number };
 export type OeeLossRow = { loss: string; freq: number; lostMin: number };
 export type PkgRow = { name: string; qty: number };
 
@@ -94,6 +95,7 @@ export function OeeDeckButton({
   summary,
   perLine,
   perShift,
+  perDayShift,
   lossPareto,
   repack,
   scrap,
@@ -105,6 +107,7 @@ export function OeeDeckButton({
   summary: OeeDeckSummary;
   perLine: OeeLineRow[];
   perShift: OeeShiftRow[];
+  perDayShift: OeeDayShiftRow[];
   lossPareto: OeeLossRow[];
   repack: number;
   scrap: number;
@@ -303,6 +306,28 @@ export function OeeDeckButton({
           ]),
           `${perShift.length} กะ · OEE รวม ${summary.oee}%`,
           BLUE
+        );
+      }
+
+      // ============ OEE by day × shift ============
+      if (perDayShift.length > 0) {
+        tableSlide(
+          "OEE by Day × Shift", "OEE ต่อกะ ต่อวัน (per shift, per day)",
+          ["วันที่", "กะ (Shift)", "รอบ", "A%", "P%", "Q%", "OEE%", "ผลิต", "ของเสีย", "DT"],
+          ["left", "left", "center", "center", "center", "center", "center", "right", "right", "right"],
+          [1.7, 2.5, 0.8, 0.9, 0.9, 0.9, 1.1, 1.3, 1.3, 1.1],
+          perDayShift.map((r) => [
+            { v: dfmt(r.day), color: SLATE },
+            { v: r.shift || "-", bold: true },
+            { v: num(r.runs), align: "center" as Align, color: MUTE },
+            { v: `${r.a}`, color: BLUE }, { v: `${r.p}`, color: ORANGE }, { v: `${r.q}`, color: TEAL },
+            { v: `${r.oee}`, color: oeeColorHex(r.oee), bold: true },
+            { v: num(r.produced), align: "right" as Align },
+            { v: num(r.loss), align: "right" as Align, color: r.loss > 0 ? CORAL : INK },
+            { v: `${num(r.downtimeMin)}`, align: "right" as Align, color: r.downtimeMin > 0 ? ORANGE : INK },
+          ]),
+          `${perDayShift.length} กะ-วัน · OEE รวม ${summary.oee}%`,
+          TEAL
         );
       }
 
