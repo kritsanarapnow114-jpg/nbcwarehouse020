@@ -23,10 +23,8 @@ export function OeeProdCapture({
   onLine,
   shift,
   onShift,
-  plannedMin,
-  onPlannedMin,
+  planMin,
   breakMin,
-  onBreakMin,
   downtimes,
   onDowntimes,
   repack,
@@ -47,10 +45,8 @@ export function OeeProdCapture({
   onLine: (v: string) => void;
   shift: string;
   onShift: (v: string) => void;
-  plannedMin: string;
-  onPlannedMin: (v: string) => void;
-  breakMin: string;
-  onBreakMin: (v: string) => void;
+  planMin: number; // fixed planned window per shift (from Settings)
+  breakMin: number; // fixed break per shift (from Settings)
   downtimes: ProdDowntime[];
   onDowntimes: (rows: ProdDowntime[]) => void;
   repack: string;
@@ -85,7 +81,7 @@ export function OeeProdCapture({
   const downtimeTotal = downtimes.reduce((s, d) => s + d.minutes, 0);
   const base = line
     ? scoreProduction({
-        plannedMin: Number(plannedMin) || 0,
+        plannedMin: planMin,
         downtimeMin: downtimeTotal,
         good: produced,
         reject: loss, // pellet loss only → drives Availability/Performance (throughput)
@@ -162,14 +158,12 @@ export function OeeProdCapture({
       {line && (
         <>
           <div className="flex flex-wrap items-end gap-4 p-[16px_22px]">
-            <label className="flex flex-col gap-1">
-              <span className="text-[11.5px] text-[#69748a]">เวลาวางแผนเดินเครื่อง (นาที)</span>
-              <input value={plannedMin} onChange={(e) => onPlannedMin(e.target.value)} inputMode="numeric" placeholder="480" className={`font-num w-[110px] ${inputCls}`} />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-[11.5px] text-[#69748a]">เวลาพัก (นาที)</span>
-              <input value={breakMin} onChange={(e) => onBreakMin(e.target.value)} inputMode="numeric" placeholder="60" className={`font-num w-[90px] ${inputCls}`} />
-            </label>
+            <div className="flex flex-col gap-1">
+              <span className="text-[11.5px] text-[#69748a]">เวลาทำงานต่อกะ (คงที่)</span>
+              <div className="flex h-[34px] items-center gap-2 rounded-[8px] border border-[#d7e9c9] bg-[#f2f9ec] px-3 text-[12.5px] text-[#3a4658]" title="เวลาแผน/พัก คงที่ทุกกะ — ตั้งได้ที่ Settings; นับครั้งเดียวต่อกะ ไม่ว่าจะคีย์กี่ Pack Order">
+                แผน <b className="font-num text-[#1f9d63]">{planMin}</b> นาที · พัก <b className="font-num text-[#c8891a]">{breakMin}</b> นาที
+              </div>
+            </div>
             <label className="flex flex-col gap-1">
               <span className="text-[11.5px] text-[#69748a]">Repack (units)</span>
               <input value={repack} onChange={(e) => onRepack(e.target.value)} inputMode="numeric" placeholder="0" className={`font-num w-[90px] ${inputCls}`} />

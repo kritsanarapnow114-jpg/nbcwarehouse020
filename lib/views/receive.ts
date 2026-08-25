@@ -10,9 +10,11 @@ import {
   PROD_SHIFTS_KEY,
   PROD_SHIFTS_DEFAULTS,
   OEE_STANDARDS_KEY,
+  OEE_SHIFT_TIME_KEY,
   OEE_DOWNTIME_REASONS_KEY,
   parseList,
   parseOeeStandards,
+  parseShiftTime,
   parseDowntimeReasons,
 } from "@/lib/settingsKeys";
 
@@ -42,11 +44,12 @@ export async function getReceiveFormData() {
   ];
   // If a BOM source location is configured (e.g. the packing line), only those
   // bins' stock is eligible to be consumed by production.
-  const [bomSourceRaw, prodLinesRaw, prodShiftsRaw, oeeStdRaw, downtimeReasonsRaw] = await Promise.all([
+  const [bomSourceRaw, prodLinesRaw, prodShiftsRaw, oeeStdRaw, shiftTimeRaw, downtimeReasonsRaw] = await Promise.all([
     getAppSetting(BOM_SOURCE_KEY),
     getAppSetting(PROD_LINES_KEY),
     getAppSetting(PROD_SHIFTS_KEY),
     getAppSetting(OEE_STANDARDS_KEY),
+    getAppSetting(OEE_SHIFT_TIME_KEY),
     getAppSetting(OEE_DOWNTIME_REASONS_KEY),
   ]);
   const bomSource = parseList(bomSourceRaw);
@@ -54,6 +57,7 @@ export async function getReceiveFormData() {
   // Shifts fall back to the built-in default set when none configured yet.
   const prodShifts = prodShiftsRaw != null && parseList(prodShiftsRaw).length > 0 ? parseList(prodShiftsRaw) : PROD_SHIFTS_DEFAULTS;
   const oeeStandards = parseOeeStandards(oeeStdRaw);
+  const shiftTime = parseShiftTime(shiftTimeRaw); // fixed plan/break per shift
   const downtimeReasons = parseDowntimeReasons(downtimeReasonsRaw);
   const materialLots = await db.lot.findMany({
     where: {
@@ -120,6 +124,8 @@ export async function getReceiveFormData() {
     lotMeta,
     prodLines,
     prodShifts,
+    shiftPlanMin: shiftTime.planMin,
+    shiftBreakMin: shiftTime.breakMin,
     oeeStandards,
     downtimeReasons,
     boms: bomsRaw.map((b) => ({

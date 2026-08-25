@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { buttonClass } from "@/components/ui/Button";
 import { saveAppSettingsAction } from "@/lib/actions/settings";
-import { ISSUE_TO_KEY, OPERATORS_KEY, BOM_SOURCE_KEY, PROD_LINES_KEY, PROD_SHIFTS_KEY, PROD_SHIFTS_DEFAULTS, ISSUE_TO_DEFAULTS } from "@/lib/settingsKeys";
+import { ISSUE_TO_KEY, OPERATORS_KEY, BOM_SOURCE_KEY, PROD_LINES_KEY, PROD_SHIFTS_KEY, PROD_SHIFTS_DEFAULTS, OEE_SHIFT_TIME_KEY, OEE_SHIFT_TIME_DEFAULT, ISSUE_TO_DEFAULTS } from "@/lib/settingsKeys";
 import { showToast } from "@/components/ui/Toast";
 
 /** Manage the editable pick-lists used by Issue ("จ่ายไปที่") and Transfer
@@ -17,12 +17,16 @@ export function ListSettingsCard({
   bomSource,
   prodLines,
   prodShifts,
+  shiftPlanMin,
+  shiftBreakMin,
 }: {
   issueTo: string;
   operators: string;
   bomSource: string;
   prodLines: string;
   prodShifts: string;
+  shiftPlanMin: number;
+  shiftBreakMin: number;
 }) {
   const router = useRouter();
   const [issueToText, setIssueToText] = useState(
@@ -32,16 +36,21 @@ export function ListSettingsCard({
   const [bomText, setBomText] = useState(bomSource);
   const [prodText, setProdText] = useState(prodLines);
   const [shiftText, setShiftText] = useState(prodShifts || PROD_SHIFTS_DEFAULTS.join("\n"));
+  const [planText, setPlanText] = useState(String(shiftPlanMin || OEE_SHIFT_TIME_DEFAULT.planMin));
+  const [breakText, setBreakText] = useState(String(shiftBreakMin ?? OEE_SHIFT_TIME_DEFAULT.breakMin));
   const [busy, setBusy] = useState(false);
 
   async function handleSave() {
     setBusy(true);
+    const planMin = Math.max(1, Math.round(Number(planText) || OEE_SHIFT_TIME_DEFAULT.planMin));
+    const breakMin = Math.max(0, Math.round(Number(breakText) || 0));
     await saveAppSettingsAction({
       [ISSUE_TO_KEY]: issueToText,
       [OPERATORS_KEY]: opsText,
       [BOM_SOURCE_KEY]: bomText,
       [PROD_LINES_KEY]: prodText,
       [PROD_SHIFTS_KEY]: shiftText,
+      [OEE_SHIFT_TIME_KEY]: JSON.stringify({ planMin, breakMin }),
     });
     setBusy(false);
     showToast("Lists saved (บันทึกรายการแล้ว)");
@@ -126,6 +135,36 @@ export function ListSettingsCard({
             เลือกตอนบันทึก Pack Order แล้วรายงาน OEE จะแยกตามกะให้ — เว้นว่างจะใช้ค่าเริ่มต้น (กะ A/B/C)
           </span>
         </label>
+        <div className="flex flex-col gap-1 sm:col-span-2">
+          <span className="text-[12px] font-medium text-[#3a4658]">
+            เวลาทำงานต่อกะ (คงที่ทุกกะ · สำหรับ OEE)
+          </span>
+          <div className="flex flex-wrap items-end gap-4">
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] text-[#69748a]">แผนเดินเครื่อง (นาที/กะ)</span>
+              <input
+                value={planText}
+                onChange={(e) => setPlanText(e.target.value)}
+                inputMode="numeric"
+                placeholder="480"
+                className="font-num w-[120px] rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[12.5px] outline-none focus:border-[#2f86cf]"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px] text-[#69748a]">เวลาพัก (นาที/กะ)</span>
+              <input
+                value={breakText}
+                onChange={(e) => setBreakText(e.target.value)}
+                inputMode="numeric"
+                placeholder="60"
+                className="font-num w-[120px] rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[12.5px] outline-none focus:border-[#2f86cf]"
+              />
+            </label>
+          </div>
+          <span className="text-[11px] text-[#9aa4b4]">
+            OEE จะใช้เวลานี้เป็นฐาน (นับครั้งเดียวต่อกะ) — คีย์กี่ Pack Order ในกะเดียวกันก็ไม่ทบเวลาแผนซ้ำ
+          </span>
+        </div>
       </div>
       <div className="mt-3 flex justify-end">
         <button onClick={handleSave} disabled={busy} className={buttonClass("primary")}>

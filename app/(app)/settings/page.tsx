@@ -20,6 +20,8 @@ import {
   BOM_SOURCE_KEY,
   PROD_LINES_KEY,
   PROD_SHIFTS_KEY,
+  OEE_SHIFT_TIME_KEY,
+  parseShiftTime,
   OEE_STANDARDS_KEY,
   OEE_REPORT_KEY,
   OEE_DOWNTIME_REASONS_KEY,
@@ -67,6 +69,8 @@ export default async function SettingsPage() {
           bomSource={settings[BOM_SOURCE_KEY] ?? ""}
           prodLines={settings[PROD_LINES_KEY] ?? ""}
           prodShifts={settings[PROD_SHIFTS_KEY] ?? ""}
+          shiftPlanMin={parseShiftTime(settings[OEE_SHIFT_TIME_KEY]).planMin}
+          shiftBreakMin={parseShiftTime(settings[OEE_SHIFT_TIME_KEY]).breakMin}
         />
       </div>
       <div className="mt-4">

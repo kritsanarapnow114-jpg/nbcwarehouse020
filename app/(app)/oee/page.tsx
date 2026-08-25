@@ -60,6 +60,7 @@ export default async function OeePage({
           summary={d.production}
           perLine={d.production.perLine}
           perShift={d.production.perShift}
+          perDayShift={d.production.perDayShift}
           lossPareto={d.captured.lossPareto}
           repack={d.captured.repack}
           scrap={d.captured.scrap}
@@ -438,6 +439,51 @@ export default async function OeePage({
                 </div>
               </div>
             ))}
+          </div>
+        </Card>
+      )}
+
+      {d.production.hasOee && d.production.perDayShift.length > 0 && (
+        <Card className="mb-4">
+          <CardTitle>
+            OEE ต่อกะ ต่อวัน (Per shift · per day)
+            <span className="ml-2 rounded-[5px] bg-[#eef6ff] px-2 py-0.5 text-[10px] font-semibold text-[#2f86cf]">
+              แผน {d.production.shiftPlanMin} · พัก {d.production.shiftBreakMin} นาที/กะ
+            </span>
+          </CardTitle>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[620px] border-collapse text-[12px]">
+              <thead>
+                <tr className="bg-[#f7f9fb] text-left text-[11px] text-[#69748a]">
+                  <th className="p-[7px_10px] font-medium">วันที่</th>
+                  <th className="p-[7px_10px] font-medium">กะ</th>
+                  <th className="p-[7px_10px] text-right font-medium">รอบ</th>
+                  <th className="p-[7px_10px] text-right font-medium">A</th>
+                  <th className="p-[7px_10px] text-right font-medium">P</th>
+                  <th className="p-[7px_10px] text-right font-medium">Q</th>
+                  <th className="p-[7px_10px] text-right font-medium">OEE</th>
+                  <th className="p-[7px_10px] text-right font-medium">ผลิต</th>
+                  <th className="p-[7px_10px] text-right font-medium">ของเสีย</th>
+                  <th className="p-[7px_10px] text-right font-medium">Downtime</th>
+                </tr>
+              </thead>
+              <tbody>
+                {d.production.perDayShift.map((m) => (
+                  <tr key={`${m.day}-${m.shift}`} className="border-t border-[#eef1f5]">
+                    <td className="font-num p-[7px_10px] text-[#69748a]">{fmtDateBE(new Date(m.day))}</td>
+                    <td className="p-[7px_10px] font-medium text-[#3a4658]">{m.shift}</td>
+                    <td className="font-num p-[7px_10px] text-right text-[#9aa4b4]">{m.runs}</td>
+                    <td className="font-num p-[7px_10px] text-right text-[#69748a]">{m.a}%</td>
+                    <td className="font-num p-[7px_10px] text-right text-[#69748a]">{m.p}%</td>
+                    <td className="font-num p-[7px_10px] text-right text-[#69748a]">{m.q}%</td>
+                    <td className="font-num p-[7px_10px] text-right font-bold" style={{ color: oeeColor(m.oee) }}>{m.oee}%</td>
+                    <td className="font-num p-[7px_10px] text-right">{m.produced.toLocaleString()}</td>
+                    <td className="font-num p-[7px_10px] text-right text-[#c53f3f]">{m.loss.toLocaleString()}</td>
+                    <td className="font-num p-[7px_10px] text-right text-[#c8891a]">{m.downtimeMin.toLocaleString()} น.</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Card>
       )}

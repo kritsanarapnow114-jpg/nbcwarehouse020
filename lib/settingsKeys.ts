@@ -22,6 +22,29 @@ export const PROD_SHIFTS_KEY = "list.prodShifts"; // Production shifts (กะ) 
 /** Default production shifts — editable on the Settings page. */
 export const PROD_SHIFTS_DEFAULTS = ["กะ A (เช้า)", "กะ B (บ่าย)", "กะ C (ดึก)"];
 
+// Fixed shift working time for production OEE. Every shift is planned for the
+// same window (plan minutes, with a break), counted ONCE per shift — so keying
+// several Pack Orders in one shift no longer multiplies the planned time.
+export const OEE_SHIFT_TIME_KEY = "oee.shiftTime";
+export const OEE_SHIFT_TIME_DEFAULT = { planMin: 480, breakMin: 60 };
+
+/** Parse the stored fixed shift-time JSON, falling back to 480 / 60. */
+export function parseShiftTime(raw: string | undefined | null): { planMin: number; breakMin: number } {
+  const out = { ...OEE_SHIFT_TIME_DEFAULT };
+  if (raw) {
+    try {
+      const j = JSON.parse(raw);
+      const plan = Number(j?.planMin);
+      const brk = Number(j?.breakMin);
+      if (Number.isFinite(plan) && plan > 0) out.planMin = Math.round(plan);
+      if (Number.isFinite(brk) && brk >= 0) out.breakMin = Math.round(brk);
+    } catch {
+      // malformed — use defaults
+    }
+  }
+  return out;
+}
+
 export const ISSUE_TO_DEFAULTS = [
   "PRODUCTION-AREA110",
   "PRODUCTION-AREA140",

@@ -66,8 +66,7 @@ export function ReceiveForm({
   // OEE capture (production only) — line "" means "don't score this run".
   const [oeeLine, setOeeLine] = useState("");
   const [oeeShift, setOeeShift] = useState("");
-  const [oeePlannedMin, setOeePlannedMin] = useState("");
-  const [oeeBreakMin, setOeeBreakMin] = useState("");
+  // Planned & break time are fixed per shift (from Settings), not typed per run.
   const [oeeDowntimes, setOeeDowntimes] = useState<ProdDowntime[]>([]);
   const [oeeRepack, setOeeRepack] = useState("");
   const [oeeScrap, setOeeScrap] = useState("");
@@ -86,8 +85,6 @@ export function ReceiveForm({
       prodExp?: string;
       oeeLine?: string;
       shift?: string;
-      plannedMin?: string;
-      breakMin?: string;
       lines: Omit<Line, "name" | "unit">[];
     }>("receipt");
     if (!p) return;
@@ -101,8 +98,6 @@ export function ReceiveForm({
     if (p.prodExp) setProdExp(p.prodExp);
     if (p.oeeLine) setOeeLine(p.oeeLine);
     if (p.shift) setOeeShift(p.shift);
-    if (p.plannedMin) setOeePlannedMin(p.plannedMin);
-    if (p.breakMin) setOeeBreakMin(p.breakMin);
     setLines(
       p.lines.map((l) => {
         const prod = data.products.find((x) => x.code === l.productCode);
@@ -287,14 +282,11 @@ export function ReceiveForm({
       return;
     }
 
-    // Production must record OEE before it's sent for verification.
+    // Production must record OEE before it's sent for verification. Planned time
+    // is the fixed per-shift window (Settings), so only the line must be chosen.
     if (mode === "PRODUCTION") {
       if (!oeeLine) {
         setError("กรุณาบันทึก OEE — เลือกสายผลิตในการ์ด OEE ก่อนส่งตรวจสอบ");
-        return;
-      }
-      if (!(Number(oeePlannedMin) > 0)) {
-        setError("กรุณาใส่เวลาวางแผนเดินเครื่อง (OEE) ก่อนส่งตรวจสอบ");
         return;
       }
     }
@@ -342,8 +334,10 @@ export function ReceiveForm({
           : undefined,
       oeeLine: mode === "PRODUCTION" ? oeeLine || null : null,
       shift: mode === "PRODUCTION" ? oeeShift || null : null,
-      plannedMin: mode === "PRODUCTION" && oeeLine ? Number(oeePlannedMin) || 0 : null,
-      breakMin: mode === "PRODUCTION" && oeeLine ? Number(oeeBreakMin) || 0 : null,
+      // Planned/break are the fixed per-shift window from Settings (recorded for
+      // the document; OEE counts one window per shift regardless of order count).
+      plannedMin: mode === "PRODUCTION" && oeeLine ? data.shiftPlanMin : null,
+      breakMin: mode === "PRODUCTION" && oeeLine ? data.shiftBreakMin : null,
       downtime: mode === "PRODUCTION" && oeeLine ? oeeDowntimes : undefined,
       oeeQuality:
         mode === "PRODUCTION" && oeeLine
@@ -378,8 +372,7 @@ export function ReceiveForm({
         setBomLossByLine({});
         setBomExclude({});
         setOeeLine("");
-        setOeePlannedMin("");
-        setOeeBreakMin("");
+        setOeeShift("");
         setOeeDowntimes([]);
         setOeeRepack("");
         setOeeScrap("");
@@ -940,10 +933,8 @@ export function ReceiveForm({
           onLine={setOeeLine}
           shift={oeeShift}
           onShift={setOeeShift}
-          plannedMin={oeePlannedMin}
-          onPlannedMin={setOeePlannedMin}
-          breakMin={oeeBreakMin}
-          onBreakMin={setOeeBreakMin}
+          planMin={data.shiftPlanMin}
+          breakMin={data.shiftBreakMin}
           downtimes={oeeDowntimes}
           onDowntimes={setOeeDowntimes}
           repack={oeeRepack}
