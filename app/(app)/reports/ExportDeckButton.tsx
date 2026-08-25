@@ -551,6 +551,40 @@ export function ExportDeckButton({
           );
         }
 
+        // ---- Per-shift detail — a dedicated slide (gauges + tiles + this shift's
+        // day-by-day table) for EACH shift, so every shift's data stands alone. ----
+        for (const sft of o.perShift) {
+          const acc = oeeColorHex(sft.oee);
+          const ss = newSlide(`OEE · ${sft.name || "ไม่ระบุกะ"}`, "แยกข้อมูลเฉพาะกะนี้ · A × P × Q", 3, TEAL);
+          const gy = 1.7, gh = 2.6, gw = (12.33 - 0.36) / 4;
+          gauge(ss, 0.5, gy, gw, gh, "Availability", sft.a, BLUE);
+          gauge(ss, 0.5 + (gw + 0.12), gy, gw, gh, "Performance", sft.p, ORANGE);
+          gauge(ss, 0.5 + (gw + 0.12) * 2, gy, gw, gh, "Quality", sft.q, TEAL);
+          gauge(ss, 0.5 + (gw + 0.12) * 3, gy, gw, gh, "OEE", sft.oee, acc);
+          const soy = gy + gh + 0.3, soH = 1.5, soW = (12.33 - 0.48) / 5;
+          const soX = (i: number) => 0.5 + i * (soW + 0.12);
+          tile(ss, soX(0), soy, soW, soH, "รอบ (Pack Orders)", num(sft.runs), INK, "docs", 20, BLUE);
+          tile(ss, soX(1), soy, soW, soH, "ผลิตได้", num(sft.produced), TEAL, "units", 20, TEAL);
+          tile(ss, soX(2), soy, soW, soH, "ของเสีย", num(sft.loss), CORAL, "units", 20, CORAL);
+          tile(ss, soX(3), soy, soW, soH, "Downtime", num(sft.downtimeMin), SLATE, "นาที", 20, SLATE);
+          tile(ss, soX(4), soy, soW, soH, "OEE", `${sft.oee}%`, acc, "A×P×Q", 20, acc);
+
+          const rows = o.perDayShift.filter((r) => r.shift === sft.name);
+          if (rows.length) {
+            tableSlide(
+              `${sft.name || "ไม่ระบุกะ"} — รายวัน`, "OEE ของกะนี้ แยกตามวัน (per day)", 3,
+              ["วันที่", "รอบ", "A%", "P%", "Q%", "OEE%", "ผลิต", "ของเสีย", "DT"],
+              rows.map((r) => [
+                dfmt(r.day), num(r.runs), `${r.a}`, `${r.p}`, `${r.q}`, `${r.oee}`,
+                num(r.produced), num(r.loss), `${num(r.downtimeMin)}`,
+              ]),
+              [1.9, 0.9, 1, 1, 1, 1.2, 1.4, 1.4, 1.1],
+              `กะ ${sft.name || "ไม่ระบุกะ"} · OEE ${sft.oee}% · ผลิต ${num(sft.produced)} · ของเสีย ${num(sft.loss)} · Downtime ${num(sft.downtimeMin)} น.`,
+              acc
+            );
+          }
+        }
+
         // ---- Downtime Pareto (shape bars) ----
         const pareto = [...o.lossPareto].sort((a, b) => b.lostMin - a.lostMin).slice(0, 8);
         const dp = newSlide("Downtime Pareto", "สาเหตุที่ทำให้เสียเวลามากที่สุด", 3, ORANGE);
