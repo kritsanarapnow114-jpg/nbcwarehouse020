@@ -559,7 +559,7 @@ export default async function OeePage({
             <table className="w-full min-w-[620px] border-collapse text-[12px]">
               <thead>
                 <tr className="bg-[#f7f9fb] text-left text-[11px] text-[#69748a]">
-                  <th className="p-[7px_10px] font-medium">เอกสาร</th>
+                  <th className="p-[7px_10px] font-medium">Pack Order</th>
                   <th className="p-[7px_10px] font-medium">วันที่</th>
                   <th className="p-[7px_10px] font-medium">สายผลิต</th>
                   <th className="p-[7px_10px] text-right font-medium">A</th>
@@ -573,7 +573,7 @@ export default async function OeePage({
               <tbody>
                 {d.productionRuns.map((r) => (
                   <tr key={r.doc} className="border-t border-[#eef1f5]">
-                    <td className="font-num p-[7px_10px] text-[#2f86cf]">{r.doc}</td>
+                    <td className="font-num p-[7px_10px] text-[#2f86cf]">{r.packNo}</td>
                     <td className="font-num p-[7px_10px] text-[#69748a]">{r.day}</td>
                     <td className="p-[7px_10px]">{r.line}</td>
                     <td className="font-num p-[7px_10px] text-right text-[#69748a]">{r.a}%</td>

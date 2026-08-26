@@ -343,6 +343,9 @@ export async function getOeeDashboard(range: Range) {
       return {
         doc: r.docNo,
         matDoc: r.materialDoc ?? "",
+        // Pack Order No. keyed on the receipt (materialDoc field). Reports show
+        // this instead of the internal RC document number; fall back to it when blank.
+        packNo: r.materialDoc?.trim() || r.docNo,
         day: fmtDateISO(new Date(Date.UTC(r.docDate.getUTCFullYear(), r.docDate.getUTCMonth(), r.docDate.getUTCDate()))),
         line: r.oeeLine as string,
         shift: r.shift ?? "",

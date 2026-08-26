@@ -13,6 +13,7 @@ export type OeeDowntimeEvent = {
 export type OeeRunRow = {
   doc: string;
   matDoc: string;
+  packNo: string; // Pack Order No. (shown in the report instead of the RC doc no.)
   day: string; // yyyy-mm-dd
   line: string;
   shift: string;
@@ -390,7 +391,7 @@ export function OeeDeckButton({
       for (const r of runs) { const arr = byDay.get(r.day) ?? []; arr.push(r); byDay.set(r.day, arr); }
       const days = [...byDay.keys()].sort((a, b) => b.localeCompare(a));
 
-      const rHeaders = ["รอบ", "Doc No", "Line", "กะ", "Plan", "DT", "A%", "P%", "Q%", "OEE%", "ผลิต", "ของเสีย"];
+      const rHeaders = ["รอบ", "Pack Order", "Line", "กะ", "Plan", "DT", "A%", "P%", "Q%", "OEE%", "ผลิต", "ของเสีย"];
       const rAligns: Align[] = ["center", "left", "left", "left", "right", "right", "center", "center", "center", "center", "right", "right"];
       const rWeights = [0.7, 1.7, 1.5, 1.5, 0.9, 0.85, 0.85, 0.85, 0.85, 1.0, 1.05, 1.0];
       const totalW = 12.33; const wsum = rWeights.reduce((a, b) => a + b, 0); const colW = rWeights.map((wt) => (wt / wsum) * totalW);
@@ -417,7 +418,7 @@ export function OeeDeckButton({
             const roundNo = ci * cap + ri + 1;
             const cells: Cell[] = [
               { v: String(roundNo), align: "center", bold: true },
-              { v: r.doc, align: "left", color: SLATE },
+              { v: r.packNo, align: "left", color: SLATE },
               { v: r.line || "-", align: "left" },
               { v: r.shift || "—", align: "left", color: r.shift ? INK : MUTE },
               { v: num(r.plannedMin), align: "right" },
@@ -445,7 +446,7 @@ export function OeeDeckButton({
         for (const e of r.downtimeEvents) {
           dtRows.push([
             { v: dfmt(r.day) },
-            { v: r.doc, color: SLATE },
+            { v: r.packNo, color: SLATE },
             { v: e.reason || "-", bold: true },
             { v: e.detail || "-", color: e.detail ? BLUE : MUTE },
             { v: num(e.minutes), align: "right", color: ORANGE, bold: true },
@@ -455,7 +456,7 @@ export function OeeDeckButton({
       if (dtRows.length > 0) {
         tableSlide(
           "Downtime detail", "รายละเอียดการหยุดเครื่อง (ทุกเหตุการณ์) · เหตุ · อธิบายเหตุ · นาที",
-          ["วันที่", "Doc", "เหตุ (Reason)", "อธิบายเหตุ", "นาที"],
+          ["วันที่", "Pack Order", "เหตุ (Reason)", "อธิบายเหตุ", "นาที"],
           ["left", "left", "left", "left", "right"],
           [1.6, 2.4, 3.0, 4.0, 1.3],
           dtRows,
