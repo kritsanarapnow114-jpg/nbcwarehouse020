@@ -60,6 +60,7 @@ export async function getOeeDashboard(range: Range) {
         downtime: true,
         oeeQuality: true,
         lines: { select: { productCode: true }, take: 1 }, // finished good → its price
+        _count: { select: { lines: true } }, // pallets/boxes produced on this run
       },
     }),
     // Packaging material loss (liner / bag / box…) captured on the BOM card —
@@ -376,7 +377,7 @@ export async function getOeeDashboard(range: Range) {
   // old per-run behaviour is preserved for data captured before shifts existed.
   const sessionMap = new Map<
     string,
-    { day: string; line: string; shift: string; planned: number; downtime: number; good: number; reject: number; gv: number; lv: number }
+    { day: string; line: string; shift: string; planned: number; downtime: number; good: number; reject: number; gv: number; lv: number; boxes: number }
   >();
   for (const r of scored) {
     const line = r.oeeLine as string;
@@ -384,15 +385,17 @@ export async function getOeeDashboard(range: Range) {
     const day = fmtDateISO(new Date(Date.UTC(r.docDate.getUTCFullYear(), r.docDate.getUTCMonth(), r.docDate.getUTCDate())));
     const key = shift ? `${day}||${shift}||${line}` : `doc:${r.docNo}`;
     const dt = dtMinutes(r.downtime);
+    const boxes = r._count?.lines ?? 0; // pallets/boxes on this Pack Order
     const s = sessionMap.get(key);
     if (s) {
-      // Same shift window — planned stays fixed (counted once), only downtime and
-      // output accumulate across the shift's Pack Orders.
+      // Same shift window — planned stays fixed (counted once), only downtime,
+      // output and box count accumulate across the shift's Pack Orders.
       s.downtime += dt;
       s.good += r.producedTotal ?? 0;
       s.reject += r.prodLoss ?? 0;
       s.gv += receiptGoodValue(r);
       s.lv += receiptLossValue(r);
+      s.boxes += boxes;
     } else {
       sessionMap.set(key, {
         day,
@@ -404,6 +407,7 @@ export async function getOeeDashboard(range: Range) {
         reject: r.prodLoss ?? 0,
         gv: receiptGoodValue(r),
         lv: receiptLossValue(r),
+        boxes,
       });
     }
   }
@@ -479,12 +483,14 @@ export async function getOeeDashboard(range: Range) {
   // Per-shift (กะ) OEE breakdown — sum over shift-sessions, so the shift's planned
   // window is counted once even when it spans several Pack Orders. Runs with no
   // shift fall under "ไม่ระบุกะ". `runs` counts the Pack Orders keyed for the shift.
-  type ShiftAgg = typeof prodPool & { downtimeMin: number };
+  type ShiftAgg = typeof prodPool & { downtimeMin: number; boxes: number };
   const NO_SHIFT = "ไม่ระบุกะ";
+  // Average run time per box (min) — net run minutes ÷ boxes (pallets) produced.
+  const avgPerBox = (runMin: number, boxes: number) => (boxes > 0 ? Math.round((runMin / boxes) * 10) / 10 : 0);
   const shiftMap = new Map<string, ShiftAgg>();
   for (const s of sessions) {
     const key = s.shift || NO_SHIFT;
-    const p = shiftMap.get(key) ?? { plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0, gv: 0, lv: 0, downtimeMin: 0 };
+    const p = shiftMap.get(key) ?? { plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0, gv: 0, lv: 0, downtimeMin: 0, boxes: 0 };
     p.plannedMin += s.planned;
     p.runMin += s.runMin;
     p.idealHrOutput += s.idealHrOutput;
@@ -493,6 +499,7 @@ export async function getOeeDashboard(range: Range) {
     p.gv += s.gv;
     p.lv += s.lv;
     p.downtimeMin += s.downtime;
+    p.boxes += s.boxes;
     shiftMap.set(key, p);
   }
   // How many Pack Orders each shift had (for the report's "runs" column).
@@ -522,6 +529,8 @@ export async function getOeeDashboard(range: Range) {
         loss: Math.round(p.reject),
         output: Math.round(p.good + p.reject),
         downtimeMin: Math.round(p.downtimeMin),
+        boxes: Math.round(p.boxes),
+        avgMinPerBox: avgPerBox(p.runMin, p.boxes),
         runs: shiftRuns.get(name) ?? 0,
       };
     })
@@ -534,7 +543,7 @@ export async function getOeeDashboard(range: Range) {
   for (const s of sessions) {
     const shiftName = s.shift || NO_SHIFT;
     const key = `${s.day}||${shiftName}`;
-    const p = dayShiftMap.get(key) ?? { day: s.day, shift: shiftName, plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0, gv: 0, lv: 0, downtimeMin: 0 };
+    const p = dayShiftMap.get(key) ?? { day: s.day, shift: shiftName, plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0, gv: 0, lv: 0, downtimeMin: 0, boxes: 0 };
     p.plannedMin += s.planned;
     p.runMin += s.runMin;
     p.idealHrOutput += s.idealHrOutput;
@@ -543,6 +552,7 @@ export async function getOeeDashboard(range: Range) {
     p.gv += s.gv;
     p.lv += s.lv;
     p.downtimeMin += s.downtime;
+    p.boxes += s.boxes;
     dayShiftMap.set(key, p);
   }
   // Pack Orders per (day, shift).
@@ -575,6 +585,8 @@ export async function getOeeDashboard(range: Range) {
         loss: Math.round(p.reject),
         output: Math.round(p.good + p.reject),
         downtimeMin: Math.round(p.downtimeMin),
+        boxes: Math.round(p.boxes),
+        avgMinPerBox: avgPerBox(p.runMin, p.boxes),
         runs: dayShiftRuns.get(key) ?? 0,
       };
     })
@@ -664,6 +676,9 @@ export async function getOeeDashboard(range: Range) {
       perDayShift: prodPerDayShift,
       shiftPlanMin: shiftTime.planMin,
       shiftBreakMin: shiftTime.breakMin,
+      runMin: Math.round(prodPool.runMin),
+      boxes: sessions.reduce((s, x) => s + x.boxes, 0),
+      avgMinPerBox: avgPerBox(prodPool.runMin, sessions.reduce((s, x) => s + x.boxes, 0)),
     },
     standards,
   };

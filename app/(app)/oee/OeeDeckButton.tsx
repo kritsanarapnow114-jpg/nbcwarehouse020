@@ -44,11 +44,16 @@ export type OeeDeckSummary = {
   pkgLoss: number;
   scoredRuns: number;
   docs: number;
+  runMin: number;
+  boxes: number;
+  avgMinPerBox: number;
+  shiftPlanMin: number;
+  shiftBreakMin: number;
 };
 
 export type OeeLineRow = { name: string; oee: number; a: number; p: number; q: number; output: number; standard: number };
-export type OeeShiftRow = { name: string; oee: number; a: number; p: number; q: number; produced: number; loss: number; output: number; downtimeMin: number; runs: number };
-export type OeeDayShiftRow = { day: string; shift: string; oee: number; a: number; p: number; q: number; produced: number; loss: number; output: number; downtimeMin: number; runs: number };
+export type OeeShiftRow = { name: string; oee: number; a: number; p: number; q: number; produced: number; loss: number; output: number; downtimeMin: number; boxes: number; avgMinPerBox: number; runs: number };
+export type OeeDayShiftRow = { day: string; shift: string; oee: number; a: number; p: number; q: number; produced: number; loss: number; output: number; downtimeMin: number; boxes: number; avgMinPerBox: number; runs: number };
 export type OeeLossRow = { loss: string; freq: number; lostMin: number };
 export type PkgRow = { name: string; qty: number };
 
@@ -256,7 +261,70 @@ export function OeeDeckButton({
       tile(t, 8.61, 5.5, 3.72, 1.45, "ของเสีย (Loss)", num(summary.loss), CORAL, "units", CORAL);
       t.addText(`Generated: ${genDate}`, { x: W - 3.5, y: 5.05, w: 3.0, h: 0.3, fontSize: 9.5, color: "DDE8EE", align: "right" });
 
-      // ============ Slide 2: Overall summary ============
+      // ============ Slide 2: What is OEE — full explainer ============
+      const ex = newSlide("OEE คืออะไร", "อธิบายวิธีคิดทั้งหมด · A × P × Q", BLUE);
+      // Formula band
+      ex.addShape("roundRect", { x: 0.5, y: 1.55, w: 12.33, h: 0.72, rectRadius: 0.1, fill: { color: "013B54" } });
+      ex.addText(
+        [
+          { text: "OEE  =  ", options: { color: "FFFFFF", bold: true } },
+          { text: "Availability", options: { color: "7FD3F0", bold: true } },
+          { text: "  ×  ", options: { color: "FFFFFF", bold: true } },
+          { text: "Performance", options: { color: "F6C57A", bold: true } },
+          { text: "  ×  ", options: { color: "FFFFFF", bold: true } },
+          { text: "Quality", options: { color: "8FD6D2", bold: true } },
+        ],
+        { x: 0.5, y: 1.55, w: 12.33, h: 0.72, align: "center", valign: "middle", fontSize: 22, fontFace: FONT }
+      );
+      // Three definition cards (A / P / Q)
+      const defCard = (x: number, w: number, accent: string, letter: string, title: string, formula: string, note: string) => {
+        const cy = 2.45, ch = 2.55;
+        ex.addShape("roundRect", { x, y: cy, w, h: ch, rectRadius: 0.06, fill: { color: PANEL }, line: { color: CARDLINE, width: 1 }, shadow: SHADOW });
+        ex.addShape("roundRect", { x, y: cy, w, h: 0.14, rectRadius: 0.06, fill: { color: accent } });
+        ex.addShape("rect", { x, y: cy + 0.07, w, h: 0.07, fill: { color: accent } });
+        ex.addShape("ellipse", { x: x + 0.25, y: cy + 0.36, w: 0.72, h: 0.72, fill: { color: accent } });
+        ex.addText(letter, { x: x + 0.25, y: cy + 0.36, w: 0.72, h: 0.72, align: "center", valign: "middle", fontSize: 30, bold: true, color: "FFFFFF", fontFace: FONT });
+        ex.addText(title, { x: x + 1.1, y: cy + 0.4, w: w - 1.25, h: 0.7, fontSize: 13.5, bold: true, color: SLATE, valign: "middle", fontFace: FONT });
+        ex.addShape("roundRect", { x: x + 0.25, y: cy + 1.28, w: w - 0.5, h: 0.56, rectRadius: 0.06, fill: { color: BANNER } });
+        ex.addText(formula, { x: x + 0.35, y: cy + 1.28, w: w - 0.7, h: 0.56, fontSize: 11, bold: true, color: accent, valign: "middle", fontFace: FONT });
+        ex.addText(note, { x: x + 0.28, y: cy + 1.92, w: w - 0.56, h: 0.56, fontSize: 10.5, color: MUTE, valign: "top", fontFace: FONT });
+      };
+      const cw = (12.33 - 0.24 * 2) / 3;
+      defCard(0.5, cw, BLUE, "A", "Availability — เดินเครื่องได้จริงแค่ไหน", "A = เวลาเดินจริง ÷ เวลาแผน (แผน−พัก−downtime)", "หยุดเครื่อง (downtime) มาก → A ลด");
+      defCard(0.5 + cw + 0.24, cw, ORANGE, "P", "Performance — เร็วตามมาตรฐานไหม", "P = ผลิตจริง ÷ (มาตรฐาน × เวลาเดิน)", "ผลิตช้ากว่ามาตรฐาน kg/ชม. → P ลด");
+      defCard(0.5 + (cw + 0.24) * 2, cw, TEAL, "Q", "Quality — ได้ของดีกี่ %", "Q = มูลค่าของดี ÷ (ดี + เสีย)", "ของเสีย/แพ็กเสีย/ตีกลับ → Q ลด");
+      // Bottom info row: shift window · capture source · color bands
+      const netPlan = Math.max(0, summary.shiftPlanMin - summary.shiftBreakMin);
+      const infoPanel = (x: number, w: number, accent: string, title: string, body: PptxGenJSLib.TextProps[]) => {
+        const iy = 5.2, ih = 1.62;
+        ex.addShape("roundRect", { x, y: iy, w, h: ih, rectRadius: 0.06, fill: { color: PANEL }, line: { color: CARDLINE, width: 1 }, shadow: SHADOW });
+        ex.addShape("rect", { x, y: iy, w: 0.09, h: ih, fill: { color: accent } });
+        ex.addText(title, { x: x + 0.25, y: iy + 0.14, w: w - 0.4, h: 0.34, fontSize: 12, bold: true, color: SLATE, fontFace: FONT });
+        ex.addText(body, { x: x + 0.25, y: iy + 0.52, w: w - 0.45, h: ih - 0.62, fontSize: 10.5, color: INK, valign: "top", fontFace: FONT, lineSpacingMultiple: 1.1 });
+      };
+      infoPanel(0.5, cw, BLUE, "ฐานเวลาต่อกะ (คงที่)", [
+        { text: `แผน ${summary.shiftPlanMin} − พัก ${summary.shiftBreakMin} = เดินจริง ${netPlan} นาที\n`, options: { bold: true } },
+        { text: "นับครั้งเดียวต่อกะ — คีย์กี่ Pack Order ก็ไม่ทบเวลาซ้ำ", options: { color: MUTE } },
+      ]);
+      infoPanel(0.5 + cw + 0.24, cw, TEAL, "เก็บข้อมูลจาก Pack Order", [
+        { text: "สายผลิต · กะ · downtime (เหตุ+นาที)\n", options: {} },
+        { text: "ผลิต/ของเสีย · เวลาเฉลี่ยต่อกล่อง · แพ็กเกจจิ้ง", options: { color: MUTE } },
+      ]);
+      // Color bands as chips
+      {
+        const x = 0.5 + (cw + 0.24) * 2, w = cw, iy = 5.2, ih = 1.62;
+        ex.addShape("roundRect", { x, y: iy, w, h: ih, rectRadius: 0.06, fill: { color: PANEL }, line: { color: CARDLINE, width: 1 }, shadow: SHADOW });
+        ex.addShape("rect", { x, y: iy, w: 0.09, h: ih, fill: { color: SLATE } });
+        ex.addText("เกณฑ์สี (OEE bands)", { x: x + 0.25, y: iy + 0.14, w: w - 0.4, h: 0.34, fontSize: 12, bold: true, color: SLATE, fontFace: FONT });
+        const bands: [string, string][] = [["≥ 85%  ดีมาก", TEAL], ["65–84%  พอใช้", ORANGE], ["< 65%  ต้องแก้", CORAL]];
+        bands.forEach(([label, col], i) => {
+          const by = iy + 0.54 + i * 0.34;
+          ex.addShape("roundRect", { x: x + 0.25, y: by, w: 0.28, h: 0.24, rectRadius: 0.05, fill: { color: col } });
+          ex.addText(label, { x: x + 0.62, y: by - 0.02, w: w - 0.8, h: 0.28, fontSize: 11, color: INK, valign: "middle", fontFace: FONT });
+        });
+      }
+
+      // ============ Slide 3: Overall summary ============
       const totalDowntime = runs.reduce((s, r) => s + r.downtimeMin, 0);
       const s2 = newSlide("OEE Summary", "ภาพรวมทั้งช่วง · A × P × Q");
       const gy = 1.7, gh = 2.7, gw = (12.33 - 0.36) / 4;
@@ -272,6 +340,17 @@ export function OeeDeckButton({
       tile(s2, tileX(3), ty2, tw, th2, "Downtime รวม", num(totalDowntime), SLATE, "นาที (min)", SLATE);
       tile(s2, tileX(4), ty2, tw, th2, "Repack", num(repack), ORANGE, "units", ORANGE);
       tile(s2, tileX(5), ty2, tw, th2, "Scrap", num(scrap), CORAL, "units", CORAL);
+      // Cycle-time headline: average run time per box, overall.
+      const cy2 = ty2 + th2 + 0.28;
+      s2.addShape("roundRect", { x: 0.5, y: cy2, w: 12.33, h: 0.66, rectRadius: 0.08, fill: { color: BANNER }, line: { color: CARDLINE, width: 1 } });
+      s2.addText(
+        [
+          { text: "เวลาเฉลี่ยต่อกล่อง (ภาพรวม):  ", options: { color: SLATE, bold: true } },
+          { text: `${summary.avgMinPerBox} นาที/กล่อง`, options: { color: BLUE, bold: true } },
+          { text: `    ·    ${num(summary.boxes)} กล่อง    ·    เวลาเดินรวม ${num(summary.runMin)} นาที`, options: { color: MUTE } },
+        ],
+        { x: 0.7, y: cy2, w: 12, h: 0.66, valign: "middle", fontSize: 13, fontFace: FONT }
+      );
 
       // ============ Slide 3: OEE by production line ============
       tableSlide(
@@ -292,10 +371,10 @@ export function OeeDeckButton({
       // ============ OEE by shift (กะ) ============
       if (perShift.length > 0) {
         tableSlide(
-          "OEE by Shift", "OEE แยกตามกะ (per shift)",
-          ["กะ (Shift)", "รอบ", "A%", "P%", "Q%", "OEE%", "ผลิต", "ของเสีย", "Downtime"],
-          ["left", "center", "center", "center", "center", "center", "right", "right", "right"],
-          [3.0, 0.9, 1, 1, 1, 1.2, 1.4, 1.4, 1.4],
+          "OEE by Shift", "OEE แยกตามกะ · เวลาเฉลี่ยต่อกล่อง (per shift)",
+          ["กะ (Shift)", "รอบ", "A%", "P%", "Q%", "OEE%", "ผลิต", "ของเสีย", "กล่อง", "นาที/กล่อง", "Downtime"],
+          ["left", "center", "center", "center", "center", "center", "right", "right", "right", "right", "right"],
+          [2.5, 0.8, 0.9, 0.9, 0.9, 1.1, 1.2, 1.2, 1.0, 1.4, 1.3],
           perShift.map((sft) => [
             { v: sft.name || "-", bold: true },
             { v: num(sft.runs), align: "center" as Align, color: MUTE },
@@ -303,9 +382,11 @@ export function OeeDeckButton({
             { v: `${sft.oee}`, color: oeeColorHex(sft.oee), bold: true },
             { v: num(sft.produced), align: "right" as Align },
             { v: num(sft.loss), align: "right" as Align, color: sft.loss > 0 ? CORAL : INK },
+            { v: num(sft.boxes), align: "right" as Align },
+            { v: sft.boxes > 0 ? `${sft.avgMinPerBox}` : "—", align: "right" as Align, color: BLUE, bold: true },
             { v: `${num(sft.downtimeMin)} น.`, align: "right" as Align, color: sft.downtimeMin > 0 ? ORANGE : INK },
           ]),
-          `${perShift.length} กะ · OEE รวม ${summary.oee}%`,
+          `${perShift.length} กะ · OEE รวม ${summary.oee}% · เฉลี่ย ${summary.avgMinPerBox} นาที/กล่อง`,
           BLUE
         );
       }
@@ -313,10 +394,10 @@ export function OeeDeckButton({
       // ============ OEE by day × shift ============
       if (perDayShift.length > 0) {
         tableSlide(
-          "OEE by Day × Shift", "OEE ต่อกะ ต่อวัน (per shift, per day)",
-          ["วันที่", "กะ (Shift)", "รอบ", "A%", "P%", "Q%", "OEE%", "ผลิต", "ของเสีย", "DT"],
-          ["left", "left", "center", "center", "center", "center", "center", "right", "right", "right"],
-          [1.7, 2.5, 0.8, 0.9, 0.9, 0.9, 1.1, 1.3, 1.3, 1.1],
+          "OEE by Day × Shift", "OEE ต่อกะ ต่อวัน · เวลาเฉลี่ยต่อกล่อง",
+          ["วันที่", "กะ (Shift)", "รอบ", "A%", "P%", "Q%", "OEE%", "ผลิต", "ของเสีย", "กล่อง", "น./กล่อง", "DT"],
+          ["left", "left", "center", "center", "center", "center", "center", "right", "right", "right", "right", "right"],
+          [1.5, 2.1, 0.7, 0.85, 0.85, 0.85, 1.05, 1.15, 1.15, 0.95, 1.2, 1.0],
           perDayShift.map((r) => [
             { v: dfmt(r.day), color: SLATE },
             { v: r.shift || "-", bold: true },
@@ -325,9 +406,11 @@ export function OeeDeckButton({
             { v: `${r.oee}`, color: oeeColorHex(r.oee), bold: true },
             { v: num(r.produced), align: "right" as Align },
             { v: num(r.loss), align: "right" as Align, color: r.loss > 0 ? CORAL : INK },
+            { v: num(r.boxes), align: "right" as Align },
+            { v: r.boxes > 0 ? `${r.avgMinPerBox}` : "—", align: "right" as Align, color: BLUE, bold: true },
             { v: `${num(r.downtimeMin)}`, align: "right" as Align, color: r.downtimeMin > 0 ? ORANGE : INK },
           ]),
-          `${perDayShift.length} กะ-วัน · OEE รวม ${summary.oee}%`,
+          `${perDayShift.length} กะ-วัน · OEE รวม ${summary.oee}% · เฉลี่ย ${summary.avgMinPerBox} นาที/กล่อง`,
           TEAL
         );
       }
