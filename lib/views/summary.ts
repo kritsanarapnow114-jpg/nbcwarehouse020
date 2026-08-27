@@ -44,6 +44,8 @@ export async function getExecutiveSummary(range: Range) {
       unit: p.unit,
       value: p.totalValue,
       lotCount: p.lotCount,
+      category: p.category,
+      categoryLabel: p.categoryLabel,
     }));
 
   // Aging — oldest lots first (getAgingRows already sorts by ageDays desc).
@@ -51,7 +53,10 @@ export async function getExecutiveSummary(range: Range) {
     code: a.code,
     name: a.nameEn,
     lotNo: a.lotNo,
-    location: a.bins.map((b) => b.locationCode).join(", "),
+    // Show at most 2 bins — a lot spread over many locations just needs a hint.
+    location:
+      a.bins.slice(0, 2).map((b) => b.locationCode).join(", ") +
+      (a.bins.length > 2 ? ` +${a.bins.length - 2}` : ""),
     onHand: a.onHand,
     unit: a.unit,
     ageDays: a.ageDays,
