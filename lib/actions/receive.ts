@@ -326,23 +326,6 @@ export async function confirmReceiptAction(
  * Warehouse verifies a pending production receipt: the finished-goods lines now
  * enter stock (their lots are created) and the receipt is marked verified.
  */
-/** Set / change the production shift (กะ) on a Pack Order after it was created. */
-export async function setReceiptShiftAction(
-  input: { receiptId: string; shift: string }
-): Promise<{ error?: string }> {
-  try {
-    await requireWrite();
-    const r = await db.receipt.findUnique({ where: { id: input.receiptId }, select: { mode: true } });
-    if (!r) return { error: "ไม่พบเอกสาร (receipt not found)" };
-    if (r.mode !== "PRODUCTION") return { error: "ระบุกะได้เฉพาะ Pack Order (production only)" };
-    await db.receipt.update({ where: { id: input.receiptId }, data: { shift: input.shift.trim() || null } });
-    safeRevalidate(["/pack", "/oee", "/reports"]);
-    return {};
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "บันทึกกะไม่สำเร็จ (failed to set shift)" };
-  }
-}
-
 export async function verifyReceiptAction(
   receiptId: string
 ): Promise<{ docNo?: string; error?: string }> {

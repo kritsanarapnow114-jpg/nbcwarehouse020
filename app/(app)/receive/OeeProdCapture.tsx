@@ -126,11 +126,17 @@ export function OeeProdCapture({
             เวลา + downtime (ใคร/ฝ่ายไหน) + repack/scrap · Quality loss ดึงจากการ์ด BOM ให้เอง
           </div>
         </div>
-        {/* Shift (กะ) — always selectable so every run is tagged. */}
-        <label className="flex items-center gap-2" title="กะการผลิต — ตั้งรายการได้ที่ Settings">
-          <span className="text-[11.5px] font-medium text-[#69748a]">กะ</span>
-          <select value={shift} onChange={(e) => onShift(e.target.value)} className={`${inputCls} min-w-[150px]`}>
-            <option value="">— เลือกกะ —</option>
+        {/* Shift (กะ) — required on every Pack Order. */}
+        <label className="flex items-center gap-2" title="กะการผลิต (บังคับ) — ตั้งรายการได้ที่ Settings">
+          <span className="text-[11.5px] font-medium text-[#69748a]">กะ <span className="text-[#c53f3f]">*</span></span>
+          <select
+            value={shift}
+            onChange={(e) => onShift(e.target.value)}
+            className={`min-w-[150px] rounded-[8px] border px-2.5 py-1.5 text-[13px] outline-none focus:border-[#2f86cf] ${
+              shift ? "border-[#d7dce4]" : "border-[#e6b45a] bg-[#fdf6e8]"
+            }`}
+          >
+            <option value="">— เลือกกะ (บังคับ) —</option>
             {prodShifts.map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
