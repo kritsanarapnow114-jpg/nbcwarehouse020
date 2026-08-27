@@ -328,11 +328,11 @@ export function ExportDeckButton({
         const wsum = weights.reduce((a, b) => a + b, 0);
         const colW = weights.map((wt) => (wt / wsum) * totalW);
         const BOTTOM = 6.98;
-        const MIN_ROWH = 0.4; // comfortable row height that drives pagination
+        const MIN_ROWH = 0.26; // dense rows at 9pt → far fewer continuation slides
 
         // Split rows across as many slides as needed (first slide is shorter
         // because of the summary banner). Never cram — spill onto new slides.
-        const firstTop = summaryLine ? 2.32 : 2.05;
+        const firstTop = summaryLine ? 2.28 : 2.05;
         const firstCap = Math.max(1, Math.floor((BOTTOM - firstTop) / MIN_ROWH) - 1);
         const contCap = Math.max(1, Math.floor((BOTTOM - 2.05) / MIN_ROWH) - 1);
         const chunks: (string | number)[][][] = [];
@@ -353,36 +353,36 @@ export function ExportDeckButton({
           const s = newSlide(title, contTh, no, accent);
           let top = 2.05;
           if (ci === 0 && summaryLine) {
-            s.addShape("roundRect", { x: 0.5, y: 1.58, w: 12.33, h: 0.5, rectRadius: 0.06, fill: { color: BANNER }, line: { color: CARDLINE, width: 1 } });
-            s.addText(summaryLine, { x: 0.7, y: 1.58, w: 12, h: 0.5, fontSize: 14, bold: true, color: BLUE, valign: "middle", fontFace: FONT });
-            top = 2.32;
+            s.addShape("roundRect", { x: 0.5, y: 1.58, w: 12.33, h: 0.44, rectRadius: 0.06, fill: { color: BANNER }, line: { color: CARDLINE, width: 1 } });
+            s.addText(summaryLine, { x: 0.7, y: 1.58, w: 12, h: 0.44, fontSize: 10.5, bold: true, color: BLUE, valign: "middle", fontFace: FONT });
+            top = 2.28;
           }
           const nRows = Math.max(chunk.length, 1) + 1; // + header
           const avail = BOTTOM - top;
-          const rowH = Math.min(0.6, Math.max(MIN_ROWH, avail / nRows));
+          const rowH = Math.min(0.4, Math.max(MIN_ROWH, avail / nRows));
           const headRow: PptxGenJSLib.TableRow = headers.map((h) => ({
             text: h,
-            options: { bold: true, color: "FFFFFF", fill: { color: accent }, fontSize: 13, valign: "middle", fontFace: FONT, margin: [3, 5, 3, 5] as [number, number, number, number] },
+            options: { bold: true, color: "FFFFFF", fill: { color: accent }, fontSize: 9, valign: "middle", fontFace: FONT, margin: [1, 4, 1, 4] as [number, number, number, number] },
           }));
           const bodyRows: PptxGenJSLib.TableRow[] = chunk.length
             ? chunk.map((r, ri) =>
                 r.map((c, cix) => ({
                   text: String(c),
                   options: {
-                    fontSize: 13,
+                    fontSize: 9,
                     bold: cix === 0,
                     color: cix === 0 ? SLATE : INK,
                     fill: { color: ri % 2 ? PANEL : BANNER },
                     valign: "middle",
                     fontFace: FONT,
-                    margin: [2, 5, 2, 5] as [number, number, number, number],
+                    margin: [1, 4, 1, 4] as [number, number, number, number],
                   },
                 }))
               )
             : [[
                 {
                   text: "— no data for this period (ไม่มีข้อมูลช่วงนี้) —",
-                  options: { fontSize: 12, italic: true, color: MUTE, colspan: headers.length, align: "center" as const, fill: { color: PANEL }, fontFace: FONT },
+                  options: { fontSize: 9, italic: true, color: MUTE, colspan: headers.length, align: "center" as const, fill: { color: PANEL }, fontFace: FONT },
                 },
               ]];
           s.addTable([headRow, ...bodyRows], {
