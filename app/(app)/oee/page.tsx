@@ -9,7 +9,6 @@ import { OeeDeckButton } from "./OeeDeckButton";
 import { getAppSetting } from "@/lib/views/settings";
 import {
   OEE_REPORT_KEY,
-  OEE_REPORT_ROWS,
   OEE_PHASE_GUIDE,
   RISK_LEVELS,
   QUALITY_LOSS_SEED,
@@ -86,49 +85,11 @@ export default async function OeePage({
       </div>
 
       <Card className="mb-4">
-        <CardTitle>OEE Calculation Base — เดือนนี้ / เป้า / เดือนก่อน (ตรวจที่มาได้)</CardTitle>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] border-collapse text-[12.5px]">
-            <thead>
-              <tr className="bg-[#f7f9fb] text-[#69748a]">
-                <th className="p-[8px_12px] text-left text-[11.5px] font-medium">OEE Input</th>
-                <th className="p-[8px_12px] text-right text-[11.5px] font-medium">This month</th>
-                <th className="p-[8px_12px] text-right text-[11.5px] font-medium">Target</th>
-                <th className="p-[8px_12px] text-right text-[11.5px] font-medium">Last month</th>
-                <th className="p-[8px_12px] text-center text-[11.5px] font-medium">Trend</th>
-              </tr>
-            </thead>
-            <tbody>
-              {OEE_REPORT_ROWS.map((row) => {
-                const c = R[row.key];
-                const cur = num(c.cur);
-                const prev = num(c.prev);
-                const emphasize = row.key === "oee" || row.pct;
-                // For downtime/repack/scrap, lower is better — flip arrow meaning.
-                const lowerBetter = ["downtimeMin", "repack", "scrap"].includes(row.key);
-                return (
-                  <tr key={row.key} className={`border-t border-[#eef1f5] ${emphasize ? "font-semibold" : ""}`}>
-                    <td className="p-[7px_12px] text-[#3a4658]">
-                      {row.label} <span className="text-[10.5px] font-normal text-[#9aa4b4]">{row.unit}</span>
-                    </td>
-                    <td className="font-num p-[7px_12px] text-right">{c.cur || "—"}</td>
-                    <td className="font-num p-[7px_12px] text-right text-[#69748a]">
-                      {row.hasTarget ? c.target || "—" : "–"}
-                    </td>
-                    <td className="font-num p-[7px_12px] text-right text-[#9aa4b4]">{c.prev || "—"}</td>
-                    <td className="p-[7px_12px] text-center">
-                      <TrendArrow cur={cur} prev={prev} lowerBetter={lowerBetter} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <CardTitle>Trend · Packing line OEE — 7 วันล่าสุด (ผลิต)</CardTitle>
+        <div className="mb-2 text-[11.5px] text-[#9aa4b4]">
+          เส้นประ = เป้า {OEE_GOOD}% · วันที่ไม่มีการผลิตจะเว้นว่าง · OEE = A × P × Q (ฐานเวลา แผน − พัก หักครั้งเดียวต่อกะ)
         </div>
-        <p className="mt-2 text-[11px] text-[#9aa4b4]">
-          กรอก/แก้ตัวเลขได้ที่ <Link href="/settings" className="text-[#2f86cf]">Settings → OEE Report</Link> ·
-          ค่าเดือนก่อน (July) ใส่ให้จากรายงานเดิมแล้ว
-        </p>
+        <Trend days={d.production.trend.days} oee={d.production.trend.oee} />
       </Card>
 
       {/* Quality Loss Pareto — pulled from the BOM material loss */}

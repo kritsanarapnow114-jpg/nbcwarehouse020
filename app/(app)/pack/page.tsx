@@ -2,6 +2,7 @@ import { getReceiveFormData, getRecentReceipts, getPendingReceipts } from "@/lib
 import { ReceiveForm } from "../receive/ReceiveForm";
 import { PendingVerify } from "../receive/PendingVerify";
 import { DocHistory, DocHistoryRow } from "@/components/ui/DocHistory";
+import { PackShiftEditor, type ShiftEditRow } from "./PackShiftEditor";
 
 export default async function PackOrderPage() {
   const [data, receipts, pending] = await Promise.all([
@@ -34,10 +35,16 @@ export default async function PackOrderPage() {
       })),
     }));
 
+  // Pack Orders (not reversed) that can have their shift set/changed afterward.
+  const shiftRows: ShiftEditRow[] = receipts
+    .filter((r) => r.mode === "PRODUCTION" && !r.reversedAt)
+    .map((r) => ({ id: r.id, label: r.materialDoc || r.docNo, docDate: r.docDate, shift: r.shift }));
+
   return (
     <div className="max-w-[1240px] p-[22px_26px]">
       <ReceiveForm data={data} lockMode="PRODUCTION" />
       <PendingVerify receipts={pending} />
+      <PackShiftEditor rows={shiftRows} shifts={data.prodShifts} />
       <DocHistory title="ประวัติรับจากผลิต (Pack Order history)" rows={rows} accentColor="#8a6d1f" reverseKind="receipt" packCols />
     </div>
   );
