@@ -417,6 +417,32 @@ export async function getOeeDashboard(range: Range) {
     return { ...s, runMin, idealHrOutput: (standards[s.line] ?? 0) * (runMin / 60) };
   });
 
+  // Packing-line OEE per day over the same 7-day window (null = no run that day).
+  const prodDayMap = new Map<string, { plannedMin: number; runMin: number; idealHrOutput: number; good: number; reject: number; gv: number; lv: number }>();
+  for (const s of sessions) {
+    const p = prodDayMap.get(s.day) ?? { plannedMin: 0, runMin: 0, idealHrOutput: 0, good: 0, reject: 0, gv: 0, lv: 0 };
+    p.plannedMin += s.planned;
+    p.runMin += s.runMin;
+    p.idealHrOutput += s.idealHrOutput;
+    p.good += s.good;
+    p.reject += s.reject;
+    p.gv += s.gv;
+    p.lv += s.lv;
+    prodDayMap.set(s.day, p);
+  }
+  const prodTrend = days.map((day) => {
+    const p = prodDayMap.get(day);
+    if (!p) return null;
+    const parts = scoreProduction({
+      plannedMin: p.plannedMin,
+      downtimeMin: p.plannedMin - p.runMin,
+      good: p.good,
+      reject: p.reject,
+      standardPerHour: p.runMin > 0 ? p.idealHrOutput / (p.runMin / 60) : 0,
+    });
+    return pct(parts.availability * parts.performance * valueQuality(p.gv, p.lv));
+  });
+
   const prodPool = sessions.reduce(
     (acc, s) => {
       acc.plannedMin += s.planned;
@@ -679,6 +705,7 @@ export async function getOeeDashboard(range: Range) {
       runMin: Math.round(prodPool.runMin),
       boxes: sessions.reduce((s, x) => s + x.boxes, 0),
       avgMinPerBox: avgPerBox(prodPool.runMin, sessions.reduce((s, x) => s + x.boxes, 0)),
+      trend: { days, oee: prodTrend },
     },
     standards,
   };

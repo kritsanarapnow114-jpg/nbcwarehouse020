@@ -395,23 +395,55 @@ export function ExportDeckButton({
         return firstSlide as unknown as PptxGenJSLib.Slide;
       };
 
-      tableSlide(
-        "Production", "การผลิต — สินค้าที่ผลิต", 2,
-        ["SAP Material", "Material Description", "Date", "Qty", "Lot"],
-        d.production.rows.map((r) => [r.code, r.name, dfmt(r.docDate), `${num(r.qty)} ${r.unit}`, r.lotNo]),
-        [2, 4, 1.8, 1.6, 2],
-        `${num(d.production.docCount)} docs   ·   ผลิตได้ ${num(d.production.totalProduced)}   ·   สูญเสีย ${num(d.production.totalProdLoss)}   ·   Yield ${d.production.yieldPct.toFixed(1)}%`,
-        TEAL
-      );
+      // Packing Output — one row per day (totals), not per box/pallet.
+      {
+        const pbd = new Map<string, { date: string; qty: number; skus: Set<string> }>();
+        for (const r of d.production.rows) {
+          const key = dfmt(r.docDate);
+          const e = pbd.get(key) ?? { date: r.docDate, qty: 0, skus: new Set<string>() };
+          e.qty += r.qty;
+          e.skus.add(r.code);
+          pbd.set(key, e);
+        }
+        const rows = [...pbd.values()]
+          .sort((a, b) => b.date.localeCompare(a.date))
+          .map((e) => [dfmt(e.date), num(e.skus.size), num(e.qty)]);
+        tableSlide(
+          "Packing Output", "ผลผลิตแพ็ก — รวมยอดต่อวัน (per day)", 2,
+          ["วันที่ (Date)", "รายการ (SKUs)", "Packing Output (รวม)"],
+          rows,
+          [3, 3, 4],
+          `${num(pbd.size)} วัน   ·   ${num(d.production.docCount)} docs   ·   ผลิตรวม ${num(d.production.totalProduced)}   ·   Yield ${d.production.yieldPct.toFixed(1)}%`,
+          TEAL
+        );
+      }
 
-      tableSlide(
-        "On-hand Balances", "ยอดคงเหลือ — เรียงตามมูลค่า", 3,
-        ["SAP Material", "Material Description", "On hand", "Value", "Lots"],
-        d.balances.map((r) => [r.code, r.name, `${num(r.onHand)} ${r.unit}`, money(r.value), num(r.lotCount)]),
-        [2, 4.2, 2, 2.2, 1],
-        `มูลค่าคงเหลือรวม ${money(st.inventoryValue)}   ·   ${num(st.skuCount)} SKU   ·   ${num(st.lotCount)} lots`,
-        BLUE
-      );
+      // On-hand balances — split by category, one slide per category.
+      {
+        type Bal = (typeof d.balances)[number];
+        const CAT_ORDER = ["FINISHED_GOODS", "RAW_MATERIAL", "PACKAGING", "SPARE_PARTS"];
+        const byCat = new Map<string, { label: string; rows: Bal[] }>();
+        for (const b of d.balances) {
+          const e = byCat.get(b.category) ?? { label: b.categoryLabel, rows: [] as Bal[] };
+          e.rows.push(b);
+          byCat.set(b.category, e);
+        }
+        const ordered = [...byCat.entries()].sort(
+          (a, b) => (CAT_ORDER.indexOf(a[0]) + 99) % 100 - ((CAT_ORDER.indexOf(b[0]) + 99) % 100)
+        );
+        for (const [, grp] of ordered) {
+          const catVal = grp.rows.reduce((s, r) => s + r.value, 0);
+          const rows = grp.rows.slice(0, 16).map((r) => [r.code, r.name, `${num(r.onHand)} ${r.unit}`, money(r.value), num(r.lotCount)]);
+          tableSlide(
+            "On-hand", `ยอดคงเหลือ — ${grp.label} (1 หมวด/หน้า)`, 3,
+            ["SAP Material", "Material Description", "On hand", "Value", "Lots"],
+            rows,
+            [2, 4.2, 2, 2.2, 1],
+            `${grp.label}   ·   ${num(grp.rows.length)} SKU   ·   มูลค่า ${money(catVal)}`,
+            BLUE
+          );
+        }
+      }
 
       tableSlide(
         "Aging", "อายุสินค้า — ล็อตที่เก่าที่สุด", 4,
@@ -443,26 +475,32 @@ export function ExportDeckButton({
         ORANGE
       );
 
-      tableSlide(
-        "TF · Transfers", "ย้ายที่เก็บ", 7,
-        ["SAP Material", "Description", "Date", "Qty", "Lot", "From", "To"],
-        d.transfer.rows.map((r) => [r.code, r.name, dfmt(r.docDate), `${num(r.qty)} ${r.unit}`, r.lotNo, r.from, r.to]),
-        [2, 3, 1.6, 1.5, 1.9, 1.3, 1.3],
-        `${num(d.transfer.docCount)} docs   ·   ย้ายรวม ${num(d.transfer.totalUnits)} units`,
-        BLUE
-      );
-
-      tableSlide(
-        "Count · Stock Count", "นับสต็อก", 8,
-        ["SAP Material", "Description", "Date", "System", "Counted", "Variance", "Lot"],
-        d.count.rows.map((r) => [
-          r.code, r.name, dfmt(r.docDate), num(r.sysQty), num(r.countedQty),
-          r.variance > 0 ? `+${num(r.variance)}` : num(r.variance), r.lotNo,
-        ]),
-        [2, 3, 1.6, 1.4, 1.4, 1.5, 2],
-        `${num(d.count.docCount)} docs   ·   ${num(d.count.lineCount)} lines   ·   Accuracy ${d.count.accuracyPct.toFixed(1)}%`,
-        TEAL
-      );
+      // Count · Stock Count — as a graph (accuracy gauge + top variances).
+      {
+        const cg = newSlide("Count · Stock Count", "นับสต็อก — สรุปเป็นกราฟ", 7, TEAL);
+        const accCol = d.count.accuracyPct >= 99 ? TEAL : d.count.accuracyPct >= 95 ? ORANGE : CORAL;
+        gauge(cg, 0.5, 1.7, 3.5, 3.15, "Count Accuracy", d.count.accuracyPct, accCol);
+        tile(cg, 0.5, 5.1, 1.68, 1.45, "เอกสาร", num(d.count.docCount), INK, "docs", 20, BLUE);
+        tile(cg, 0.5 + 1.68 + 0.14, 5.1, 1.68, 1.45, "รายการ", num(d.count.lineCount), INK, "lines", 20, TEAL);
+        const px = 4.3, pw = W - 0.5 - px;
+        panel(cg, px, 1.7, pw, 4.85, "ผลต่างเทียบระบบ — Top variance (นับ − ระบบ)");
+        const topVar = [...d.count.rows].filter((r) => r.variance !== 0).sort((a, b) => Math.abs(b.variance) - Math.abs(a.variance)).slice(0, 9);
+        if (topVar.length) {
+          const maxV = Math.max(1, ...topVar.map((r) => Math.abs(r.variance)));
+          barRows(
+            cg, px + 0.25, 2.32, pw - 0.5, topVar.length * 0.46,
+            topVar.map((r) => ({
+              label: `${r.code}  ${r.name}`.slice(0, 40),
+              pct: (Math.abs(r.variance) / maxV) * 100,
+              color: r.variance < 0 ? CORAL : TEAL,
+              valueText: `${r.variance > 0 ? "+" : ""}${num(r.variance)}`,
+            })),
+            3.7, 1.2
+          );
+        } else {
+          cg.addText("— นับตรงกับระบบทุกใบ (no variance) —", { x: px, y: 3.7, w: pw, h: 0.5, fontSize: 13, italic: true, color: MUTE, align: "center", fontFace: FONT });
+        }
+      }
 
       tableSlide(
         "PO · Purchase Orders", "ใบสั่งซื้อ", 9,
