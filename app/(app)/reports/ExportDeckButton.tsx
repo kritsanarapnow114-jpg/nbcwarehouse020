@@ -38,10 +38,10 @@ const oeeColorHex = (v: number) => (v >= 65 ? TEAL : v >= 45 ? ORANGE : CORAL);
 // OEE / Packaging data folded into the combined report (optional — the deck
 // still builds when the period has no production).
 export type DeckOee = {
-  summary: { a: number; p: number; q: number; oee: number; produced: number; loss: number; scoredRuns: number; docs: number };
+  summary: { a: number; p: number; q: number; oee: number; produced: number; loss: number; scoredRuns: number; docs: number; boxes: number; avgMinPerBox: number; runMin: number; shiftPlanMin: number; shiftBreakMin: number };
   perLine: { name: string; oee: number; a: number; p: number; q: number; output: number; standard: number }[];
-  perShift: { name: string; oee: number; a: number; p: number; q: number; produced: number; loss: number; output: number; downtimeMin: number; runs: number }[];
-  perDayShift: { day: string; shift: string; oee: number; a: number; p: number; q: number; produced: number; loss: number; output: number; downtimeMin: number; runs: number }[];
+  perShift: { name: string; oee: number; a: number; p: number; q: number; produced: number; loss: number; output: number; downtimeMin: number; boxes: number; avgMinPerBox: number; runs: number }[];
+  perDayShift: { day: string; shift: string; oee: number; a: number; p: number; q: number; produced: number; loss: number; output: number; downtimeMin: number; boxes: number; avgMinPerBox: number; runs: number }[];
   lossPareto: { loss: string; freq: number; lostMin: number }[];
   pkgUsed: { name: string; qty: number }[];
   pkgLoss: { name: string; qty: number }[];
@@ -506,6 +506,17 @@ export function ExportDeckButton({
         tile(os, otX(3), oy, otW, otH, "Downtime รวม", num(o.downtimeMin), SLATE, "นาที (min)", 20, SLATE);
         tile(os, otX(4), oy, otW, otH, "Repack", num(o.repack), ORANGE, "units", 20, ORANGE);
         tile(os, otX(5), oy, otW, otH, "Scrap", num(o.scrap), CORAL, "units", 20, CORAL);
+        // Cycle-time headline: average run time per box, overall.
+        const ocy = oy + otH + 0.26;
+        os.addShape("roundRect", { x: 0.5, y: ocy, w: 12.33, h: 0.62, rectRadius: 0.08, fill: { color: BANNER }, line: { color: CARDLINE, width: 1 } });
+        os.addText(
+          [
+            { text: "เวลาเฉลี่ยต่อกล่อง (ภาพรวม):  ", options: { color: SLATE, bold: true } },
+            { text: `${o.summary.avgMinPerBox} นาที/กล่อง`, options: { color: BLUE, bold: true } },
+            { text: `    ·    ${num(o.summary.boxes)} กล่อง    ·    เดินจริง ${num(o.summary.runMin)} นาที (แผน ${o.summary.shiftPlanMin} − พัก ${o.summary.shiftBreakMin}/กะ)`, options: { color: MUTE } },
+          ],
+          { x: 0.7, y: ocy, w: 12, h: 0.62, valign: "middle", fontSize: 12.5, fontFace: FONT }
+        );
 
         // ---- OEE by line ----
         if (o.perLine.length) {
@@ -524,14 +535,14 @@ export function ExportDeckButton({
         // ---- OEE by shift (กะ) ----
         if (o.perShift.length) {
           tableSlide(
-            "OEE by Shift", "OEE แยกตามกะ (per shift)", 3,
-            ["กะ (Shift)", "รอบ", "A%", "P%", "Q%", "OEE%", "ผลิต", "ของเสีย", "Downtime"],
+            "OEE by Shift", "OEE แยกตามกะ · เวลาเฉลี่ยต่อกล่อง (per shift)", 3,
+            ["กะ (Shift)", "รอบ", "A%", "P%", "Q%", "OEE%", "ผลิต", "ของเสีย", "กล่อง", "นาที/กล่อง", "Downtime"],
             o.perShift.map((sft) => [
               sft.name || "-", num(sft.runs), `${sft.a}`, `${sft.p}`, `${sft.q}`, `${sft.oee}`,
-              num(sft.produced), num(sft.loss), `${num(sft.downtimeMin)} น.`,
+              num(sft.produced), num(sft.loss), num(sft.boxes), sft.boxes > 0 ? `${sft.avgMinPerBox}` : "—", `${num(sft.downtimeMin)} น.`,
             ]),
-            [3.0, 0.9, 1, 1, 1, 1.2, 1.4, 1.4, 1.4],
-            `${o.perShift.length} กะ · OEE รวม ${o.summary.oee}%`,
+            [2.5, 0.8, 0.9, 0.9, 0.9, 1.1, 1.2, 1.2, 1.0, 1.4, 1.3],
+            `${o.perShift.length} กะ · OEE รวม ${o.summary.oee}% · เฉลี่ย ${o.summary.avgMinPerBox} นาที/กล่อง`,
             BLUE
           );
         }
@@ -539,14 +550,14 @@ export function ExportDeckButton({
         // ---- OEE by day × shift ----
         if (o.perDayShift.length) {
           tableSlide(
-            "OEE by Day × Shift", "OEE ต่อกะ ต่อวัน (per shift, per day)", 3,
-            ["วันที่", "กะ (Shift)", "รอบ", "A%", "P%", "Q%", "OEE%", "ผลิต", "ของเสีย", "DT"],
+            "OEE by Day × Shift", "OEE ต่อกะ ต่อวัน · เวลาเฉลี่ยต่อกล่อง", 3,
+            ["วันที่", "กะ (Shift)", "รอบ", "A%", "P%", "Q%", "OEE%", "ผลิต", "ของเสีย", "กล่อง", "น./กล่อง", "DT"],
             o.perDayShift.map((r) => [
               dfmt(r.day), r.shift || "-", num(r.runs), `${r.a}`, `${r.p}`, `${r.q}`, `${r.oee}`,
-              num(r.produced), num(r.loss), `${num(r.downtimeMin)}`,
+              num(r.produced), num(r.loss), num(r.boxes), r.boxes > 0 ? `${r.avgMinPerBox}` : "—", `${num(r.downtimeMin)}`,
             ]),
-            [1.7, 2.5, 0.8, 0.9, 0.9, 0.9, 1.1, 1.3, 1.3, 1.1],
-            `${o.perDayShift.length} กะ-วัน · OEE รวม ${o.summary.oee}%`,
+            [1.5, 2.1, 0.7, 0.85, 0.85, 0.85, 1.05, 1.15, 1.15, 0.95, 1.2, 1.0],
+            `${o.perDayShift.length} กะ-วัน · OEE รวม ${o.summary.oee}% · เฉลี่ย ${o.summary.avgMinPerBox} นาที/กล่อง`,
             TEAL
           );
         }
@@ -561,13 +572,14 @@ export function ExportDeckButton({
           gauge(ss, 0.5 + (gw + 0.12), gy, gw, gh, "Performance", sft.p, ORANGE);
           gauge(ss, 0.5 + (gw + 0.12) * 2, gy, gw, gh, "Quality", sft.q, TEAL);
           gauge(ss, 0.5 + (gw + 0.12) * 3, gy, gw, gh, "OEE", sft.oee, acc);
-          const soy = gy + gh + 0.3, soH = 1.5, soW = (12.33 - 0.48) / 5;
+          const soy = gy + gh + 0.3, soH = 1.5, soW = (12.33 - 0.6) / 6;
           const soX = (i: number) => 0.5 + i * (soW + 0.12);
-          tile(ss, soX(0), soy, soW, soH, "รอบ (Pack Orders)", num(sft.runs), INK, "docs", 20, BLUE);
-          tile(ss, soX(1), soy, soW, soH, "ผลิตได้", num(sft.produced), TEAL, "units", 20, TEAL);
-          tile(ss, soX(2), soy, soW, soH, "ของเสีย", num(sft.loss), CORAL, "units", 20, CORAL);
-          tile(ss, soX(3), soy, soW, soH, "Downtime", num(sft.downtimeMin), SLATE, "นาที", 20, SLATE);
-          tile(ss, soX(4), soy, soW, soH, "OEE", `${sft.oee}%`, acc, "A×P×Q", 20, acc);
+          tile(ss, soX(0), soy, soW, soH, "รอบ (Pack Orders)", num(sft.runs), INK, "docs", 18, BLUE);
+          tile(ss, soX(1), soy, soW, soH, "ผลิตได้", num(sft.produced), TEAL, "units", 18, TEAL);
+          tile(ss, soX(2), soy, soW, soH, "ของเสีย", num(sft.loss), CORAL, "units", 18, CORAL);
+          tile(ss, soX(3), soy, soW, soH, "เวลา/กล่อง", sft.boxes > 0 ? `${sft.avgMinPerBox}` : "—", BLUE, `${num(sft.boxes)} กล่อง`, 18, BLUE);
+          tile(ss, soX(4), soy, soW, soH, "Downtime", num(sft.downtimeMin), SLATE, "นาที", 18, SLATE);
+          tile(ss, soX(5), soy, soW, soH, "OEE", `${sft.oee}%`, acc, "A×P×Q", 18, acc);
 
           const rows = o.perDayShift.filter((r) => r.shift === sft.name);
           if (rows.length) {

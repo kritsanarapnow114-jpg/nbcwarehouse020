@@ -492,12 +492,14 @@ export function ReceiveForm({
           </div>
           <div className="h-[34px] w-px bg-[#e2e6ec]" />
           <div>
-            <div className="mb-1 text-[11.5px] text-[#69748a]">Material Document (SAP)</div>
+            <div className="mb-1 text-[11.5px] text-[#69748a]">
+              {mode === "PRODUCTION" ? "Pack Order No. (เลขที่ Pack Order)" : "Material Document (SAP)"}
+            </div>
             <input
               value={materialDoc}
               onChange={(e) => setMaterialDoc(e.target.value)}
-              placeholder="เลขที่จาก SAP"
-              className="font-num w-[150px] rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
+              placeholder={mode === "PRODUCTION" ? "เลขที่ Pack Order" : "เลขที่จาก SAP"}
+              className="font-num w-[170px] rounded-[8px] border border-[#d7dce4] px-2.5 py-1.5 text-[13px]"
             />
           </div>
           <div className="min-w-[160px] flex-1">
