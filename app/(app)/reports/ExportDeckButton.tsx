@@ -445,17 +445,24 @@ export function ExportDeckButton({
         }
       }
 
-      tableSlide(
-        "Aging", "อายุสินค้า — ล็อตที่เก่าที่สุด", 4,
-        ["SAP Material", "Description", "Lot", "Loc", "On hand", "Age (วัน)", "อายุคงเหลือ (Days left)"],
-        d.aging.map((r) => [
-          r.code, r.name, r.lotNo, r.location, `${num(r.onHand)} ${r.unit}`,
-          num(r.ageDays), r.daysLeft == null ? "— ไม่มีวันหมดอายุ" : r.daysLeft < 0 ? `หมดอายุแล้ว ${Math.abs(r.daysLeft)} วัน` : `${num(r.daysLeft)} วัน`,
-        ]),
-        [1.9, 2.9, 1.7, 1, 1.5, 1.3, 2.6],
-        "เรียงจากล็อตที่รับเข้ามานานที่สุด · อายุคงเหลือ = จำนวนวันก่อนหมดอายุ",
-        ORANGE
-      );
+      {
+        // Keep Aging to ~2 slides — only the oldest lots matter.
+        const AGING_MAX = 34;
+        const agingRows = d.aging.slice(0, AGING_MAX);
+        tableSlide(
+          "Aging", "อายุสินค้า — ล็อตที่เก่าที่สุด (สูงสุด 2 หน้า)", 4,
+          ["SAP Material", "Description", "Lot", "Loc", "On hand", "Age (วัน)", "อายุคงเหลือ (Days left)"],
+          agingRows.map((r) => [
+            r.code, r.name, r.lotNo, r.location, `${num(r.onHand)} ${r.unit}`,
+            num(r.ageDays), r.daysLeft == null ? "— ไม่มีวันหมดอายุ" : r.daysLeft < 0 ? `หมดอายุแล้ว ${Math.abs(r.daysLeft)} วัน` : `${num(r.daysLeft)} วัน`,
+          ]),
+          [2.0, 3.0, 1.7, 0.9, 1.5, 1.3, 2.6],
+          d.aging.length > AGING_MAX
+            ? `แสดง ${AGING_MAX} ล็อตที่เก่าที่สุด จากทั้งหมด ${num(d.aging.length)} · อายุคงเหลือ = วันก่อนหมดอายุ`
+            : "เรียงจากล็อตที่รับเข้ามานานที่สุด · อายุคงเหลือ = จำนวนวันก่อนหมดอายุ",
+          ORANGE
+        );
+      }
 
       tableSlide(
         "GR · Receiving", "รับเข้า", 5,
