@@ -97,21 +97,26 @@ export async function getExecutiveSummary(range: Range) {
       },
       balances,
       aging: agingTop,
-      receiving: {
-        docCount: report.receiving.docCount,
-        totalUnits: report.receiving.totalUnits,
-        rows: report.receiving.rows.slice(0, DETAIL_CAP).map((r) => ({
-          docNo: r.docNo,
-          docDate: r.docDate,
-          code: r.code,
-          name: r.name,
-          lotNo: r.lotNo,
-          qty: r.qty,
-          unit: r.unit,
-          location: r.locationCode,
-          materialDoc: r.materialDoc,
-        })),
-      },
+      // GR shows supplier/PO receipts only — production output is its own
+      // "Packing Output" slide, so exclude PRODUCTION here to avoid duplication.
+      receiving: (() => {
+        const grRows = report.receiving.rows.filter((r) => r.mode !== "PRODUCTION");
+        return {
+          docCount: new Set(grRows.map((r) => r.docNo)).size,
+          totalUnits: grRows.reduce((s, r) => s + r.qty, 0),
+          rows: grRows.slice(0, DETAIL_CAP).map((r) => ({
+            docNo: r.docNo,
+            docDate: r.docDate,
+            code: r.code,
+            name: r.name,
+            lotNo: r.lotNo,
+            qty: r.qty,
+            unit: r.unit,
+            location: r.locationCode,
+            materialDoc: r.materialDoc,
+          })),
+        };
+      })(),
       issuing: {
         docCount: report.issuing.docCount,
         totalUnits: report.issuing.totalUnits,

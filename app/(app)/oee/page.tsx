@@ -6,6 +6,7 @@ import { getOeeDashboard } from "@/lib/views/oee";
 import { oeeColor, OEE_GOOD, fmtDuration } from "@/lib/calc/oee";
 import { fmtDateBE } from "@/lib/calc/date";
 import { OeeDeckButton } from "./OeeDeckButton";
+import { PackingTrendChart } from "./PackingTrendChart";
 import { getAppSetting } from "@/lib/views/settings";
 import {
   OEE_REPORT_KEY,
@@ -69,6 +70,102 @@ export default async function OeePage({
         />
       </div>
 
+
+      <div className="mb-2 mt-6 text-[13px] font-semibold text-[#16202e]">
+        ข้อมูลจริงตามช่วงเวลา (Live · เลือกช่วงด้านบน)
+      </div>
+
+      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
+        {/* Unloading OEE hero */}
+        <Card>
+          <CardTitle>Unloading เข้า SILO · OEE = P × Q</CardTitle>
+          {!d.hasUnloading ? (
+            <Empty text="ยังไม่มีการโหลดเข้า SILO ที่จับเวลาในช่วงนี้ — ดูที่หน้า Feed to SILO" />
+          ) : (
+            <>
+              <div className="flex items-center gap-6">
+                <Gauge value={d.unloading.oee} />
+                <div className="flex flex-1 flex-col gap-2.5">
+                  {d.unloading.hasPlan ? (
+                    <Bar label="Availability" sub="เสร็จในแผน=100% · เกินแผนถึงลด" v={d.unloading.a} />
+                  ) : (
+                    <Bar label="การใช้งาน" sub="โหลดจริง/ช่วงเปิดเครื่อง (info)" v={d.unloading.a} />
+                  )}
+                  <Bar label="Performance" sub="เทียบมาตรฐาน kg/ชม." v={d.unloading.p} />
+                  <Bar label="Quality" sub="ไม่นับของเสีย = 100%" v={d.unloading.q} />
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-5 border-t border-[#eef1f5] pt-3 text-[12px] text-[#69748a]">
+                <Foot k="โหลดทั้งหมด" v={`${d.unloading.loads} ถุง`} />
+                <Foot k="ปริมาณ" v={`${d.unloading.output.toLocaleString()} kg`} />
+                <Foot k="เวลาที่ใช้โหลด" v={fmtDuration(d.unloading.loadingMs)} />
+                {d.unloading.hasPlan && <Foot k="แผนเวลา" v={`${d.unloading.plannedMin} นาที`} />}
+                <Foot k={d.unloading.hasPlan ? "ว่าง (เทียบแผน)" : "ว่าง (ไม่มีงาน)"} v={fmtDuration(d.unloading.idleMs)} />
+              </div>
+              <p className="mt-2 rounded-[9px] bg-[#f7f9fb] p-2.5 text-[11px] leading-relaxed text-[#69748a]">
+                {d.unloading.hasPlan ? (
+                  <>
+                    <b className="text-[#3a4658]">Availability</b> = โหลดเสร็จภายในแผน → 100% (เสร็จเร็ว/ตรงเวลาไม่โดนหัก) ·
+                    ถ้า<b>เกินแผน</b>ถึงจะลด (แผน ÷ เวลาจริง) · <b>Performance</b> = อัตราโหลดจริงเทียบมาตรฐาน ·
+                    OEE = A × P × Q · รอบไหนไม่ตั้งแผน = ใช้ P × Q
+                  </>
+                ) : (
+                  <>
+                    <b className="text-[#3a4658]">หมายเหตุ:</b> รอบนี้ยังไม่ได้ตั้ง <b>แผนเวลาโหลด</b> → ไม่คิด Availability
+                    (OEE = P × Q) · ตั้งแผนตอนเบิกเข้า SILO เพื่อให้ได้ A ครบ
+                  </>
+                )}
+              </p>
+            </>
+          )}
+        </Card>
+
+        {/* Production */}
+        <Card>
+          <CardTitle>{d.production.hasOee ? "การผลิต · OEE" : "การผลิต · Yield"}</CardTitle>
+          {d.production.docs === 0 ? (
+            <Empty text="ยังไม่มีรับจากผลิตในช่วงนี้" />
+          ) : d.production.hasOee ? (
+            <>
+              <div className="flex items-center gap-5">
+                <Gauge value={d.production.oee} />
+                <div className="flex flex-1 flex-col gap-2.5">
+                  <Bar label="Availability" sub="เดินจริง/แผน" v={d.production.a} />
+                  <Bar label="Performance" sub="เทียบมาตรฐาน" v={d.production.p} />
+                  <Bar label="Quality" sub="มูลค่าดี/(มูลค่าดี+มูลค่าเสีย)" v={d.production.q} />
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-5 border-t border-[#eef1f5] pt-3 text-[12px] text-[#69748a]">
+                <Foot k="ผลิตได้" v={`${d.production.produced.toLocaleString()} kg`} />
+                <Foot k="เม็ดเสีย" v={`${d.production.loss.toLocaleString()} kg`} />
+                <Foot k="Packaging เสีย" v={`${d.production.pkgLoss.toLocaleString()} ชิ้น`} />
+                <Foot k="มูลค่าเสีย" v={`฿${d.production.lossValue.toLocaleString()}`} />
+                <Foot k="รอบที่วัด OEE" v={`${d.production.scoredRuns}/${d.production.docs}`} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-5">
+                <Gauge value={d.production.quality} small />
+                <div className="text-[12.5px] text-[#69748a]">
+                  <div className="mb-1">
+                    ผลิตได้ <b className="font-num text-[#16202e]">{d.production.produced.toLocaleString()}</b> kg
+                  </div>
+                  <div className="mb-1">
+                    ของเสีย <b className="font-num text-[#c53f3f]">{d.production.loss.toLocaleString()}</b> kg
+                  </div>
+                  <div>
+                    จาก <b className="font-num">{d.production.docs}</b> ใบรับผลิต
+                  </div>
+                </div>
+              </div>
+              <p className="mt-3 rounded-[9px] bg-[#fbf1de] p-2.5 text-[11px] leading-relaxed text-[#8a6d1f]">
+                ตอนนี้มีแค่ <b>Yield</b> — เลือก “สายผลิต” + ใส่เวลาตอนบันทึก Pack Order เพื่อให้ได้ A/P/Q ครบ
+              </p>
+            </>
+          )}
+        </Card>
+      </div>
       {/* ── Packing Unit Startup Performance · Trial-Run OEE ─────────────── */}
       <TrialRunHeader phase={report.phase} />
 
@@ -89,7 +186,7 @@ export default async function OeePage({
         <div className="mb-2 text-[11.5px] text-[#9aa4b4]">
           เส้นประ = เป้า {OEE_GOOD}% · วันที่ไม่มีการผลิตจะเว้นว่าง · OEE = A × P × Q (ฐานเวลา แผน − พัก หักครั้งเดียวต่อกะ)
         </div>
-        <Trend days={d.production.trend.days} oee={d.production.trend.oee} />
+        <PackingTrendChart days={d.production.trend.days} oee={d.production.trend.oee} goal={OEE_GOOD} />
       </Card>
 
       {/* Quality Loss Pareto — pulled from the BOM material loss */}
@@ -237,101 +334,6 @@ export default async function OeePage({
         </Card>
       </div>
 
-      <div className="mb-2 mt-6 text-[13px] font-semibold text-[#16202e]">
-        ข้อมูลจริงตามช่วงเวลา (Live · เลือกช่วงด้านบน)
-      </div>
-
-      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
-        {/* Unloading OEE hero */}
-        <Card>
-          <CardTitle>Unloading เข้า SILO · OEE = P × Q</CardTitle>
-          {!d.hasUnloading ? (
-            <Empty text="ยังไม่มีการโหลดเข้า SILO ที่จับเวลาในช่วงนี้ — ดูที่หน้า Feed to SILO" />
-          ) : (
-            <>
-              <div className="flex items-center gap-6">
-                <Gauge value={d.unloading.oee} />
-                <div className="flex flex-1 flex-col gap-2.5">
-                  {d.unloading.hasPlan ? (
-                    <Bar label="Availability" sub="เสร็จในแผน=100% · เกินแผนถึงลด" v={d.unloading.a} />
-                  ) : (
-                    <Bar label="การใช้งาน" sub="โหลดจริง/ช่วงเปิดเครื่อง (info)" v={d.unloading.a} />
-                  )}
-                  <Bar label="Performance" sub="เทียบมาตรฐาน kg/ชม." v={d.unloading.p} />
-                  <Bar label="Quality" sub="ไม่นับของเสีย = 100%" v={d.unloading.q} />
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-5 border-t border-[#eef1f5] pt-3 text-[12px] text-[#69748a]">
-                <Foot k="โหลดทั้งหมด" v={`${d.unloading.loads} ถุง`} />
-                <Foot k="ปริมาณ" v={`${d.unloading.output.toLocaleString()} kg`} />
-                <Foot k="เวลาที่ใช้โหลด" v={fmtDuration(d.unloading.loadingMs)} />
-                {d.unloading.hasPlan && <Foot k="แผนเวลา" v={`${d.unloading.plannedMin} นาที`} />}
-                <Foot k={d.unloading.hasPlan ? "ว่าง (เทียบแผน)" : "ว่าง (ไม่มีงาน)"} v={fmtDuration(d.unloading.idleMs)} />
-              </div>
-              <p className="mt-2 rounded-[9px] bg-[#f7f9fb] p-2.5 text-[11px] leading-relaxed text-[#69748a]">
-                {d.unloading.hasPlan ? (
-                  <>
-                    <b className="text-[#3a4658]">Availability</b> = โหลดเสร็จภายในแผน → 100% (เสร็จเร็ว/ตรงเวลาไม่โดนหัก) ·
-                    ถ้า<b>เกินแผน</b>ถึงจะลด (แผน ÷ เวลาจริง) · <b>Performance</b> = อัตราโหลดจริงเทียบมาตรฐาน ·
-                    OEE = A × P × Q · รอบไหนไม่ตั้งแผน = ใช้ P × Q
-                  </>
-                ) : (
-                  <>
-                    <b className="text-[#3a4658]">หมายเหตุ:</b> รอบนี้ยังไม่ได้ตั้ง <b>แผนเวลาโหลด</b> → ไม่คิด Availability
-                    (OEE = P × Q) · ตั้งแผนตอนเบิกเข้า SILO เพื่อให้ได้ A ครบ
-                  </>
-                )}
-              </p>
-            </>
-          )}
-        </Card>
-
-        {/* Production */}
-        <Card>
-          <CardTitle>{d.production.hasOee ? "การผลิต · OEE" : "การผลิต · Yield"}</CardTitle>
-          {d.production.docs === 0 ? (
-            <Empty text="ยังไม่มีรับจากผลิตในช่วงนี้" />
-          ) : d.production.hasOee ? (
-            <>
-              <div className="flex items-center gap-5">
-                <Gauge value={d.production.oee} />
-                <div className="flex flex-1 flex-col gap-2.5">
-                  <Bar label="Availability" sub="เดินจริง/แผน" v={d.production.a} />
-                  <Bar label="Performance" sub="เทียบมาตรฐาน" v={d.production.p} />
-                  <Bar label="Quality" sub="มูลค่าดี/(มูลค่าดี+มูลค่าเสีย)" v={d.production.q} />
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-5 border-t border-[#eef1f5] pt-3 text-[12px] text-[#69748a]">
-                <Foot k="ผลิตได้" v={`${d.production.produced.toLocaleString()} kg`} />
-                <Foot k="เม็ดเสีย" v={`${d.production.loss.toLocaleString()} kg`} />
-                <Foot k="Packaging เสีย" v={`${d.production.pkgLoss.toLocaleString()} ชิ้น`} />
-                <Foot k="มูลค่าเสีย" v={`฿${d.production.lossValue.toLocaleString()}`} />
-                <Foot k="รอบที่วัด OEE" v={`${d.production.scoredRuns}/${d.production.docs}`} />
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-5">
-                <Gauge value={d.production.quality} small />
-                <div className="text-[12.5px] text-[#69748a]">
-                  <div className="mb-1">
-                    ผลิตได้ <b className="font-num text-[#16202e]">{d.production.produced.toLocaleString()}</b> kg
-                  </div>
-                  <div className="mb-1">
-                    ของเสีย <b className="font-num text-[#c53f3f]">{d.production.loss.toLocaleString()}</b> kg
-                  </div>
-                  <div>
-                    จาก <b className="font-num">{d.production.docs}</b> ใบรับผลิต
-                  </div>
-                </div>
-              </div>
-              <p className="mt-3 rounded-[9px] bg-[#fbf1de] p-2.5 text-[11px] leading-relaxed text-[#8a6d1f]">
-                ตอนนี้มีแค่ <b>Yield</b> — เลือก “สายผลิต” + ใส่เวลาตอนบันทึก Pack Order เพื่อให้ได้ A/P/Q ครบ
-              </p>
-            </>
-          )}
-        </Card>
-      </div>
 
       {d.production.hasOee && d.production.perLine.length > 0 && (
         <Card className="mb-4">
