@@ -289,6 +289,10 @@ export function ReceiveForm({
         setError("กรุณาบันทึก OEE — เลือกสายผลิตในการ์ด OEE ก่อนส่งตรวจสอบ");
         return;
       }
+      if (!oeeShift) {
+        setError("กรุณาเลือกกะ (Shift) ในการ์ด OEE ก่อนส่งตรวจสอบ");
+        return;
+      }
     }
 
     setSaving(true);
