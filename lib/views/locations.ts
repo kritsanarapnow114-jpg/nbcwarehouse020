@@ -159,7 +159,8 @@ async function loadAllRows(): Promise<LocationRow[]> {
 
     const capArea = binCapacity(loc.width, loc.length);
     const usedArea = contents.reduce((s, c) => s + c.area, 0);
-    const pct = occupancyPct(usedArea, capArea);
+    // No room for even one more pallet → count the bin as full (100%).
+    const pct = occupancyPct(usedArea, capArea, DEFAULT_PALLET_M2);
     const tone = binStatusTone({
       empty: contents.length === 0,
       hasQcHold: contents.some((c) => c.lotStatus === "QC"),

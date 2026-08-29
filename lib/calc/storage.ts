@@ -48,8 +48,13 @@ export function binCapacity(width: number, length: number): number {
   return width * length;
 }
 
-export function occupancyPct(usedArea: number, capArea: number): number {
-  return capArea > 0 ? (usedArea / capArea) * 100 : 0;
+export function occupancyPct(usedArea: number, capArea: number, fullUnitArea?: number): number {
+  if (capArea <= 0) return 0;
+  // A bin that has no room left for even one more unit (a standard pallet) is
+  // effectively full — show 100% even if pallets don't perfectly tile the floor
+  // area (e.g. two 0.96 m² pallets in a 2.1 m² bin = 91% by area, but full).
+  if (fullUnitArea != null && usedArea > 0 && capArea - usedArea < fullUnitArea) return 100;
+  return Math.min(100, (usedArea / capArea) * 100);
 }
 
 export type BinTone = "empty" | "qc" | "expired" | "full" | "near" | "ok";
