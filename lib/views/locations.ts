@@ -212,7 +212,9 @@ export async function getLocationSummary(): Promise<{
   avgOcc: number;
 }> {
   const rows = await loadAllRows();
-  const totalUsed = rows.reduce((s, r) => s + r.usedArea, 0);
+  // A bin with no room for another pallet is full — count its whole capacity as
+  // used (the leftover gap is unusable), so the total reflects real fullness.
+  const totalUsed = rows.reduce((s, r) => s + (r.pct >= 100 ? r.capArea : r.usedArea), 0);
   const totalCap = rows.reduce((s, r) => s + r.capArea, 0);
   const totalPct = occupancyPct(totalUsed, totalCap);
   const binCount = rows.length;
