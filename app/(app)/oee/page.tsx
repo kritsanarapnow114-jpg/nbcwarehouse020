@@ -78,7 +78,7 @@ export default async function OeePage({
       <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
         {/* Unloading OEE hero */}
         <Card>
-          <CardTitle>Unloading เข้า SILO · OEE = P × Q</CardTitle>
+          <CardTitle>Unloading Station · OEE = P × Q</CardTitle>
           {!d.hasUnloading ? (
             <Empty text="ยังไม่มีการโหลดเข้า SILO ที่จับเวลาในช่วงนี้ — ดูที่หน้า Feed to SILO" />
           ) : (
@@ -102,6 +102,20 @@ export default async function OeePage({
                 {d.unloading.hasPlan && <Foot k="แผนเวลา" v={`${d.unloading.plannedMin} นาที`} />}
                 <Foot k={d.unloading.hasPlan ? "ว่าง (เทียบแผน)" : "ว่าง (ไม่มีงาน)"} v={fmtDuration(d.unloading.idleMs)} />
               </div>
+              {d.perMachine.length > 0 && (
+                <div className="mt-3 border-t border-[#eef1f5] pt-3">
+                  <div className="mb-1.5 text-[11px] font-medium text-[#69748a]">ข้อมูลจากเครื่อง (source machines)</div>
+                  <div className="flex flex-wrap gap-2">
+                    {d.perMachine.map((m) => (
+                      <span key={m.name} className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#e3e9f0] bg-[#f7f9fb] px-2.5 py-1 text-[11.5px]">
+                        <span className="h-2 w-2 flex-none rounded-full" style={{ background: oeeColor(m.oee) }} />
+                        <b className="text-[#3a4658]">{m.name}</b>
+                        <span className="text-[#9aa4b4]">{m.loads} ถุง · {m.output.toLocaleString()} kg · OEE {m.oee}%</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
               <p className="mt-2 rounded-[9px] bg-[#f7f9fb] p-2.5 text-[11px] leading-relaxed text-[#69748a]">
                 {d.unloading.hasPlan ? (
                   <>
