@@ -121,16 +121,30 @@ export function PlanForm({
     setInc((s) => s.filter((r) => r.id !== id));
   }
 
-  const [leadDays, setLeadDays] = useState(1);
+  // Lead time defaults to 2 days — order packaging ~2 days before it's needed.
+  const [leadDays, setLeadDays] = useState(2);
+  // Order cycle (รอบการสั่ง): orders are placed every N days from today, so the
+  // recommended order date snaps back to the latest order round in time.
+  const [cycleDays, setCycleDays] = useState(7);
   const shown = onlyPkg ? rows.filter((r) => r.category === "PACKAGING") : rows;
   const toOrderCount = rows.filter((r) => r.toOrder > 0).length;
 
-  // Order-by date = the day stock runs short, minus the lead time.
+  // Order-by date = the day stock runs short, minus the lead time, then snapped
+  // back to the latest order round (every cycleDays from today).
   function orderByStr(shortage: string | null): string {
     if (!shortage) return "—";
-    const d = new Date(shortage);
-    d.setDate(d.getDate() - leadDays);
-    return fmtDateBE(d);
+    const latest = new Date(shortage);
+    latest.setDate(latest.getDate() - leadDays);
+    if (cycleDays > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const daysFrom = Math.floor((latest.getTime() - today.getTime()) / 86_400_000);
+      if (daysFrom < 0) return `${fmtDateBE(today)} (ด่วน)`; // past the last safe round → order now
+      const orderDay = new Date(today);
+      orderDay.setDate(today.getDate() + Math.floor(daysFrom / cycleDays) * cycleDays);
+      return fmtDateBE(orderDay);
+    }
+    return fmtDateBE(latest);
   }
   const shortStr = (s: string | null) => (s ? fmtDateBE(new Date(s)) : "—");
 
@@ -152,6 +166,61 @@ export function PlanForm({
       ["SAP Material Master", "Material Description", "Category", "Required", "OnHand", "Incoming", "ToOrder", "NeedDate", "OrderBy", "Unit"],
       shown.map((r) => [r.code, r.name, r.categoryLabel, r.required, r.onHand, r.incoming, r.toOrder, shortStr(r.shortageDate), orderByStr(r.shortageDate), r.unit])
     );
+  }
+
+  // Whole-schedule (monthly) plan as an Excel matrix: one column per production
+  // day, one row per packaging material, cells = qty needed that day.
+  function handleMonthlyPlan() {
+    const pkgById = new Map(types.map((t) => [t.id, t]));
+    const reqByCodeDate = new Map<string, Map<string, number>>();
+    const dateSet = new Set<string>();
+    for (const row of sched) {
+      const qty = Number(row.qty) || 0;
+      if (qty <= 0) continue;
+      dateSet.add(row.date);
+      const pkg = pkgById.get(row.pkgTypeId);
+      if (!pkg) continue;
+      for (const pl of pkg.lines) {
+        if (!pl.code || pl.qtyPerUnit <= 0) continue;
+        let m = reqByCodeDate.get(pl.code);
+        if (!m) { m = new Map(); reqByCodeDate.set(pl.code, m); }
+        m.set(row.date, (m.get(row.date) ?? 0) + qty * pl.qtyPerUnit);
+      }
+    }
+    const dates = [...dateSet].sort();
+    if (dates.length === 0) { showToast("ยังไม่มีแผนผลิต — ใส่วันที่ในตารางก่อน"); return; }
+    const infoByCode = new Map(rows.map((r) => [r.code, r]));
+    const codes = [...reqByCodeDate.keys()].sort();
+    const headers = [
+      "SAP Material Master", "Material Description", "หน่วย",
+      ...dates.map((d) => fmtDateBE(new Date(d))),
+      "รวมทั้งช่วง", "คงเหลือในคลัง", "ของเข้า", "ต้องสั่ง", "ควรสั่งภายใน",
+    ];
+    const body = codes.map((code) => {
+      const info = infoByCode.get(code);
+      const perDay = reqByCodeDate.get(code)!;
+      const total = [...perDay.values()].reduce((s, v) => s + v, 0);
+      return [
+        code,
+        info?.name ?? code,
+        info?.unit ?? "",
+        ...dates.map((d) => (perDay.get(d) ? Math.round(perDay.get(d)!) : "")),
+        Math.round(total),
+        info?.onHand ?? 0,
+        info?.incoming ?? 0,
+        info?.toOrder ?? 0,
+        orderByStr(info?.shortageDate ?? null),
+      ];
+    });
+    // Daily production total row at the bottom.
+    const dayQty = new Map<string, number>();
+    for (const row of sched) dayQty.set(row.date, (dayQty.get(row.date) ?? 0) + (Number(row.qty) || 0));
+    body.push([
+      "—", "ผลิตรวมต่อวัน (units)", "",
+      ...dates.map((d) => (dayQty.get(d) ? Math.round(dayQty.get(d)!) : "")),
+      "", "", "", "", "",
+    ]);
+    downloadExcel("packaging-plan-monthly.xls", "Monthly Plan", headers, body);
   }
 
   return (
@@ -373,11 +442,19 @@ export function PlanForm({
             เทียบของในคลัง · ต้องสั่งซื้อ —{" "}
             <span className="text-[#1f66a6]">{toOrderCount}</span> รายการต้องสั่งเพิ่ม
           </div>
-          <label className="flex items-center gap-1.5 text-[12px] text-[#3a4658]">
+          <label className="flex items-center gap-1.5 text-[12px] text-[#3a4658]" title="จำนวนวันตั้งแต่สั่งจนของถึงคลัง">
             Lead time (วัน)
             <input
               value={String(leadDays)}
               onChange={(e) => setLeadDays(Math.max(0, Number(e.target.value) || 0))}
+              className="font-num w-[52px] rounded-[7px] border border-[#d7dce4] px-2 py-1 text-right text-[12.5px]"
+            />
+          </label>
+          <label className="flex items-center gap-1.5 text-[12px] text-[#3a4658]" title="สั่งของทุกกี่วัน (นับจากวันนี้) — วันควรสั่งจะถูกจัดให้ตรงรอบ">
+            รอบการสั่ง (วัน)
+            <input
+              value={String(cycleDays)}
+              onChange={(e) => setCycleDays(Math.max(0, Number(e.target.value) || 0))}
               className="font-num w-[52px] rounded-[7px] border border-[#d7dce4] px-2 py-1 text-right text-[12.5px]"
             />
           </label>
@@ -388,6 +465,9 @@ export function PlanForm({
           <div className="flex-1" />
           <button onClick={handleOrderList} className="flex items-center gap-1.5 rounded-[8px] bg-[#0e8a4f] px-3.5 py-2 text-[12.5px] font-semibold text-white">
             ⤓ ใบสั่งของ (order list)
+          </button>
+          <button onClick={handleMonthlyPlan} className="flex items-center gap-1.5 rounded-[8px] bg-[#1f66a6] px-3.5 py-2 text-[12.5px] font-semibold text-white">
+            ⤓ แผนทั้งเดือน (รายวัน)
           </button>
           <button onClick={handleExportAll} className="flex items-center gap-1.5 rounded-[8px] border border-[#16a6bf] bg-[#e8f2fb] px-3.5 py-2 text-[12.5px] font-semibold text-[#0c7f93]">
             ⤓ ทั้งหมด
