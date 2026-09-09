@@ -144,9 +144,15 @@ export async function getOeeDashboard(range: Range) {
     );
     pkgCostPerUnit.set(b.finishedProductCode, cost);
   }
-  // ฿ value of good ÷ (฿ good + ฿ loss).
-  const valueQuality = (goodVal: number, lossVal: number) =>
-    goodVal + lossVal > 0 ? goodVal / (goodVal + lossVal) : 1;
+  // Quality = ฿ good ÷ (฿ good + ฿ loss). When the finished good carries no
+  // price (goodVal 0) the value ratio is meaningless — any packaging-loss value
+  // would drag Quality to 0% even with zero rejects — so fall back to the
+  // classic quantity-based Quality (good ÷ (good + reject)).
+  const valueQuality = (goodVal: number, lossVal: number, goodQty = 0, rejectQty = 0) => {
+    if (goodVal > 0) return goodVal / (goodVal + lossVal);
+    const out = goodQty + rejectQty;
+    return out > 0 ? goodQty / out : 1;
+  };
   // Per-receipt good value and quality-loss value (pellet + packaging), in ฿.
   const receiptGoodValue = (r: { producedTotal: number | null; lines: { productCode: string }[] }) => {
     const code = r.lines[0]?.productCode;
@@ -295,7 +301,7 @@ export async function getOeeDashboard(range: Range) {
   // Quality yield is value-based: ฿ good ÷ (฿ good + ฿ pellet loss + ฿ packaging loss).
   const goodValueAll = prodReceipts.reduce((s, r) => s + receiptGoodValue(r), 0);
   const lossValueAll = prodReceipts.reduce((s, r) => s + receiptLossValue(r), 0);
-  const yieldQ = valueQuality(goodValueAll, lossValueAll);
+  const yieldQ = valueQuality(goodValueAll, lossValueAll, produced, loss);
 
   const dtMinutes = (raw: unknown): number => {
     if (!Array.isArray(raw)) return 0;
@@ -339,7 +345,7 @@ export async function getOeeDashboard(range: Range) {
       });
       // Value-based Quality (Quality only), then recombine A×P×Q.
       const pkg = pkgLossByReceipt.get(r.id) ?? 0;
-      const qf = valueQuality(receiptGoodValue(r), receiptLossValue(r));
+      const qf = valueQuality(receiptGoodValue(r), receiptLossValue(r), r.producedTotal ?? 0, r.prodLoss ?? 0);
       const oeeF = parts.availability * parts.performance * qf;
       return {
         doc: r.docNo,
@@ -440,7 +446,7 @@ export async function getOeeDashboard(range: Range) {
       reject: p.reject,
       standardPerHour: p.runMin > 0 ? p.idealHrOutput / (p.runMin / 60) : 0,
     });
-    return pct(parts.availability * parts.performance * valueQuality(p.gv, p.lv));
+    return pct(parts.availability * parts.performance * valueQuality(p.gv, p.lv, p.good, p.reject));
   });
 
   const prodPool = sessions.reduce(
@@ -466,7 +472,7 @@ export async function getOeeDashboard(range: Range) {
       prodPool.runMin > 0 ? prodPool.idealHrOutput / (prodPool.runMin / 60) : 0,
   });
   // Aggregate value-based Quality, then A×P×Q.
-  const prodQ = valueQuality(prodPool.gv, prodPool.lv);
+  const prodQ = valueQuality(prodPool.gv, prodPool.lv, prodPool.good, prodPool.reject);
   const prodOeeF = prodParts.availability * prodParts.performance * prodQ;
 
   // Per-line OEE breakdown (sum over shift-sessions on that line).
@@ -492,7 +498,7 @@ export async function getOeeDashboard(range: Range) {
         reject: p.reject,
         standardPerHour: p.runMin > 0 ? p.idealHrOutput / (p.runMin / 60) : 0,
       });
-      const qf = valueQuality(p.gv, p.lv);
+      const qf = valueQuality(p.gv, p.lv, p.good, p.reject);
       const oeeF = parts.availability * parts.performance * qf;
       return {
         name,
@@ -543,7 +549,7 @@ export async function getOeeDashboard(range: Range) {
         reject: p.reject,
         standardPerHour: p.runMin > 0 ? p.idealHrOutput / (p.runMin / 60) : 0,
       });
-      const qf = valueQuality(p.gv, p.lv);
+      const qf = valueQuality(p.gv, p.lv, p.good, p.reject);
       const oeeF = parts.availability * parts.performance * qf;
       return {
         name,
@@ -598,7 +604,7 @@ export async function getOeeDashboard(range: Range) {
         reject: p.reject,
         standardPerHour: p.runMin > 0 ? p.idealHrOutput / (p.runMin / 60) : 0,
       });
-      const qf = valueQuality(p.gv, p.lv);
+      const qf = valueQuality(p.gv, p.lv, p.good, p.reject);
       const oeeF = parts.availability * parts.performance * qf;
       return {
         day: p.day,
