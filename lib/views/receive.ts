@@ -192,16 +192,42 @@ export type ReceiptHistoryRow = Awaited<ReturnType<typeof getRecentReceipts>>[nu
  * How many pallets/boxes were received Full vs Partial (not a full pallet),
  * across all non-reversed receipts. `palletFull === false` marks a partial
  * pallet/box; legacy rows with no flag (null) are counted as unknown and left
- * out of the Full/Partial split.
+ * out of the Full/Partial split. `items` lists each partial pallet so the UI
+ * can drill down to exactly which lots are partial (newest first).
  */
 export async function getPalletFillSummary() {
   const base = { receipt: { reversedAt: null } };
-  const [partial, full] = await Promise.all([
+  const [partial, full, partialLines] = await Promise.all([
     db.receiptLine.count({ where: { ...base, palletFull: false } }),
     db.receiptLine.count({ where: { ...base, palletFull: true } }),
+    db.receiptLine.findMany({
+      where: { ...base, palletFull: false },
+      include: {
+        product: true,
+        receipt: { select: { docNo: true, docDate: true, mode: true } },
+      },
+      orderBy: { receipt: { docDate: "desc" } },
+      take: 500,
+    }),
   ]);
-  return { partial, full };
+  const items = partialLines.map((l) => ({
+    docNo: l.receipt.docNo,
+    docDate: l.receipt.docDate.toISOString(),
+    mode: l.receipt.mode,
+    code: l.productCode,
+    name: productLabel(l.product.nameEn, l.product.nameTh),
+    lotNo: l.lotNo,
+    locationCode: l.locationCode,
+    recvQty: l.recvQty,
+    unit: l.product.unit,
+    weightKg: l.weightKg,
+    suNo: l.suNo,
+    packTime: l.packTime ?? "",
+  }));
+  return { partial, full, items };
 }
+
+export type PartialPalletItem = Awaited<ReturnType<typeof getPalletFillSummary>>["items"][number];
 
 /** Production receipts awaiting warehouse verification (finished goods not in stock yet). */
 export async function getPendingReceipts() {

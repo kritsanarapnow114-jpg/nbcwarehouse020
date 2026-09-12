@@ -1,5 +1,6 @@
 import { getReceiveFormData, getRecentReceipts, getPalletFillSummary } from "@/lib/views/receive";
 import { ReceiveForm } from "./ReceiveForm";
+import { PartialLotsCard } from "./PartialLotsCard";
 import { DocHistory, DocHistoryRow } from "@/components/ui/DocHistory";
 
 export default async function ReceivePage() {
@@ -37,14 +38,10 @@ export default async function ReceivePage() {
     <div className="max-w-[1240px] p-[22px_26px]">
       <ReceiveForm data={data} lockMode="PO" />
 
-      {/* Full vs Partial pallets/boxes across all stock received (not reversed). */}
-      <div className="mb-4 mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <PalletTile
-          label="พาเลท/กล่องไม่เต็ม (Partial)"
-          value={pallets.partial}
-          sub={`${partialPct}% ของที่รับเข้าทั้งหมด`}
-          color="#c8891a"
-        />
+      {/* Full vs Partial pallets/boxes across all stock received (not reversed).
+          The Partial card expands to show exactly which lots are partial. */}
+      <div className="mb-4 mt-6 grid grid-cols-2 items-start gap-3 sm:grid-cols-3">
+        <PartialLotsCard partial={pallets.partial} pct={partialPct} items={pallets.items} />
         <PalletTile label="พาเลท/กล่องเต็ม (Full)" value={pallets.full} sub="รับเข้าแบบเต็มพาเลท" color="#1f9d63" />
         <PalletTile label="รวมทั้งหมด" value={totalPallets} sub="พาเลท/กล่องที่รับเข้า (ไม่นับที่ยกเลิก)" color="#3a4658" />
       </div>
