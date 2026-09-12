@@ -188,6 +188,21 @@ export async function getRecentReceipts(limit = 400) {
 
 export type ReceiptHistoryRow = Awaited<ReturnType<typeof getRecentReceipts>>[number];
 
+/**
+ * How many pallets/boxes were received Full vs Partial (not a full pallet),
+ * across all non-reversed receipts. `palletFull === false` marks a partial
+ * pallet/box; legacy rows with no flag (null) are counted as unknown and left
+ * out of the Full/Partial split.
+ */
+export async function getPalletFillSummary() {
+  const base = { receipt: { reversedAt: null } };
+  const [partial, full] = await Promise.all([
+    db.receiptLine.count({ where: { ...base, palletFull: false } }),
+    db.receiptLine.count({ where: { ...base, palletFull: true } }),
+  ]);
+  return { partial, full };
+}
+
 /** Production receipts awaiting warehouse verification (finished goods not in stock yet). */
 export async function getPendingReceipts() {
   const receipts = await db.receipt.findMany({
