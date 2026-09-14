@@ -53,17 +53,18 @@ export function PartialLotsCard({
             <table className="w-full min-w-[560px] border-collapse text-[12px]">
               <thead>
                 <tr className="sticky top-0 bg-[#f7f9fb] text-left text-[11px] text-[#69748a]">
-                  <th className="p-[6px_8px] font-medium">วันที่</th>
+                  <th className="p-[6px_8px] font-medium">วันที่ล่าสุด</th>
                   <th className="p-[6px_8px] font-medium">สินค้า</th>
                   <th className="p-[6px_8px] font-medium">Lot</th>
                   <th className="p-[6px_8px] font-medium">ที่เก็บ</th>
-                  <th className="p-[6px_8px] text-right font-medium">จำนวน</th>
+                  <th className="p-[6px_8px] text-right font-medium">กล่อง</th>
+                  <th className="p-[6px_8px] text-right font-medium">จำนวนรวม</th>
                   <th className="p-[6px_8px] font-medium">เอกสาร</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((it, i) => (
-                  <tr key={`${it.docNo}-${it.lotNo}-${it.suNo ?? i}`} className="border-t border-[#eef1f5]">
+                  <tr key={`${it.code}-${it.lotNo}-${it.locationCode}-${i}`} className="border-t border-[#eef1f5]">
                     <td className="font-num whitespace-nowrap p-[6px_8px] text-[#69748a]">{fmtDate(it.docDate)}</td>
                     <td className="p-[6px_8px]">
                       <div className="font-medium text-[#3a4658]">{it.name}</div>
@@ -71,12 +72,15 @@ export function PartialLotsCard({
                     </td>
                     <td className="font-num p-[6px_8px] text-[#16202e]">{it.lotNo}</td>
                     <td className="font-num p-[6px_8px] text-[#69748a]">{it.locationCode}</td>
+                    <td className="font-num whitespace-nowrap p-[6px_8px] text-right font-semibold text-[#c8891a]">
+                      {it.pallets.toLocaleString()}
+                    </td>
                     <td className="font-num whitespace-nowrap p-[6px_8px] text-right">
-                      {it.recvQty.toLocaleString()} {it.unit}
+                      {it.qty.toLocaleString()} {it.unit}
                     </td>
                     <td className="font-num p-[6px_8px] text-[#2f86cf]">
-                      {it.docNo}
-                      {it.mode === "PRODUCTION" && (
+                      {it.docCount > 1 ? `${it.docCount} ใบ` : it.docNo}
+                      {it.hasProduction && (
                         <span className="ml-1 rounded-[4px] bg-[#eef6ff] px-1.5 py-0.5 text-[9.5px] font-semibold text-[#2f86cf]">
                           ผลิต
                         </span>
@@ -87,9 +91,9 @@ export function PartialLotsCard({
               </tbody>
             </table>
           </div>
-          {items.length >= 500 && (
-            <div className="p-[6px_8px] text-[10.5px] text-[#9aa4b4]">แสดง 500 รายการล่าสุด</div>
-          )}
+          <div className="p-[6px_8px] text-[10.5px] text-[#9aa4b4]">
+            รวม LOT เดียวกัน ที่เดียวกันเข้าด้วยกันแล้ว · {items.length.toLocaleString()} รายการ
+          </div>
         </div>
       )}
     </div>
