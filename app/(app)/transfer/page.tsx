@@ -1,4 +1,4 @@
-import { getLotOptions, getLocationCodes, getRecentTransfers } from "@/lib/views/docCommon";
+import { getMergedLotOptions, getLocationCodes, getRecentTransfers } from "@/lib/views/docCommon";
 import { getUsers } from "@/lib/views/users";
 import { getAppSettings } from "@/lib/views/settings";
 import { OPERATORS_KEY, parseList } from "@/lib/settingsKeys";
@@ -7,7 +7,7 @@ import { DocHistory, DocHistoryRow } from "@/components/ui/DocHistory";
 
 export default async function TransferPage() {
   const [lots, locations, transfers, users, settings] = await Promise.all([
-    getLotOptions(),
+    getMergedLotOptions(),
     getLocationCodes(),
     getRecentTransfers(),
     getUsers(),

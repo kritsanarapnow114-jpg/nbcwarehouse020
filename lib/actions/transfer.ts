@@ -27,63 +27,70 @@ export async function confirmTransferAction(input: ConfirmTransferInput) {
     });
 
     for (const line of input.lines) {
-      const lot = await tx.lot.findUnique({ where: { id: line.lotId } });
-      if (!lot || line.qty <= 0 || line.qty > lot.qty) continue;
-      if (lot.locationCode === line.toLocationCode) continue;
+      const head = await tx.lot.findUnique({ where: { id: line.lotId } });
+      if (!head || line.qty <= 0) continue;
+      if (head.locationCode === line.toLocationCode) continue;
+
+      // The picker shows one option per physical pile, but that pile can be
+      // several stock records (same product + lot + location + status). Draw the
+      // requested qty across every record of the group, FEFO (earliest received
+      // first), so moving the merged line moves the whole pile in one go.
+      const group = await tx.lot.findMany({
+        where: {
+          productCode: head.productCode,
+          lotNo: head.lotNo,
+          locationCode: head.locationCode,
+          status: head.status,
+          qty: { gt: 0 },
+        },
+        orderBy: { recvDate: "asc" },
+      });
+      const available = group.reduce((s, l) => s + l.qty, 0);
+      const moveQty = Math.min(line.qty, available);
+      if (moveQty <= 0) continue;
 
       await tx.transferLine.create({
         data: {
           transferId: transfer.id,
-          lotId: lot.id,
-          fromLocationCode: lot.locationCode,
+          lotId: head.id,
+          fromLocationCode: head.locationCode,
           toLocationCode: line.toLocationCode,
-          qty: line.qty,
+          qty: moveQty,
         },
       });
 
-      if (line.qty === lot.qty) {
-        // Moving the whole lot. If the destination bin already holds a record of
-        // the same product+lot, merge into it (drain this record) instead of just
-        // relocating — otherwise the bin ends up with two records for one lot.
-        const existing = await tx.lot.findFirst({
-          where: {
-            productCode: lot.productCode,
-            locationCode: line.toLocationCode,
-            lotNo: lot.lotNo,
-            id: { not: lot.id },
-          },
-        });
-        if (existing) {
-          await tx.lot.update({ where: { id: existing.id }, data: { qty: { increment: line.qty } } });
-          await tx.lot.update({ where: { id: lot.id }, data: { qty: 0 } });
-        } else {
-          await tx.lot.update({ where: { id: lot.id }, data: { locationCode: line.toLocationCode } });
-        }
+      let remaining = moveQty;
+      for (const l of group) {
+        if (remaining <= 0) break;
+        const take = Math.min(l.qty, remaining);
+        await tx.lot.update({ where: { id: l.id }, data: { qty: { decrement: take } } });
+        remaining -= take;
+      }
+
+      // Add to the destination, merging into an existing record of the same lot
+      // there so one bin holds one record per lot.
+      const existing = await tx.lot.findFirst({
+        where: {
+          productCode: head.productCode,
+          locationCode: line.toLocationCode,
+          lotNo: head.lotNo,
+        },
+      });
+      if (existing) {
+        await tx.lot.update({ where: { id: existing.id }, data: { qty: { increment: moveQty } } });
       } else {
-        await tx.lot.update({ where: { id: lot.id }, data: { qty: { decrement: line.qty } } });
-        const existing = await tx.lot.findFirst({
-          where: {
-            productCode: lot.productCode,
+        await tx.lot.create({
+          data: {
+            productCode: head.productCode,
             locationCode: line.toLocationCode,
-            lotNo: lot.lotNo,
+            lotNo: head.lotNo,
+            qty: moveQty,
+            status: head.status,
+            recvDate: head.recvDate,
+            mfgDate: head.mfgDate,
+            expDate: head.expDate,
           },
         });
-        if (existing) {
-          await tx.lot.update({ where: { id: existing.id }, data: { qty: { increment: line.qty } } });
-        } else {
-          await tx.lot.create({
-            data: {
-              productCode: lot.productCode,
-              locationCode: line.toLocationCode,
-              lotNo: lot.lotNo,
-              qty: line.qty,
-              status: lot.status,
-              recvDate: lot.recvDate,
-              mfgDate: lot.mfgDate,
-              expDate: lot.expDate,
-            },
-          });
-        }
       }
     }
   });
