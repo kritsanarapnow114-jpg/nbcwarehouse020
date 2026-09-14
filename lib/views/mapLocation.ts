@@ -143,35 +143,60 @@ export async function getMapLocationData() {
   ]);
   const today = todayBangkok();
 
-  const lotsByLoc = new Map<string, MapLot[]>();
   // per-lot floor-area inputs, so a bin's used area can be recomputed at the
   // bin's ACTUAL stack height (not just the product's max)
   type AreaInput = { qty: number; w: number; l: number; stack: number; pallet: number };
   const areaInputsByLoc = new Map<string, AreaInput[]>();
   const stackByLoc = new Map<string, number>(); // max pallets-high stored per location
+  // The SAME lot (product + lot + status + expiry) can span several Lot rows in
+  // one bin — e.g. production finished goods verified pallet-by-pallet at
+  // different putaway times each create their own row. Merge them into one line
+  // per bin (sum qty & pallets, keep the earliest putaway date) so the map shows
+  // a lot once. Pallet/area totals are unchanged (still summed across raw rows).
+  const lotGroupsByLoc = new Map<string, Map<string, MapLot & { _recvMs: number }>>();
   for (const l of lots) {
     const pallets = Math.max(1, Math.ceil(l.qty / Math.max(1, l.product.pallet)));
     const arrIn = areaInputsByLoc.get(l.locationCode) ?? [];
     arrIn.push({ qty: l.qty, w: l.product.width, l: l.product.length, stack: l.product.stackLevels, pallet: l.product.pallet });
     areaInputsByLoc.set(l.locationCode, arrIn);
     stackByLoc.set(l.locationCode, Math.max(stackByLoc.get(l.locationCode) ?? 1, l.product.stackLevels || 1));
-    const entry: MapLot = {
-      id: l.id,
-      productCode: l.product.code,
-      name: productLabel(l.product.nameEn, l.product.nameTh),
-      lotNo: l.lotNo,
-      pallets,
-      qty: l.qty,
-      unit: l.product.unit,
-      status: l.status,
-      expired: !!(l.expDate && l.expDate < today),
-      containerType: l.product.containerType || "OTHER",
-      inDate: fmtDateBE(l.recvDate),
-      expDate: l.expDate ? fmtDateBE(l.expDate) : null,
-    };
-    const arr = lotsByLoc.get(l.locationCode) ?? [];
-    arr.push(entry);
-    lotsByLoc.set(l.locationCode, arr);
+    const expired = !!(l.expDate && l.expDate < today);
+    const recvMs = l.recvDate.getTime();
+    const key = `${l.product.code}||${l.lotNo}||${l.status}||${expired}`;
+    const locMap = lotGroupsByLoc.get(l.locationCode) ?? new Map<string, MapLot & { _recvMs: number }>();
+    const ex = locMap.get(key);
+    if (ex) {
+      ex.qty += l.qty;
+      ex.pallets += pallets;
+      if (recvMs < ex._recvMs) {
+        ex._recvMs = recvMs;
+        ex.inDate = fmtDateBE(l.recvDate);
+      }
+    } else {
+      locMap.set(key, {
+        id: l.id,
+        productCode: l.product.code,
+        name: productLabel(l.product.nameEn, l.product.nameTh),
+        lotNo: l.lotNo,
+        pallets,
+        qty: l.qty,
+        unit: l.product.unit,
+        status: l.status,
+        expired,
+        containerType: l.product.containerType || "OTHER",
+        inDate: fmtDateBE(l.recvDate),
+        expDate: l.expDate ? fmtDateBE(l.expDate) : null,
+        _recvMs: recvMs,
+      });
+    }
+    lotGroupsByLoc.set(l.locationCode, locMap);
+  }
+  const lotsByLoc = new Map<string, MapLot[]>();
+  for (const [loc, m] of lotGroupsByLoc) {
+    lotsByLoc.set(
+      loc,
+      [...m.values()].map(({ _recvMs, ...rest }) => rest)
+    );
   }
 
   const cells: MapCell[] = [];
