@@ -192,16 +192,95 @@ export type ReceiptHistoryRow = Awaited<ReturnType<typeof getRecentReceipts>>[nu
  * How many pallets/boxes were received Full vs Partial (not a full pallet),
  * across all non-reversed receipts. `palletFull === false` marks a partial
  * pallet/box; legacy rows with no flag (null) are counted as unknown and left
- * out of the Full/Partial split.
+ * out of the Full/Partial split. `items` lists each partial pallet so the UI
+ * can drill down to exactly which lots are partial (newest first).
  */
 export async function getPalletFillSummary() {
   const base = { receipt: { reversedAt: null } };
-  const [partial, full] = await Promise.all([
+  const [partial, full, partialLines] = await Promise.all([
     db.receiptLine.count({ where: { ...base, palletFull: false } }),
     db.receiptLine.count({ where: { ...base, palletFull: true } }),
+    db.receiptLine.findMany({
+      where: { ...base, palletFull: false },
+      include: {
+        product: true,
+        receipt: { select: { docNo: true, docDate: true, mode: true } },
+      },
+      orderBy: { receipt: { docDate: "desc" } },
+      take: 500,
+    }),
   ]);
-  return { partial, full };
+  // Merge partial pallets of the SAME product + lot + location into one row:
+  // sum the qty, count how many partial pallets it is, keep the latest date and
+  // every document it came from.
+  type Group = {
+    key: string;
+    code: string;
+    name: string;
+    lotNo: string;
+    locationCode: string;
+    unit: string;
+    qty: number;
+    weightKg: number;
+    pallets: number;
+    docDate: string;
+    _dateMs: number;
+    docNos: Set<string>;
+    hasProduction: boolean;
+  };
+  const groups = new Map<string, Group>();
+  for (const l of partialLines) {
+    const key = `${l.productCode}||${l.lotNo}||${l.locationCode}`;
+    const ms = l.receipt.docDate.getTime();
+    const g = groups.get(key);
+    if (g) {
+      g.qty += l.recvQty;
+      g.weightKg += l.weightKg ?? 0;
+      g.pallets += 1;
+      g.docNos.add(l.receipt.docNo);
+      if (l.receipt.mode === "PRODUCTION") g.hasProduction = true;
+      if (ms > g._dateMs) {
+        g._dateMs = ms;
+        g.docDate = l.receipt.docDate.toISOString();
+      }
+    } else {
+      groups.set(key, {
+        key,
+        code: l.productCode,
+        name: productLabel(l.product.nameEn, l.product.nameTh),
+        lotNo: l.lotNo,
+        locationCode: l.locationCode,
+        unit: l.product.unit,
+        qty: l.recvQty,
+        weightKg: l.weightKg ?? 0,
+        pallets: 1,
+        docDate: l.receipt.docDate.toISOString(),
+        _dateMs: ms,
+        docNos: new Set([l.receipt.docNo]),
+        hasProduction: l.receipt.mode === "PRODUCTION",
+      });
+    }
+  }
+  const items = [...groups.values()]
+    .sort((a, b) => b._dateMs - a._dateMs)
+    .map((g) => ({
+      code: g.code,
+      name: g.name,
+      lotNo: g.lotNo,
+      locationCode: g.locationCode,
+      unit: g.unit,
+      qty: Math.round(g.qty * 1000) / 1000,
+      weightKg: Math.round(g.weightKg * 100) / 100,
+      pallets: g.pallets,
+      docDate: g.docDate,
+      docNo: [...g.docNos][0],
+      docCount: g.docNos.size,
+      hasProduction: g.hasProduction,
+    }));
+  return { partial, full, items };
 }
+
+export type PartialPalletItem = Awaited<ReturnType<typeof getPalletFillSummary>>["items"][number];
 
 /** Production receipts awaiting warehouse verification (finished goods not in stock yet). */
 export async function getPendingReceipts() {
