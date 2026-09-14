@@ -1,10 +1,47 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { requireWrite } from "@/lib/authz";
 
-/** Relocate a whole lot to another bin (quick bin-to-bin move from the map). */
+/**
+ * Merge duplicate stock records that describe the same physical pile — same
+ * product + lot + location + status — into one record: sum their on-hand onto
+ * the earliest-received record and drain the rest to 0. Lossless (total qty is
+ * preserved) and idempotent. Records are drained, not deleted, so historical
+ * document lines that reference them keep their foreign key; a 0-qty record is
+ * hidden from every stock view and picker (they all filter qty > 0).
+ *
+ * Runs on a bin-to-bin move so moving a lot onto a bin that already holds it
+ * merges instead of leaving two records — and clears any pre-existing duplicates
+ * at the same time. Takes the active transaction client.
+ */
+async function consolidateDuplicateLots(tx: Prisma.TransactionClient) {
+  const lots = await tx.lot.findMany({
+    where: { qty: { gt: 0 } },
+    orderBy: { recvDate: "asc" }, // earliest received is the merge target (FEFO-friendly)
+  });
+  const groups = new Map<string, typeof lots>();
+  for (const l of lots) {
+    const key = `${l.productCode}||${l.lotNo}||${l.locationCode}||${l.status}`;
+    const g = groups.get(key);
+    if (g) g.push(l);
+    else groups.set(key, [l]);
+  }
+  for (const g of groups.values()) {
+    if (g.length < 2) continue;
+    const [target, ...rest] = g;
+    const extra = rest.reduce((s, r) => s + r.qty, 0);
+    if (extra <= 0) continue;
+    await tx.lot.update({ where: { id: target.id }, data: { qty: { increment: extra } } });
+    await tx.lot.updateMany({ where: { id: { in: rest.map((r) => r.id) } }, data: { qty: 0 } });
+  }
+}
+
+/** Relocate a whole lot to another bin (quick bin-to-bin move from the map).
+ *  Moving onto a bin that already holds the same lot merges them into one
+ *  record (and tidies any other duplicate piles) rather than stacking a second. */
 export async function moveLotAction(
   lotId: string,
   toLocationCode: string
@@ -24,7 +61,12 @@ export async function moveLotAction(
   if (!lot) return { error: "ไม่พบลอต" };
   if (lot.locationCode === to) return { error: "ลอตนี้อยู่ช่องนี้อยู่แล้ว" };
 
-  await db.lot.update({ where: { id: lotId }, data: { locationCode: to } });
+  await db.$transaction(async (tx) => {
+    await tx.lot.update({ where: { id: lotId }, data: { locationCode: to } });
+    // Relocating onto the same lot creates a duplicate record — merge it (and any
+    // other same-lot/same-bin duplicates) so one bin holds one record per lot.
+    await consolidateDuplicateLots(tx);
+  });
   revalidatePath("/map");
   revalidatePath("/locations");
   revalidatePath("/products");
