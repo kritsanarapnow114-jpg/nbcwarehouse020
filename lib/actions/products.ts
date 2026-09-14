@@ -114,11 +114,13 @@ export async function updateLotExpiryAction(lotId: string, expDate: string) {
 }
 
 /** Edit a lot's identity/dates from the product drawer: lot number, mfg date,
- *  expiry date. Lot number must stay unique within its product+location bin. */
+ *  expiry date. Renaming a lot to a number that ALREADY exists in the same
+ *  product+location bin means "these are the same pile" — so merge this record's
+ *  on-hand into the existing lot (drain this one to 0) instead of erroring. */
 export async function updateLotAction(
   lotId: string,
   data: { lotNo: string; mfgDate: string; expDate: string }
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; merged?: boolean }> {
   await requireWrite();
   const lot = await db.lot.findUnique({ where: { id: lotId } });
   if (!lot) return { error: "Lot not found" };
@@ -133,9 +135,15 @@ export async function updateLotAction(
       },
     });
     if (clash) {
-      return {
-        error: `Lot "${lotNo}" already exists in ${lot.locationCode} for this product (เลข Lot ซ้ำในตำแหน่งเดียวกัน)`,
-      };
+      // Merge into the existing lot rather than blocking. Drain (not delete) so
+      // historical document lines that reference this record keep their foreign
+      // key; a 0-qty record is hidden from every stock view.
+      await db.$transaction([
+        db.lot.update({ where: { id: clash.id }, data: { qty: { increment: lot.qty } } }),
+        db.lot.update({ where: { id: lotId }, data: { qty: 0 } }),
+      ]);
+      revalidateInventoryPaths();
+      return { merged: true };
     }
   }
   await db.lot.update({

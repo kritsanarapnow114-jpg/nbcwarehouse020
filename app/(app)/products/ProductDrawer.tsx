@@ -304,17 +304,23 @@ function LotEditModal({
     setSaving(true);
     setError(null);
     // Apply the edit to every stock record this row represents (same lot+loc).
-    let res: { error?: string } = {};
+    let res: { error?: string; merged?: boolean } = {};
+    let merged = false;
     for (const id of lot.ids) {
       res = await updateLotAction(id, { lotNo, mfgDate: mfg, expDate: exp });
       if (res.error) break;
+      if (res.merged) merged = true;
     }
     setSaving(false);
     if (res.error) {
       setError(res.error);
       return;
     }
-    showToast(`Lot ${lotNo} updated (แก้ไขล็อตแล้ว)`);
+    showToast(
+      merged
+        ? `รวมเข้ากับล็อต ${lotNo} เดิมแล้ว (merged into existing lot)`
+        : `Lot ${lotNo} updated (แก้ไขล็อตแล้ว)`
+    );
     onSaved();
   }
 
