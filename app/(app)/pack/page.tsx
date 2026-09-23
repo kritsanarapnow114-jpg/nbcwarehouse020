@@ -31,14 +31,33 @@ export default async function PackOrderPage() {
         pallet: l.palletFull == null ? "" : l.palletFull ? "Full" : "Partial",
         time: l.packTime ?? "",
         extra: `Lot ${l.lotNo} · ${l.locationCode}`,
+        edit: {
+          id: l.id,
+          productCode: l.code,
+          recvQty: l.recvQty,
+          lotNo: l.lotNo,
+          locationCode: l.locationCode,
+          mfgDate: l.mfgDate,
+          expDate: l.expDate,
+        },
       })),
     }));
+
+  const productOptions = data.products.map((p) => ({ code: p.code, name: p.name }));
 
   return (
     <div className="max-w-[1240px] p-[22px_26px]">
       <ReceiveForm data={data} lockMode="PRODUCTION" />
       <PendingVerify receipts={pending} />
-      <DocHistory title="ประวัติรับจากผลิต (Pack Order history)" rows={rows} accentColor="#8a6d1f" reverseKind="receipt" packCols />
+      <DocHistory
+        title="ประวัติรับจากผลิต (Pack Order history)"
+        rows={rows}
+        accentColor="#8a6d1f"
+        reverseKind="receipt"
+        packCols
+        productOptions={productOptions}
+        locationOptions={data.locations}
+      />
     </div>
   );
 }
