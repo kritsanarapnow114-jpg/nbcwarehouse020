@@ -28,8 +28,19 @@ export default async function ReceivePage() {
         name: l.name,
         qtyText: `${l.recvQty.toLocaleString()} ${l.unit}`,
         extra: `Lot ${l.lotNo} · ${l.locationCode}`,
+        edit: {
+          id: l.id,
+          productCode: l.code,
+          recvQty: l.recvQty,
+          lotNo: l.lotNo,
+          locationCode: l.locationCode,
+          mfgDate: l.mfgDate,
+          expDate: l.expDate,
+        },
       })),
     }));
+
+  const productOptions = data.products.map((p) => ({ code: p.code, name: p.name }));
 
   const totalPallets = pallets.partial + pallets.full;
   const partialPct = totalPallets > 0 ? Math.round((pallets.partial / totalPallets) * 100) : 0;
@@ -46,7 +57,14 @@ export default async function ReceivePage() {
         <PalletTile label="รวมทั้งหมด" value={totalPallets} sub="พาเลท/กล่องที่รับเข้า (ไม่นับที่ยกเลิก)" color="#3a4658" />
       </div>
 
-      <DocHistory title="Recent Receipts (ประวัติการรับสินค้า)" rows={rows} accentColor="#1f66a6" reverseKind="receipt" />
+      <DocHistory
+        title="Recent Receipts (ประวัติการรับสินค้า)"
+        rows={rows}
+        accentColor="#1f66a6"
+        reverseKind="receipt"
+        productOptions={productOptions}
+        locationOptions={data.locations}
+      />
     </div>
   );
 }

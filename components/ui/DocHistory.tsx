@@ -12,6 +12,7 @@ import { updateDocMetaAction, MetaEditableKind } from "@/lib/actions/docMeta";
 import { getRedoTemplateAction } from "@/lib/actions/redo";
 import { stashRedo } from "@/lib/redoTemplate";
 import { printTable, printCountSheet } from "@/lib/calc/printClient";
+import { EditReceiptLineModal, EditableReceiptLine } from "./EditReceiptLineModal";
 
 export type DocHistoryLine = {
   code: string;
@@ -28,6 +29,9 @@ export type DocHistoryLine = {
   weight?: string;
   pallet?: string;
   time?: string;
+  // Raw fields for in-place line editing (receipts only). Present → an "edit"
+  // button shows on the line in the document modal.
+  edit?: EditableReceiptLine;
 };
 
 export type DocHistoryRow = {
@@ -108,6 +112,8 @@ export function DocHistory({
   reverseKind,
   printSheet,
   packCols,
+  productOptions,
+  locationOptions,
 }: {
   title: string;
   rows: DocHistoryRow[];
@@ -115,9 +121,13 @@ export function DocHistory({
   reverseKind?: ReversibleKind;
   printSheet?: "count";
   packCols?: boolean;
+  // Supplying these turns on per-line editing for receipts (product/lot/qty/loc).
+  productOptions?: { code: string; name: string }[];
+  locationOptions?: string[];
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState<DocHistoryRow | null>(null);
+  const [editingLine, setEditingLine] = useState<EditableReceiptLine | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [reversing, setReversing] = useState(false);
   const [reverseError, setReverseError] = useState<string | null>(null);
@@ -133,6 +143,8 @@ export function DocHistory({
   const [deleting, setDeleting] = useState(false);
 
   const canEditMeta = reverseKind === "receipt" || reverseKind === "issue";
+  const canEditLines =
+    reverseKind === "receipt" && !!productOptions && !!locationOptions && !selected?.reversedAt;
 
   function openRow(r: DocHistoryRow) {
     setSelected(r);
@@ -344,6 +356,7 @@ export function DocHistory({
                     {packCols && <th className="pb-2 pr-3 font-medium">พาเลท</th>}
                     {packCols && <th className="pb-2 pr-3 font-medium">เวลา</th>}
                     <th className="pb-2 pl-3 font-medium">Lot / Location</th>
+                    {canEditLines && <th className="pb-2 pl-3 font-medium" />}
                   </tr>
                 </thead>
                 <tbody>
@@ -359,6 +372,18 @@ export function DocHistory({
                       <td className="border-l border-[#eef1f5] py-2 pl-3 text-[11.5px] text-[#9aa4b4]">
                         {l.extra}
                       </td>
+                      {canEditLines && (
+                        <td className="py-2 pl-3 text-right">
+                          {l.edit && (
+                            <button
+                              onClick={() => setEditingLine(l.edit!)}
+                              className="rounded-[7px] border border-[#d7dce4] bg-white px-2 py-1 text-[11.5px] font-medium text-[#2f86cf] hover:bg-[#f0f6fc]"
+                            >
+                              ✎ แก้ไข
+                            </button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -546,6 +571,20 @@ export function DocHistory({
           </>
         )}
       </Modal>
+
+      {editingLine && productOptions && locationOptions && (
+        <EditReceiptLineModal
+          line={editingLine}
+          products={productOptions}
+          locations={locationOptions}
+          onClose={() => setEditingLine(null)}
+          onSaved={() => {
+            setEditingLine(null);
+            closeModal();
+            router.refresh();
+          }}
+        />
+      )}
     </Card>
   );
 }
