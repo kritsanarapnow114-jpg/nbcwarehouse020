@@ -56,27 +56,18 @@ export function Sidebar({
         }`}
         style={{ background: "linear-gradient(180deg,#47a6dd,#1f5f9e)" }}
       >
-        <div className="border-b border-white/15 px-[16px] py-3.5">
-          <div className="flex items-start">
-            <div className="flex-1 rounded-[10px] bg-white px-3 py-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/fls-logo.png" alt="FLS GROUP" className="mx-auto h-8 w-auto" />
-            </div>
-            <button
-              onClick={onClose}
-              className="ml-2 flex-none text-[18px] leading-none text-white/70 hover:text-white lg:hidden"
-              aria-label="Close menu"
-            >
-              ×
-            </button>
-          </div>
-          <div className="mt-2 text-center leading-tight">
-            <div className="text-[13.5px] font-bold text-white">NBC Warehouse</div>
-            <div className="text-[10px] text-[#cfe4f6]">Warehouse Mgmt (ระบบคลังสินค้า)</div>
-          </div>
+        {/* Mobile-only header: just a close button (branding removed). */}
+        <div className="flex justify-end px-[16px] py-2.5 lg:hidden">
+          <button
+            onClick={onClose}
+            className="flex-none text-[18px] leading-none text-white/70 hover:text-white"
+            aria-label="Close menu"
+          >
+            ×
+          </button>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-0.5 overflow-auto p-3">
+        <nav className="flex flex-1 flex-col gap-0.5 overflow-auto p-3 lg:pt-4">
           {NAV_GROUPS.map((group) => {
             const open = !collapsed.has(group.key) || group.key === activeGroupKey;
             return (
