@@ -6,7 +6,7 @@ import { Card, CardTitle } from "@/components/ui/Card";
 import { buttonClass } from "@/components/ui/Button";
 import { showToast } from "@/components/ui/Toast";
 import { saveAppSettingsAction } from "@/lib/actions/settings";
-import { OEE_STANDARDS_KEY, OEE_MACHINES } from "@/lib/settingsKeys";
+import { OEE_STANDARDS_KEY } from "@/lib/settingsKeys";
 
 /** Edit each machine/line's standard output rate (kg/hr) — unloading machines
  *  (fixed) plus the production lines defined in the pick-list above. Used to score
@@ -20,7 +20,7 @@ export function OeeStandardsCard({
   prodLines: string[];
 }) {
   const router = useRouter();
-  const allNames = [...OEE_MACHINES, ...prodLines];
+  const allNames = prodLines;
   const [rates, setRates] = useState<Record<string, string>>(
     Object.fromEntries(allNames.map((m) => [m, String(standards[m] ?? "")]))
   );
@@ -57,21 +57,16 @@ export function OeeStandardsCard({
 
   return (
     <Card>
-      <CardTitle>OEE — ค่ามาตรฐานเครื่อง (Unloading standards)</CardTitle>
+      <CardTitle>OEE — ค่ามาตรฐานสายการผลิต (Production line standards)</CardTitle>
       <p className="mb-3 text-[12.5px] text-[#69748a]">
-        กำลังโหลดมาตรฐานต่อชั่วโมงของแต่ละเครื่อง — ใช้คำนวณ <b>Performance</b> ของ OEE จากเวลาโหลดจริงในหน้า
-        Feed to SILO (ไม่ต้องคีย์เพิ่ม ระบบดึงเวลาให้เอง).
+        มาตรฐานผลิตต่อชั่วโมงของแต่ละสายการผลิต — ใช้คำนวณ <b>Performance</b> ของ OEE ตอนบันทึก Pack Order.
       </p>
-      <div className="mb-1 text-[11.5px] font-semibold text-[#69748a]">Unloading (SILO)</div>
-      <div className="grid gap-3 sm:grid-cols-3">{OEE_MACHINES.map(rateInput)}</div>
-
-      {prodLines.length > 0 && (
-        <>
-          <div className="mb-1 mt-4 text-[11.5px] font-semibold text-[#69748a]">
-            สายการผลิต (Production lines)
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">{prodLines.map(rateInput)}</div>
-        </>
+      {prodLines.length > 0 ? (
+        <div className="grid gap-3 sm:grid-cols-3">{prodLines.map(rateInput)}</div>
+      ) : (
+        <p className="rounded-[9px] bg-[#fbf1de] p-2.5 text-[12px] text-[#8a6d1f]">
+          ยังไม่มีสายการผลิต — เพิ่มสายการผลิตในรายการด้านบนก่อน แล้วค่อยตั้งค่ามาตรฐาน
+        </p>
       )}
 
       <div className="mt-3 flex justify-end">
