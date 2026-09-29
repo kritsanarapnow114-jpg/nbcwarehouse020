@@ -46,13 +46,13 @@ export const NAV_GROUPS: NavGroup[] = [
     key: "operations",
     en: "Operations",
     th: "งานประจำวัน",
-    items: ["pack", "plan", "silo", "transfer"],
+    items: ["pack", "transfer"],
   },
   {
     key: "analytics",
     en: "Analytics & Reports",
     th: "วิเคราะห์ & รายงาน",
-    items: ["abc", "oee", "reports", "compare"],
+    items: ["oee", "reports"],
   },
 ];
 
