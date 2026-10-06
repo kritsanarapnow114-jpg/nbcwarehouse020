@@ -3,47 +3,14 @@ import { db } from "@/lib/db";
 import { Range } from "@/lib/views/dashboard";
 import { getAppSetting } from "@/lib/views/settings";
 import { OEE_STANDARDS_KEY, parseOeeStandards, OEE_SHIFT_TIME_KEY, parseShiftTime } from "@/lib/settingsKeys";
-import { scoreUnloading, scoreProduction, oeeFrom, pct } from "@/lib/calc/oee";
+import { scoreProduction, pct } from "@/lib/calc/oee";
 import { fmtDateISO } from "@/lib/calc/date";
 import { productLabel } from "@/lib/calc/productName";
 
-// A finished bag-load reduced to the numbers OEE needs.
-type Load = {
-  machine: string;
-  day: string; // Bangkok calendar day of the finish
-  startMs: number;
-  endMs: number;
-  qty: number;
-  stagingId: string;
-  stagingDoc: string;
-  plannedMin: number; // planned unloading time for the session (0 = none set)
-};
-
 export async function getOeeDashboard(range: Range) {
-  // SiloLoad.loadedAt is a real timestamp, but range.end is the *start* of the
-  // last day (midnight). Using `lte: range.end` would drop everything loaded on
-  // the final day itself. Extend the upper bound to the end of that day.
-  const endExclusive = new Date(range.end);
-  endExclusive.setDate(endExclusive.getDate() + 1);
-
-  const [standardsRaw, shiftTimeRaw, siloLoads, prodReceipts, bomLosses, products, boms] = await Promise.all([
+  const [standardsRaw, shiftTimeRaw, prodReceipts, bomLosses, products, boms] = await Promise.all([
     getAppSetting(OEE_STANDARDS_KEY),
     getAppSetting(OEE_SHIFT_TIME_KEY),
-    // Finished loads with both timestamps (legacy finish-only loads can't be timed).
-    db.siloLoad.findMany({
-      where: {
-        loadedAt: { gte: range.start, lt: endExclusive },
-        startedAt: { not: null },
-      },
-      select: {
-        machine: true,
-        qty: true,
-        startedAt: true,
-        loadedAt: true,
-        stagingId: true,
-        staging: { select: { docNo: true, plannedMin: true } },
-      },
-    }),
     db.receipt.findMany({
       where: { mode: "PRODUCTION", reversedAt: null, docDate: { gte: range.start, lte: range.end } },
       select: {
@@ -165,135 +132,13 @@ export async function getOeeDashboard(range: Range) {
     return (r.prodLoss ?? 0) * pelletPrice + (pkgLossValueByReceipt.get(r.id) ?? 0);
   };
 
-  const loads: Load[] = siloLoads
-    .filter((l) => l.startedAt && l.loadedAt)
-    .map((l) => {
-      const end = l.loadedAt as Date;
-      return {
-        machine: (l.machine || "ไม่ระบุเครื่อง").trim(),
-        day: fmtDateISO(new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()))),
-        startMs: (l.startedAt as Date).getTime(),
-        endMs: end.getTime(),
-        qty: l.qty,
-        stagingId: l.stagingId,
-        stagingDoc: l.staging?.docNo ?? l.stagingId,
-        plannedMin: l.staging?.plannedMin ?? 0,
-      };
-    });
-
-  // ---- Unloading: aggregate per SILO session (staging) ----------------------
-  // Availability now comes from the session's plan (plannedMin), so we pool by
-  // staging — each staging carries its own plan once (not once per bag).
-  type URun = {
-    doc: string; machine: string; day: string;
-    startMs: number; endMs: number; loadingMs: number; output: number; bags: number; plannedMs: number;
-  };
-  const runMap = new Map<string, URun>();
-  for (const l of loads) {
-    const g =
-      runMap.get(l.stagingId) ??
-      { doc: l.stagingDoc, machine: l.machine, day: l.day, startMs: l.startMs, endMs: l.endMs, loadingMs: 0, output: 0, bags: 0, plannedMs: l.plannedMin * 60_000 };
-    g.startMs = Math.min(g.startMs, l.startMs);
-    g.endMs = Math.max(g.endMs, l.endMs);
-    g.loadingMs += Math.max(0, l.endMs - l.startMs);
-    g.output += l.qty;
-    g.bags += 1;
-    g.day = l.day;
-    runMap.set(l.stagingId, g);
-  }
-  const runs = [...runMap.values()];
-
-  // Aggregate a set of sessions into one OEE (planned time summed across them).
-  type UAgg = { plannedMs: number; loadingMs: number; windowMs: number; output: number; bags: number };
-  const emptyAgg = (): UAgg => ({ plannedMs: 0, loadingMs: 0, windowMs: 0, output: 0, bags: 0 });
-  const addRun = (a: UAgg, g: URun) => {
-    a.plannedMs += g.plannedMs;
-    a.loadingMs += g.loadingMs;
-    a.windowMs += Math.max(0, g.endMs - g.startMs);
-    a.output += g.output;
-    a.bags += g.bags;
-  };
-  const scoreAgg = (a: UAgg, std: number) =>
-    scoreUnloading({ plannedMs: a.plannedMs, windowMs: a.windowMs, loadingMs: a.loadingMs, output: a.output, staged: a.output, standardPerHour: std });
-
-  const unloadingRuns = runs
-    .map((g) => {
-      const parts = scoreUnloading({
-        plannedMs: g.plannedMs,
-        windowMs: g.endMs - g.startMs,
-        loadingMs: g.loadingMs,
-        output: g.output,
-        staged: g.output,
-        standardPerHour: standards[g.machine] ?? 0,
-      });
-      return {
-        doc: g.doc,
-        day: g.day,
-        machine: g.machine,
-        a: pct(parts.availability),
-        p: pct(parts.performance),
-        oee: pct(parts.oee),
-        bags: g.bags,
-        output: Math.round(g.output),
-        loadingMs: Math.max(0, g.endMs - g.startMs), // elapsed span (time used)
-        plannedMin: Math.round(g.plannedMs / 60_000),
-        hasPlan: g.plannedMs > 0,
-      };
-    })
-    .sort((a, b) => b.day.localeCompare(a.day))
-    .slice(0, 50);
-
-  // ---- Unloading: per machine + overall -------------------------------------
-  const byMachine = new Map<string, UAgg>();
-  for (const g of runs) {
-    const a = byMachine.get(g.machine) ?? emptyAgg();
-    addRun(a, g);
-    byMachine.set(g.machine, a);
-  }
-  const perMachine = [...byMachine.entries()]
-    .map(([name, a]) => {
-      const parts = scoreAgg(a, standards[name] ?? 0);
-      return {
-        name,
-        oee: pct(parts.oee),
-        a: pct(parts.availability),
-        p: pct(parts.performance),
-        loads: a.bags,
-        output: Math.round(a.output),
-        loadingMs: a.windowMs, // elapsed span (time used)
-        idleMs: a.plannedMs > 0 ? Math.max(0, a.plannedMs - a.windowMs) : 0,
-        plannedMin: Math.round(a.plannedMs / 60_000),
-        standard: standards[name] ?? 0,
-      };
-    })
-    .sort((x, y) => x.oee - y.oee);
-
-  const overall = runs.reduce((a, g) => (addRun(a, g), a), emptyAgg());
-  // Overall Performance uses an output-weighted average standard rate so a single
-  // shared "standard" is meaningful across mixed machines.
-  const outWeightedStd =
-    overall.output > 0
-      ? [...byMachine.entries()].reduce((s, [name, a]) => s + (standards[name] ?? 0) * a.output, 0) / overall.output
-      : 0;
-  const overallParts = scoreAgg(overall, outWeightedStd);
-
-  // ---- 7-day trend (OEE per day, all machines) ------------------------------
+  // 7-day window (Bangkok days) shared by the production trend below.
   const days: string[] = [];
   for (let i = 6; i >= 0; i--) {
     const dd = new Date(range.end);
     dd.setDate(dd.getDate() - i);
     days.push(fmtDateISO(dd));
   }
-  const trend = days.map((day) => {
-    const dayRuns = runs.filter((g) => g.day === day);
-    if (dayRuns.length === 0) return null;
-    const agg = dayRuns.reduce((a, g) => (addRun(a, g), a), emptyAgg());
-    const std =
-      agg.output > 0
-        ? dayRuns.reduce((s, g) => s + (standards[g.machine] ?? 0) * g.output, 0) / agg.output
-        : 0;
-    return pct(scoreAgg(agg, std).oee);
-  });
 
   // ---- Production: yield always; full A/P/Q for runs that captured a line -----
   const produced = prodReceipts.reduce((s, r) => s + (r.producedTotal ?? 0), 0);
@@ -664,11 +509,9 @@ export async function getOeeDashboard(range: Range) {
   const capturedLossPareto = [...lossAggMap.values()].sort((a, b) => b.lostMin - a.lostMin);
 
   return {
-    hasUnloading: loads.length > 0,
     packagingLoss,
     packagingUsed,
     productionRuns,
-    unloadingRuns,
     captured: {
       qualityLoss: capturedQualityLoss,
       lossPareto: capturedLossPareto,
@@ -677,17 +520,6 @@ export async function getOeeDashboard(range: Range) {
       hasQuality: capturedQualityLoss.length > 0,
       hasLoss: capturedLossPareto.length > 0,
     },
-    unloading: {
-      ...toPct(overallParts),
-      loads: overall.bags,
-      output: Math.round(overall.output),
-      loadingMs: overall.windowMs, // elapsed span (time used)
-      plannedMin: Math.round(overall.plannedMs / 60_000),
-      hasPlan: overall.plannedMs > 0,
-      idleMs: overall.plannedMs > 0 ? Math.max(0, overall.plannedMs - overall.windowMs) : 0,
-    },
-    perMachine,
-    trend: { days, oee: trend },
     production: {
       docs: prodReceipts.length,
       produced: Math.round(produced),
@@ -714,15 +546,6 @@ export async function getOeeDashboard(range: Range) {
       trend: { days, oee: prodTrend },
     },
     standards,
-  };
-}
-
-function toPct(parts: ReturnType<typeof oeeFrom>) {
-  return {
-    a: pct(parts.availability),
-    p: pct(parts.performance),
-    q: pct(parts.quality),
-    oee: pct(parts.oee),
   };
 }
 

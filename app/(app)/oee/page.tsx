@@ -3,7 +3,7 @@ import { Card, CardTitle } from "@/components/ui/Card";
 import { PeriodSelector } from "@/components/ui/PeriodSelector";
 import { resolvePeriod } from "@/lib/calc/period";
 import { getOeeDashboard } from "@/lib/views/oee";
-import { oeeColor, OEE_GOOD, fmtDuration } from "@/lib/calc/oee";
+import { oeeColor, OEE_GOOD } from "@/lib/calc/oee";
 import { fmtDateBE } from "@/lib/calc/date";
 import { OeeDeckButton } from "./OeeDeckButton";
 import { PackingTrendChart } from "./PackingTrendChart";
@@ -75,65 +75,7 @@ export default async function OeePage({
         ข้อมูลจริงตามช่วงเวลา (Live · เลือกช่วงด้านบน)
       </div>
 
-      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
-        {/* Unloading OEE hero */}
-        <Card>
-          <CardTitle>Unloading Station · OEE = P × Q</CardTitle>
-          {!d.hasUnloading ? (
-            <Empty text="ยังไม่มีการโหลดเข้า SILO ที่จับเวลาในช่วงนี้ — ดูที่หน้า Feed to SILO" />
-          ) : (
-            <>
-              <div className="flex items-center gap-6">
-                <Gauge value={d.unloading.oee} />
-                <div className="flex flex-1 flex-col gap-2.5">
-                  {d.unloading.hasPlan ? (
-                    <Bar label="Availability" sub="เสร็จในแผน=100% · เกินแผนถึงลด" v={d.unloading.a} />
-                  ) : (
-                    <Bar label="การใช้งาน" sub="โหลดจริง/ช่วงเปิดเครื่อง (info)" v={d.unloading.a} />
-                  )}
-                  <Bar label="Performance" sub="เทียบมาตรฐาน kg/ชม." v={d.unloading.p} />
-                  <Bar label="Quality" sub="ไม่นับของเสีย = 100%" v={d.unloading.q} />
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-5 border-t border-[#eef1f5] pt-3 text-[12px] text-[#69748a]">
-                <Foot k="โหลดทั้งหมด" v={`${d.unloading.loads} ถุง`} />
-                <Foot k="ปริมาณ" v={`${d.unloading.output.toLocaleString()} kg`} />
-                <Foot k="เวลาที่ใช้โหลด" v={fmtDuration(d.unloading.loadingMs)} />
-                {d.unloading.hasPlan && <Foot k="แผนเวลา" v={`${d.unloading.plannedMin} นาที`} />}
-                <Foot k={d.unloading.hasPlan ? "ว่าง (เทียบแผน)" : "ว่าง (ไม่มีงาน)"} v={fmtDuration(d.unloading.idleMs)} />
-              </div>
-              {d.perMachine.length > 0 && (
-                <div className="mt-3 border-t border-[#eef1f5] pt-3">
-                  <div className="mb-1.5 text-[11px] font-medium text-[#69748a]">ข้อมูลจากเครื่อง (source machines)</div>
-                  <div className="flex flex-wrap gap-2">
-                    {d.perMachine.map((m) => (
-                      <span key={m.name} className="inline-flex items-center gap-1.5 rounded-[8px] border border-[#e3e9f0] bg-[#f7f9fb] px-2.5 py-1 text-[11.5px]">
-                        <span className="h-2 w-2 flex-none rounded-full" style={{ background: oeeColor(m.oee) }} />
-                        <b className="text-[#3a4658]">{m.name}</b>
-                        <span className="text-[#9aa4b4]">{m.loads} ถุง · {m.output.toLocaleString()} kg · OEE {m.oee}%</span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <p className="mt-2 rounded-[9px] bg-[#f7f9fb] p-2.5 text-[11px] leading-relaxed text-[#69748a]">
-                {d.unloading.hasPlan ? (
-                  <>
-                    <b className="text-[#3a4658]">Availability</b> = โหลดเสร็จภายในแผน → 100% (เสร็จเร็ว/ตรงเวลาไม่โดนหัก) ·
-                    ถ้า<b>เกินแผน</b>ถึงจะลด (แผน ÷ เวลาจริง) · <b>Performance</b> = อัตราโหลดจริงเทียบมาตรฐาน ·
-                    OEE = A × P × Q · รอบไหนไม่ตั้งแผน = ใช้ P × Q
-                  </>
-                ) : (
-                  <>
-                    <b className="text-[#3a4658]">หมายเหตุ:</b> รอบนี้ยังไม่ได้ตั้ง <b>แผนเวลาโหลด</b> → ไม่คิด Availability
-                    (OEE = P × Q) · ตั้งแผนตอนเบิกเข้า SILO เพื่อให้ได้ A ครบ
-                  </>
-                )}
-              </p>
-            </>
-          )}
-        </Card>
-
+      <div className="mb-4 grid grid-cols-1 gap-4">
         {/* Production */}
         <Card>
           <CardTitle>{d.production.hasOee ? "การผลิต · OEE" : "การผลิต · Yield"}</CardTitle>
@@ -465,70 +407,7 @@ export default async function OeePage({
         </Card>
       )}
 
-      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Per-machine */}
-        <Card>
-          <CardTitle>OEE รายเครื่อง (Unloading)</CardTitle>
-          {d.perMachine.length === 0 ? (
-            <Empty />
-          ) : (
-            <div className="flex flex-col gap-3.5">
-              {d.perMachine.map((m) => (
-                <div key={m.name}>
-                  <div className="mb-1 flex items-baseline gap-2">
-                    <span className="flex-1 text-[12.5px] font-medium">{m.name}</span>
-                    <span className="text-[10.5px] text-[#9aa4b4]">
-                      {m.loads} ถุง · {m.output.toLocaleString()} kg · มาตรฐาน{" "}
-                      {m.standard ? `${m.standard.toLocaleString()} kg/ชม.` : "ยังไม่ตั้ง"}
-                    </span>
-                    <span
-                      className="font-num w-11 text-right text-[13px] font-bold"
-                      style={{ color: oeeColor(m.oee) }}
-                    >
-                      {m.oee}%
-                    </span>
-                  </div>
-                  <div className="h-[10px] overflow-hidden rounded-[6px] bg-[#eef1f5]">
-                    <div
-                      className="h-full rounded-[6px]"
-                      style={{ width: `${m.oee}%`, background: oeeColor(m.oee) }}
-                    />
-                  </div>
-                  <div className="mt-1 flex gap-3 text-[10.5px] text-[#9aa4b4]">
-                    <span>P {m.p}%</span>
-                    <span>ใช้งาน {m.a}%</span>
-                    <span>ว่าง {fmtDuration(m.idleMs)}</span>
-                  </div>
-                </div>
-              ))}
-              <div className="mt-1 flex gap-3 text-[11px] text-[#9aa4b4]">
-                <Legend color="#1f9d63" label="≥85 ดีมาก" />
-                <Legend color="#c8891a" label="65–84 พอใช้" />
-                <Legend color="#c53f3f" label="<65 ต้องแก้" />
-              </div>
-              {!d.perMachine.some((m) => m.standard > 0) && (
-                <p className="rounded-[9px] bg-[#fbf1de] p-2.5 text-[11px] text-[#8a6d1f]">
-                  ยังไม่ได้ตั้งค่ามาตรฐานเครื่อง → Performance จะเป็น 0% ·{" "}
-                  <Link href="/settings" className="font-semibold underline">
-                    ตั้งค่าที่ Settings
-                  </Link>
-                </p>
-              )}
-            </div>
-          )}
-        </Card>
-
-        {/* Trend */}
-        <Card>
-          <CardTitle>แนวโน้ม OEE · 7 วันล่าสุด (Unloading)</CardTitle>
-          <div className="mb-2 text-[11.5px] text-[#9aa4b4]">
-            เส้นประ = เป้า {OEE_GOOD}% · วันที่ไม่มีงานจะเว้นว่าง
-          </div>
-          <Trend days={d.trend.days} oee={d.trend.oee} />
-        </Card>
-      </div>
-
-      {/* ── OEE per run — each production run & each unloading session ─────── */}
+      {/* ── OEE per run — each production Pack Order ─────── */}
       {d.productionRuns.length > 0 && (
         <Card className="mb-4">
           <CardTitle>OEE รายครั้ง · การผลิต (แต่ละใบ Pack Order)</CardTitle>
@@ -567,43 +446,6 @@ export default async function OeePage({
         </Card>
       )}
 
-      {d.unloadingRuns.length > 0 && (
-        <Card className="mb-4">
-          <CardTitle>OEE รายครั้ง · Unloading (แต่ละรอบโหลดเข้า SILO)</CardTitle>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] border-collapse text-[12px]">
-              <thead>
-                <tr className="bg-[#f7f9fb] text-left text-[11px] text-[#69748a]">
-                  <th className="p-[7px_10px] font-medium">เอกสาร</th>
-                  <th className="p-[7px_10px] font-medium">วันที่</th>
-                  <th className="p-[7px_10px] font-medium">เครื่อง</th>
-                  <th className="p-[7px_10px] text-right font-medium">ใช้งาน</th>
-                  <th className="p-[7px_10px] text-right font-medium">P</th>
-                  <th className="p-[7px_10px] text-right font-medium">OEE</th>
-                  <th className="p-[7px_10px] text-right font-medium">ถุง</th>
-                  <th className="p-[7px_10px] text-right font-medium">ปริมาณ</th>
-                  <th className="p-[7px_10px] text-right font-medium">เวลาโหลด</th>
-                </tr>
-              </thead>
-              <tbody>
-                {d.unloadingRuns.map((r) => (
-                  <tr key={r.doc} className="border-t border-[#eef1f5]">
-                    <td className="font-num p-[7px_10px] text-[#2f86cf]">{r.doc}</td>
-                    <td className="font-num p-[7px_10px] text-[#69748a]">{r.day}</td>
-                    <td className="p-[7px_10px]">{r.machine}</td>
-                    <td className="font-num p-[7px_10px] text-right text-[#69748a]">{r.a}%</td>
-                    <td className="font-num p-[7px_10px] text-right text-[#69748a]">{r.p}%</td>
-                    <td className="font-num p-[7px_10px] text-right font-bold" style={{ color: oeeColor(r.oee) }}>{r.oee}%</td>
-                    <td className="font-num p-[7px_10px] text-right">{r.bags}</td>
-                    <td className="font-num p-[7px_10px] text-right">{r.output.toLocaleString()} kg</td>
-                    <td className="font-num p-[7px_10px] text-right text-[#69748a]">{fmtDuration(r.loadingMs)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
     </div>
   );
 }
@@ -659,15 +501,6 @@ function Foot({ k, v }: { k: string; v: string }) {
       {k}
       <b className="font-num mt-0.5 block text-[15px] font-bold text-[#16202e]">{v}</b>
     </div>
-  );
-}
-
-function Legend({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: color }} />
-      {label}
-    </span>
   );
 }
 
@@ -751,73 +584,5 @@ function TrendArrow({
       {up ? "↑" : "↓"}
       {!inline && ` ${diff > 0 ? "+" : ""}${Math.round(diff * 10) / 10}`}
     </span>
-  );
-}
-
-/** Static SVG line chart of 7-day OEE. Null days leave a gap. */
-function Trend({ days, oee }: { days: string[]; oee: (number | null)[] }) {
-  const W = 720;
-  const H = 210;
-  const pad = { l: 30, r: 40, t: 14, b: 24 };
-  const n = days.length;
-  const xs = (i: number) => pad.l + (i * (W - pad.l - pad.r)) / Math.max(1, n - 1);
-  const lo = 40;
-  const ys = (v: number) => pad.t + ((100 - v) / (100 - lo)) * (H - pad.t - pad.b);
-
-  const pts = oee
-    .map((v, i) => (v == null ? null : ([xs(i), ys(v), v] as const)))
-    .filter((p): p is readonly [number, number, number] => p !== null);
-  const path = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
-  const last = pts[pts.length - 1];
-
-  const labelOf = (iso: string) => {
-    const wd = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
-    const [y, m, day] = iso.split("-").map(Number);
-    return wd[new Date(Date.UTC(y, m - 1, day)).getUTCDay()];
-  };
-
-  return (
-    <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full min-w-[460px]" role="img" aria-label="แนวโน้ม OEE 7 วัน">
-        {[40, 60, 80, 100].map((v) => (
-          <g key={v}>
-            <line x1={pad.l} y1={ys(v)} x2={W - pad.r} y2={ys(v)} stroke="#eef1f5" strokeWidth={1} />
-            <text x={pad.l - 7} y={ys(v) + 3} fontSize={10} fill="#9aa4b4" textAnchor="end">
-              {v}
-            </text>
-          </g>
-        ))}
-        <line
-          x1={pad.l}
-          y1={ys(OEE_GOOD)}
-          x2={W - pad.r}
-          y2={ys(OEE_GOOD)}
-          stroke="#9aa4b4"
-          strokeWidth={1.4}
-          strokeDasharray="5 5"
-        />
-        {days.map((iso, i) => (
-          <text key={iso} x={xs(i)} y={H - 6} fontSize={10} fill="#9aa4b4" textAnchor="middle">
-            {labelOf(iso)}
-          </text>
-        ))}
-        {pts.length > 0 && (
-          <>
-            <path d={path} fill="none" stroke="#2f86cf" strokeWidth={2.4} strokeLinejoin="round" strokeLinecap="round" />
-            {pts.map((p, i) => (
-              <circle key={i} cx={p[0]} cy={p[1]} r={4} fill="#2f86cf" stroke="#fff" strokeWidth={2} />
-            ))}
-            <text x={last[0] + 8} y={last[1] + 4} fontSize={12} fontWeight={700} fill="#2f86cf">
-              {last[2]}%
-            </text>
-          </>
-        )}
-        {pts.length === 0 && (
-          <text x={W / 2} y={H / 2} fontSize={12} fill="#9aa4b4" textAnchor="middle">
-            ไม่มีข้อมูลใน 7 วันนี้
-          </text>
-        )}
-      </svg>
-    </div>
   );
 }
