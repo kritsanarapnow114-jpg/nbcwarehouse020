@@ -132,6 +132,9 @@ export function Sidebar({
             Exit
           </button>
         </form>
+        <div className="pb-2 text-center text-[10px] text-white/45">
+          สร้างโดย Kritsan.P
+        </div>
       </aside>
     </>
   );
